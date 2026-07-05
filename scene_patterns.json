@@ -264,7 +264,7 @@
                 "female_features": {
                     "large_breasts": {
                         "name": "Large Breasts",
-                        "prompt": "large breasts, big chest",
+                        "prompt": "huge breasts, large chest, big boobs",
                         "negative": "small chest"
                     },
                     "small_breasts": {
@@ -274,17 +274,17 @@
                     },
                     "curvy": {
                         "name": "Curvy",
-                        "prompt": "curvy, hourglass",
+                        "prompt": "curvy figure, hourglass body, wide hips",
                         "negative": "slim"
                     },
                     "slim": {
                         "name": "Slim",
-                        "prompt": "slim, slender",
+                        "prompt": "slim body, slender, thin",
                         "negative": "curvy"
                     },
                     "pear": {
                         "name": "Pear Shape",
-                        "prompt": "pear shape, wide hips",
+                        "prompt": "pear shape, thick thighs, wide hips, big butt",
                         "negative": "hourglass"
                     }
                 }

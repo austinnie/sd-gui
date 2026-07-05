@@ -585,7 +585,7 @@ class SceneManager:
         base_subject = "man and woman, couple, intimate"
     
         # ✅ 直接使用新键名，不做映射
-        order = ["pose", "intimacy", "view_angle", "environment", "clothing", "emotion", "male_features", "female_features"]
+        order = ["pose", "intimacy", "female_features","male_features","view_angle", "environment", "clothing", "emotion"  ]
         
         #亲密场景 男人和女人的提示词生效
         #selected_parts = []
@@ -597,7 +597,7 @@ class SceneManager:
         selected_parts = [base_subject]      # ← 修改这里
         seen = set([base_subject])           # ← 修改这里
         selected_count = 1                   # ← 修改这里
-        max_selections = 6                   # ← 可以增加到 6，因为 base_subject 占一个
+        max_selections = 7                   # ← 可以增加到 6，因为 base_subject 占一个
     
         
         for key in order:
