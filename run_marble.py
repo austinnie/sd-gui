@@ -36,6 +36,9 @@ from rembg import remove
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gui.tabs.img2img_tab import auto_shorten_prompt, safe_del
 
+from core.nsfw_filter import nsfw_filter
+from config.nsfw_config import nsfw_config, ContentLevel
+
 
 def ensure_dir(path):
     if not os.path.exists(path): os.makedirs(path)
@@ -43,6 +46,14 @@ def ensure_dir(path):
 
 def load_pipe(model_path):
     """加载 SD 模型（单进程专用）"""
+    # ===== 【新增】NSFW 模型切换 =====
+    if nsfw_config.use_dedicated_models:
+        if nsfw_config.level in [ContentLevel.EXPLICIT, ContentLevel.EXTREME]:
+            explicit_path = nsfw_config.explicit_model_path
+            if os.path.exists(explicit_path):
+                print(f"🔞 使用成人模型: {os.path.basename(explicit_path)}")
+                model_path = explicit_path
+                
     print(f"📦 加载图生图模型: {os.path.basename(model_path)}...")
     try:
         common_args = {
@@ -124,6 +135,18 @@ def generate_image(pipe, is_sdxl, prompt, negative, image_path, output_path,
                    max_strength=0.55,
                    use_inpaint=False):
 
+    # ===== 【新增】NSFW 过滤 =====
+    if nsfw_config.enabled:
+        # 检测 NSFW 内容
+        has_nsfw, matched = nsfw_filter.detect_nsfw(prompt)
+        if has_nsfw:
+            print(f"   🔞 检测到 NSFW 关键词: {matched}")
+            print(f"   当前等级: {nsfw_config.level.value}")
+        
+        # 根据等级过滤提示词
+        prompt, negative = nsfw_filter.filter_prompt(prompt, negative)
+        print(f"   过滤后提示词长度: {len(prompt)} 字符")
+        
     # ===== 【修复】在这里调用精简函数 =====
     original_prompt_len = len(prompt)
     original_neg_len = len(negative)

@@ -28,7 +28,7 @@ from gui.components.params_panel import ParamsPanel
 from gui.components.batch_panel import BatchPanel
 from gui.tabs.janus_tab import JanusTab
 from gui.tabs.grid_test_tab import GridTestTab
-
+from gui.components.nsfw_panel import NSFWPanel
 
 class ModelType(Enum):
     """模型类型枚举"""
@@ -479,7 +479,17 @@ class SDApp:
         self.params_panel = ParamsPanel()
         self.params_panel.create_widgets(main_frame)
         self.params_panel.get_frame().pack(fill=tk.X, padx=10, pady=5)
+
+        # ════════════════════════════════════════════════════════════
+        # ║  【在这里添加 NSFW 控制面板】                           ║
+        # ║  位置：参数面板之后，标签页之前                        ║
+        # ════════════════════════════════════════════════════════════
         
+        # ===== NSFW 控制面板 =====
+        from gui.components.nsfw_panel import NSFWPanel
+        self.nsfw_panel = NSFWPanel(main_frame, self)
+        self.nsfw_panel.get_frame().pack(fill=tk.X, padx=10, pady=5)
+    
         # ===== 标签页 =====
         notebook = ttk.Notebook(main_frame)
         notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
@@ -488,9 +498,9 @@ class SDApp:
         self._create_tabs()
         
         # ===== 批量面板 =====
-        self.batch_panel = BatchPanel(main_frame, self)
-        self.batch_panel.get_frame().pack(fill=tk.X, padx=10, pady=5)
-        self.batch_panel.set_start_callback(self._on_batch_start)
+        #self.batch_panel = BatchPanel(main_frame, self)
+        #self.batch_panel.get_frame().pack(fill=tk.X, padx=10, pady=5)
+        #self.batch_panel.set_start_callback(self._on_batch_start)
         
         # ===== 进度条和预览 =====
         self.progress_bar.create_widgets(main_frame)
@@ -837,6 +847,10 @@ class SDApp:
             "core.janus_analyzer",
             "core.janus_chat",
             "core.grid_runner",
+            # ===== 【新增】NSFW 相关模块 =====
+            "config.nsfw_config",
+            "core.nsfw_filter",
+            "gui.components.nsfw_panel",            
         ]
         
         reloaded = []
@@ -876,6 +890,13 @@ class SDApp:
             print(f"   ❌ 标签页重建失败: {e}")
             self.update_status(f"❌ 标签页重建失败: {e}")
             return
+
+        # ===== 【新增】重建 NSFW 面板 =====
+        try:
+            self._recreate_nsfw_panel()
+            print("   ✅ NSFW 面板重建完成")
+        except Exception as e:
+            print(f"   ⚠️ NSFW 面板重建失败: {e}")
         
         # ===== 【关键修改】重新布局参数面板 =====
         try:
@@ -903,12 +924,97 @@ class SDApp:
                 print("   ✅ 参数面板重定位完成 (备用方式)")
             except:
                 pass
+
+        # ===== 【新增】重新定位 NSFW 面板 =====
+        try:
+            if hasattr(self, 'nsfw_panel') and self.nsfw_panel:
+                nsfw_frame = self.nsfw_panel.get_frame()
+                if nsfw_frame and self.notebook:
+                    # 确保 NSFW 面板在参数面板和标签页之间
+                    nsfw_frame.pack_forget()
+                    # 找到参数面板的位置
+                    param_frame = self.params_panel.get_frame()
+                    # 在参数面板之后、标签页之前插入
+                    nsfw_frame.pack(
+                        side=tk.TOP,
+                        fill=tk.X,
+                        padx=10,
+                        pady=5,
+                        before=self.notebook
+                    )
+                    print("   ✅ NSFW 面板重定位完成")
+        except Exception as e:
+            print(f"   ⚠️ NSFW 面板重定位失败: {e}")
         
         print("=" * 60)
         print(f"✅ 热重载完成！已重载 {len(reloaded)} 个模块")
         print("=" * 60)
         
+        
         self.update_status(f"✅ 热重载完成！已重载 {len(reloaded)} 个模块")
+
+
+    # gui/app.py - 新增方法
+
+    def _recreate_nsfw_panel(self):
+        """
+        重建 NSFW 控制面板（用于热重载）
+        """
+        # 1. 销毁旧的 NSFW 面板
+        if hasattr(self, 'nsfw_panel') and self.nsfw_panel:
+            try:
+                old_frame = self.nsfw_panel.get_frame()
+                if old_frame and old_frame.winfo_exists():
+                    old_frame.destroy()
+                print("   🗑️ 旧 NSFW 面板已销毁")
+            except Exception as e:
+                print(f"   ⚠️ 销毁旧 NSFW 面板失败: {e}")
+        
+        # 2. 重新导入 NSFW 模块（确保使用最新代码）
+        import importlib
+        import sys
+        
+        try:
+            # 重新加载 nsyw 相关模块
+            for mod_name in ["gui.components.nsfw_panel", "core.nsfw_filter", "config.nsfw_config"]:
+                if mod_name in sys.modules:
+                    importlib.reload(sys.modules[mod_name])
+        except Exception as e:
+            print(f"   ⚠️ NSFW 模块重载失败: {e}")
+        
+        # 3. 重新创建 NSFW 面板
+        from gui.components.nsfw_panel import NSFWPanel
+        
+        # 获取父容器（main_frame）
+        main_frame = self.scrollable_frame
+        
+        # 创建新面板
+        self.nsfw_panel = NSFWPanel(main_frame, self)
+        nsfw_frame = self.nsfw_panel.get_frame()
+        
+        # 4. 放置到正确位置（参数面板之后，标签页之前）
+        # 注意：因为参数面板和标签页都在 main_frame 中
+        # 我们可以先 pack 到 main_frame，然后通过 before 参数调整顺序
+        nsfw_frame.pack(
+            side=tk.TOP,
+            fill=tk.X,
+            padx=10,
+            pady=5
+        )
+        
+        # 5. 调整顺序：确保 NSFW 面板在标签页之前
+        if hasattr(self, 'notebook') and self.notebook:
+            # 将 NSFW 面板移动到标签页之前
+            nsfw_frame.pack_forget()
+            nsfw_frame.pack(
+                side=tk.TOP,
+                fill=tk.X,
+                padx=10,
+                pady=5,
+                before=self.notebook
+            )
+        
+        print("   ✅ NSFW 面板已重建")
     
     def _recreate_tabs(self):
         from gui.tabs.txt2img_tab import Txt2ImgTab
@@ -942,6 +1048,8 @@ class SDApp:
         
         self.grid_test_tab = GridTestTab(self.notebook, self)
         self.notebook.add(self.grid_test_tab.frame, text="🧪 网格测试")
+
+        
     
     def run(self):
         self.root.mainloop()
