@@ -171,58 +171,58 @@ class Txt2ImgTab(BaseTab):
         row += 1     
 
         
-        # ===== 水印去除控制 =====
-        watermark_frame = ttk.LabelFrame(frame, text="🚫 水印去除", padding=5)
-        watermark_frame.grid(row=row, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=5, padx=5)
-        
-        wm_row1 = ttk.Frame(watermark_frame)
-        wm_row1.pack(fill=tk.X, pady=2)
-        
-        ttk.Checkbutton(
-            wm_row1, 
-            text="启用水印去除", 
-            variable=self.remove_watermark_var
-        ).pack(side=tk.LEFT, padx=5)
-        
-        ttk.Label(wm_row1, text="负面词强度:").pack(side=tk.LEFT, padx=5)
-        ttk.Combobox(
-            wm_row1, 
-            textvariable=self.watermark_strength_var,
-            values=["light", "medium", "strong", "extreme"],
-            width=8
-        ).pack(side=tk.LEFT, padx=5)
-        
-        ttk.Checkbutton(
-            wm_row1, 
-            text="后处理增强", 
-            variable=self.watermark_post_process_var
-        ).pack(side=tk.LEFT, padx=15)
-        
-        wm_row2 = ttk.Frame(watermark_frame)
-        wm_row2.pack(fill=tk.X, pady=2)
-        
-        ttk.Label(wm_row2, text="处理方法:").pack(side=tk.LEFT, padx=5)
-        ttk.Combobox(
-            wm_row2, 
-            textvariable=self.watermark_methods_var,
-            values=["all", "inpaint", "blur", "ai_detection"],
-            width=12
-        ).pack(side=tk.LEFT, padx=5)
-        
-        ttk.Checkbutton(
-            wm_row2, 
-            text="自动检测水印", 
-            variable=self.watermark_auto_detect_var
-        ).pack(side=tk.LEFT, padx=5)
-        
-        ttk.Label(
-            wm_row2, 
-            text="💡 组合使用负面词强化 + 后处理，有效去除水印", 
-            foreground="gray",
-            font=("", 8)
-        ).pack(side=tk.LEFT, padx=5)
-        
-        row += 1
+        ## ===== 水印去除控制 =====
+        #watermark_frame = ttk.LabelFrame(frame, text="🚫 水印去除", padding=5)
+        #watermark_frame.grid(row=row, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=5, padx=5)
+        #
+        #wm_row1 = ttk.Frame(watermark_frame)
+        #wm_row1.pack(fill=tk.X, pady=2)
+        #
+        #ttk.Checkbutton(
+        #    wm_row1, 
+        #    text="启用水印去除", 
+        #    variable=self.remove_watermark_var
+        #).pack(side=tk.LEFT, padx=5)
+        #
+        #ttk.Label(wm_row1, text="负面词强度:").pack(side=tk.LEFT, padx=5)
+        #ttk.Combobox(
+        #    wm_row1, 
+        #    textvariable=self.watermark_strength_var,
+        #    values=["light", "medium", "strong", "extreme"],
+        #    width=8
+        #).pack(side=tk.LEFT, padx=5)
+        #
+        #ttk.Checkbutton(
+        #    wm_row1, 
+        #    text="后处理增强", 
+        #    variable=self.watermark_post_process_var
+        #).pack(side=tk.LEFT, padx=15)
+        #
+        #wm_row2 = ttk.Frame(watermark_frame)
+        #wm_row2.pack(fill=tk.X, pady=2)
+        #
+        #ttk.Label(wm_row2, text="处理方法:").pack(side=tk.LEFT, padx=5)
+        #ttk.Combobox(
+        #    wm_row2, 
+        #    textvariable=self.watermark_methods_var,
+        #    values=["all", "inpaint", "blur", "ai_detection"],
+        #    width=12
+        #).pack(side=tk.LEFT, padx=5)
+        #
+        #ttk.Checkbutton(
+        #    wm_row2, 
+        #    text="自动检测水印", 
+        #    variable=self.watermark_auto_detect_var
+        #).pack(side=tk.LEFT, padx=5)
+        #
+        #ttk.Label(
+        #    wm_row2, 
+        #    text="💡 组合使用负面词强化 + 后处理，有效去除水印", 
+        #    foreground="gray",
+        #    font=("", 8)
+        #).pack(side=tk.LEFT, padx=5)
+        #
+        #row += 1
         
         # ===== 生成按钮 =====
         btn_frame = ttk.Frame(frame)
