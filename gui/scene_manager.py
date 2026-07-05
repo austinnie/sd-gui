@@ -582,15 +582,23 @@ class SceneManager:
         quality = "masterpiece, best quality, realistic, 8k"
 
         # ✅ 亲密场景默认添加男人和女人
-        base_subject = "man and woman, heterosexual couple"
+        base_subject = "man and woman, couple, intimate"
     
         # ✅ 直接使用新键名，不做映射
         order = ["pose", "intimacy", "view_angle", "environment", "clothing", "emotion", "male_features", "female_features"]
         
-        selected_parts = []
-        seen = set()
-        selected_count = 0
-        max_selections = 5  # 限制数量，确保不超过 77 token
+        #亲密场景 男人和女人的提示词生效
+        #selected_parts = []
+        #seen = set()
+        #selected_count = 0
+        #max_selections = 5  # 限制数量，确保不超过 77 token
+
+        # ✅ 从 base_subject 开始
+        selected_parts = [base_subject]      # ← 修改这里
+        seen = set([base_subject])           # ← 修改这里
+        selected_count = 1                   # ← 修改这里
+        max_selections = 6                   # ← 可以增加到 6，因为 base_subject 占一个
+    
         
         for key in order:
             if selected_count >= max_selections:
