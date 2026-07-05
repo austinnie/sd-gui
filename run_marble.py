@@ -10,11 +10,27 @@ import json
 import gc
 import torch
 import argparse
-from PIL import Image
-from diffusers import StableDiffusionPipeline, StableDiffusionXLPipeline, StableDiffusionInpaintPipeline
 from datetime import datetime
 import multiprocessing
 import numpy as np
+
+# ==================== 统一缓存目录（必须在导入库之前设置）====================
+CACHE_ROOT = r"E:\hf_cache\.cache"
+
+# ✅ 设置所有缓存目录
+os.environ['HF_HOME'] = CACHE_ROOT
+os.environ['U2NET_HOME'] = os.path.join(CACHE_ROOT, "u2net")
+os.environ['DEEPFACE_HOME'] = os.path.join(CACHE_ROOT, "deepface")
+
+# ✅ 创建所有目录
+for env_var in ['HF_HOME', 'U2NET_HOME', 'DEEPFACE_HOME']:
+    path = os.environ[env_var]
+    os.makedirs(path, exist_ok=True)
+    print(f"📁 {env_var} = {path}")
+
+# ✅ 现在才导入依赖库
+from PIL import Image
+from diffusers import StableDiffusionPipeline, StableDiffusionXLPipeline, StableDiffusionInpaintPipeline
 from rembg import remove
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -240,8 +256,7 @@ def generate_image(pipe, is_sdxl, prompt, negative, image_path, output_path,
         
         # ✅ 保存临时图并后处理
         temp_path = output_path.replace('.png', '_temp.png')
-        result.images[0].save(temp_path)
-        result.images[0].save(temp_path)
+        result.images[0].save(temp_path)        
         print(f"   ✅ 已保存临时图: {os.path.basename(temp_path)}")
         
         # ✅ 调用后处理：强制转为纯白大理石
@@ -259,9 +274,6 @@ def generate_image(pipe, is_sdxl, prompt, negative, image_path, output_path,
         traceback.print_exc()
         return False
         
-from PIL import Image, ImageEnhance, ImageOps
-
-from PIL import Image, ImageEnhance, ImageOps
 
 def post_process_to_marble(image_path, output_path, brightness_enhance=1.0):
     """
