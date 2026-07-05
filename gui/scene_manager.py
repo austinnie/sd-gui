@@ -18,12 +18,12 @@ class SceneManager:
         self._default_negative = ""
         self.load_config()
     
+
     def load_config(self):
-        """加载配置"""
+        """加载配置 - 兼容新旧格式"""
         possible_paths = [
             self.config_path,
             os.path.join(os.path.dirname(os.path.dirname(__file__)), "scene_patterns.json"),
-            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "scene_patterns.json")
         ]
         
         for path in possible_paths:
@@ -35,254 +35,513 @@ class SceneManager:
             try:
                 with open(self.config_path, 'r', encoding='utf-8') as f:
                     self.scene_config = json.load(f)
-                #print(f"✅ 已加载场景配置: {self.config_path}")
                 
-                scenes = self.scene_config.get("scenes", {})
-                for scene_name, scene_data in scenes.items():
-                    default_config = scene_data.get("默认配置", {})
-                    if default_config.get("negative_prompt"):
-                        self._default_negative = default_config["negative_prompt"]
-                        break
+                # ✅ 检测是新格式还是旧格式
+                if "scenes" in self.scene_config:
+                    scenes = self.scene_config.get("scenes", {})
+                    # 如果是旧格式（中文键名），自动转换
+                    if "两人亲密场景" in scenes:
+                        self._migrate_old_config()
                 return
             except Exception as e:
                 print(f"❌ 加载场景配置失败: {e}")
         
         self._create_default_config()
+
+    def _migrate_old_config(self):
+        """将旧格式转换为新格式"""
+        old_scene = self.scene_config.get("scenes", {}).get("两人亲密场景", {})
+        old_categories = old_scene.get("categories", {})
+        old_templates = self.scene_config.get("组合模板", {})
+        
+        new_categories = {}
+        key_map = {
+            "基本姿势": "pose",
+            "亲密程度": "intimacy",
+            "视角": "view_angle",
+            "环境氛围": "environment",
+            "服装状态": "clothing",
+            "情感表达": "emotion",
+            "男士特征": "male_features",
+            "女士特征": "female_features"
+        }
+        
+        for old_key, new_key in key_map.items():
+            if old_key in old_categories:
+                new_categories[new_key] = old_categories[old_key]
+        
+        new_templates = {}
+        for name, template in old_templates.items():
+            new_templates[name] = {
+                "pose": template.get("basic_pose", ""),
+                "intimacy": template.get("intimacy_level", ""),
+                "view_angle": template.get("view_angle", ""),
+                "environment": template.get("environment", ""),
+                "clothing": template.get("clothing", ""),
+                "emotion": template.get("emotion", ""),
+                "male_features": template.get("body_features_man", ""),
+                "female_features": template.get("body_features_woman", ""),
+                "suffix": template.get("prompt_suffix", "")
+            }
+        
+        self.scene_config = {
+            "scenes": {
+                "couple_intimate": {
+                    "categories": new_categories,
+                    "defaults": old_scene.get("默认配置", {})
+                }
+            },
+            "templates": new_templates,
+            "character_templates": self.scene_config.get("人物组合模板", {})
+        }
+        
+        # 保存迁移后的配置
+        self.save_config()
+        print("✅ 场景配置已自动迁移到新格式")
     
     def _create_default_config(self):
         """创建默认配置（包含完整数据）"""
         self.scene_config = self._get_default_scene_config()
         self.save_config()
     
+
     def _get_default_scene_config(self) -> dict:
-        """获取默认场景配置"""
+        """获取默认场景配置 - 新格式英文版"""
         return {
             "scenes": {
-                "两人亲密场景": {
+                "couple_intimate": {
                     "categories": {
-                        "基本姿势": {
-                            "standing_together": {
-                                "prompt": "standing together, side by side, both fully visible",
-                                "negative": "cropped, partial view"
-                            },
-                            "hugging": {
-                                "prompt": "hugging, arms wrapped around each other, embracing, both fully visible",
-                                "negative": "cropped, partial view"
-                            },
-                            "kissing": {
-                                "prompt": "kissing, passionate kiss, lips touching, intimate moment, both fully visible",
-                                "negative": "cropped, partial view"
+                        "pose": {
+                            "standing_embrace": {
+                                "name": "Standing Embrace",
+                                "prompt": "standing embrace, hugging",
+                                "negative": "cropped"
                             },
                             "sitting_embrace": {
-                                "prompt": "sitting embrace, one on lap, arms wrapped, intimate, both fully visible",
-                                "negative": "cropped, partial view"
+                                "name": "Sitting Embrace",
+                                "prompt": "sitting embrace, lap sitting",
+                                "negative": "cropped"
                             },
                             "lying_down": {
-                                "prompt": "lying together, horizontal position, cuddling, intimate, both fully visible",
-                                "negative": "cropped, partial view"
+                                "name": "Lying Down",
+                                "prompt": "lying down, cuddling",
+                                "negative": "cropped"
                             },
-                            "man_behind_woman": {
-                                "prompt": "man standing behind woman, protective embrace, both fully visible",
-                                "negative": "cropped, partial view"
+                            "bent_over": {
+                                "name": "Bent Over",
+                                "prompt": "bent over, from behind",
+                                "negative": "standing upright"
                             },
-                            "woman_on_lap": {
-                                "prompt": "woman sitting on man's lap, arms around neck, intimate, both fully visible",
-                                "negative": "cropped, partial view"
+                            "missionary": {
+                                "name": "Missionary",
+                                "prompt": "missionary",
+                                "negative": "from behind"
+                            },
+                            "cowgirl": {
+                                "name": "Cowgirl",
+                                "prompt": "cowgirl",
+                                "negative": "man on top"
+                            },
+                            "reverse_cowgirl": {
+                                "name": "Reverse Cowgirl",
+                                "prompt": "reverse cowgirl",
+                                "negative": "face to face"
+                            },
+                            "spooning": {
+                                "name": "Spooning",
+                                "prompt": "spooning, from behind",
+                                "negative": "face to face"
+                            },
+                            "standing_from_behind": {
+                                "name": "Standing from Behind",
+                                "prompt": "standing from behind",
+                                "negative": "face to face"
+                            },
+                            "oral_man": {
+                                "name": "Oral (Male)",
+                                "prompt": "oral, blowjob",
+                                "negative": "woman receiving"
+                            },
+                            "oral_woman": {
+                                "name": "Oral (Female)",
+                                "prompt": "oral, cunnilingus",
+                                "negative": "man receiving"
+                            },
+                            "sixty_nine": {
+                                "name": "69",
+                                "prompt": "69 position",
+                                "negative": "one sided"
                             }
                         },
-                        "亲密程度": {
-                            "platonic": {
-                                "prompt": "friendly, platonic, just friends, casual",
-                                "negative": "intimate, romantic, sexual"
-                            },
-                            "romantic": {
-                                "prompt": "romantic, loving, affectionate, tender moment",
-                                "negative": "platonic, casual"
+                        "intimacy": {
+                            "tender": {
+                                "name": "Tender",
+                                "prompt": "tender, gentle, soft",
+                                "negative": "rough, intense"
                             },
                             "passionate": {
-                                "prompt": "passionate, intense, fiery romance, deep connection",
-                                "negative": "gentle, soft"
+                                "name": "Passionate",
+                                "prompt": "passionate, intense, kissing",
+                                "negative": "gentle"
                             },
-                            "kissing": {
-                                "prompt": "kissing, making out, lip lock, passionate kiss",
-                                "negative": "no kissing, platonic"
+                            "lovemaking": {
+                                "name": "Lovemaking",
+                                "prompt": "lovemaking, intimate sex",
+                                "negative": "rough, hardcore"
                             },
-                            "hugging": {
-                                "prompt": "hugging, embracing, holding each other tight",
-                                "negative": "distant, apart"
+                            "hardcore": {
+                                "name": "Hardcore",
+                                "prompt": "hardcore, rough sex",
+                                "negative": "gentle, slow"
                             },
-                            "cuddling": {
-                                "prompt": "cuddling, snuggling, close embrace, warm",
-                                "negative": "distant, apart"
+                            "bdsm": {
+                                "name": "BDSM",
+                                "prompt": "bdsm, bondage, dominant",
+                                "negative": "vanilla"
+                            },
+                            "group_sex": {
+                                "name": "Group Sex",
+                                "prompt": "threesome, group sex",
+                                "negative": "one on one"
                             }
                         },
-                        "视角": {
+                        "view_angle": {
                             "front_view": {
-                                "prompt": "front view, both faces visible, looking at camera",
-                                "negative": "side view, back view"
+                                "name": "Front View",
+                                "prompt": "front view",
+                                "negative": "back view"
                             },
                             "profile_view": {
-                                "prompt": "profile view, side view, both visible from side",
+                                "name": "Side View",
+                                "prompt": "side view, profile",
                                 "negative": "front view"
                             },
                             "from_behind": {
-                                "prompt": "from behind, back view, intimate perspective",
+                                "name": "From Behind",
+                                "prompt": "from behind",
                                 "negative": "front view"
                             },
-                            "overhead": {
-                                "prompt": "overhead view, top down, bird's eye view",
-                                "negative": "ground level"
+                            "overhead_view": {
+                                "name": "Top View",
+                                "prompt": "overhead view, birdseye",
+                                "negative": "bottom view"
                             },
-                            "close_up": {
-                                "prompt": "close up, intimate details, faces close",
-                                "negative": "wide shot"
+                            "closeup_penetration": {
+                                "name": "Closeup Penetration",
+                                "prompt": "closeup on penetration",
+                                "negative": "full body"
+                            },
+                            "closeup_faces": {
+                                "name": "Closeup Faces",
+                                "prompt": "closeup on faces",
+                                "negative": "full body"
                             }
                         },
-                        "环境氛围": {
+                        "environment": {
                             "bedroom": {
-                                "prompt": "bedroom, cozy, intimate, soft lighting, bed visible",
-                                "negative": "public place, outdoors"
+                                "name": "Bedroom",
+                                "prompt": "in bedroom, soft bed",
+                                "negative": "outdoor"
                             },
-                            "restaurant": {
-                                "prompt": "restaurant, romantic dinner, candlelight, elegant setting",
-                                "negative": "bedroom, casual"
+                            "hotel": {
+                                "name": "Hotel",
+                                "prompt": "in hotel room",
+                                "negative": "home"
+                            },
+                            "bathroom": {
+                                "name": "Bathroom",
+                                "prompt": "in bathroom, shower",
+                                "negative": "bedroom"
+                            },
+                            "nature_outdoor": {
+                                "name": "Outdoor Nature",
+                                "prompt": "outdoor, forest, nature",
+                                "negative": "indoor"
                             },
                             "beach": {
-                                "prompt": "beach, sunset, romantic seaside, waves, sand",
-                                "negative": "indoor, city"
+                                "name": "Beach",
+                                "prompt": "on beach, ocean",
+                                "negative": "indoor"
                             },
-                            "park": {
-                                "prompt": "park, nature, trees, grass, romantic outdoor setting",
-                                "negative": "indoor, city"
+                            "car": {
+                                "name": "Car",
+                                "prompt": "in car, backseat",
+                                "negative": "outdoor"
                             },
-                            "cafe": {
-                                "prompt": "cafe, intimate coffee shop, cozy atmosphere",
-                                "negative": "formal, restaurant"
+                            "office": {
+                                "name": "Office",
+                                "prompt": "in office, desk",
+                                "negative": "home"
                             },
-                            "garden": {
-                                "prompt": "garden, flowers, romantic setting, nature",
-                                "negative": "indoor, urban"
-                            },
-                            "living_room": {
-                                "prompt": "living room, comfortable home, couch, cozy",
-                                "negative": "public place"
+                            "public": {
+                                "name": "Public",
+                                "prompt": "public place, risky",
+                                "negative": "private"
                             }
                         },
-                        "服装状态": {
-                            "casual": {
-                                "prompt": "casual clothes, comfortable, everyday wear, both fully clothed",
-                                "negative": "nude, formal"
-                            },
-                            "formal": {
-                                "prompt": "formal wear, elegant dress, suit, sophisticated",
-                                "negative": "casual, nude"
-                            },
-                            "lingerie": {
-                                "prompt": "lingerie, intimate wear, lace, seductive, both in underwear",
-                                "negative": "fully clothed, nude"
-                            },
-                            "nude": {
-                                "prompt": "nude, naked, no clothes, intimate, artistic nudity",
-                                "negative": "clothed, lingerie"
+                        "clothing": {
+                            "fully_dressed": {
+                                "name": "Fully Dressed",
+                                "prompt": "fully clothed",
+                                "negative": "nude"
                             },
                             "partially_dressed": {
-                                "prompt": "partially dressed, semi-nude, revealing, suggestive",
-                                "negative": "fully clothed, fully nude"
+                                "name": "Partially Dressed",
+                                "prompt": "partially dressed, clothes undone",
+                                "negative": "fully nude"
                             },
-                            "swimsuit": {
-                                "prompt": "swimsuit, bikini, swimwear, beach attire",
+                            "underwear": {
+                                "name": "Underwear",
+                                "prompt": "in underwear",
                                 "negative": "clothed, nude"
+                            },
+                            "lingerie": {
+                                "name": "Lingerie",
+                                "prompt": "in lingerie, lace",
+                                "negative": "regular underwear"
+                            },
+                            "nude": {
+                                "name": "Nude",
+                                "prompt": "nude, naked",
+                                "negative": "clothed"
+                            },
+                            "costume": {
+                                "name": "Costume",
+                                "prompt": "in costume, cosplay",
+                                "negative": "regular clothes"
                             }
                         },
-                        "情感表达": {
+                        "emotion": {
                             "romantic_love": {
-                                "prompt": "romantic love, deep affection, looking into each other's eyes",
+                                "name": "Romantic Love",
+                                "prompt": "romantic, loving",
                                 "negative": "angry, sad"
                             },
                             "passionate_desire": {
-                                "prompt": "passionate desire, intense attraction, longing gaze",
-                                "negative": "platonic, indifferent"
-                            },
-                            "tender_care": {
-                                "prompt": "tender care, gentle touch, nurturing, warm",
-                                "negative": "rough, intense"
-                            },
-                            "playful_love": {
-                                "prompt": "playful love, laughing together, joyful, lighthearted",
-                                "negative": "serious, intense"
-                            },
-                            "deep_connection": {
-                                "prompt": "deep connection, soulmates, intimate bond, profound",
-                                "negative": "shallow, casual"
+                                "name": "Passionate Desire",
+                                "prompt": "passionate desire, longing",
+                                "negative": "cold"
                             },
                             "seductive": {
-                                "prompt": "seductive, sensual, alluring, tempting",
-                                "negative": "innocent, naive"
+                                "name": "Seductive",
+                                "prompt": "seductive, tempting",
+                                "negative": "innocent"
+                            },
+                            "submissive": {
+                                "name": "Submissive",
+                                "prompt": "submissive, yielding",
+                                "negative": "dominant"
+                            },
+                            "dominant": {
+                                "name": "Dominant",
+                                "prompt": "dominant, controlling",
+                                "negative": "submissive"
+                            },
+                            "pain_pleasure": {
+                                "name": "Pain and Pleasure",
+                                "prompt": "pain and pleasure, masochistic",
+                                "negative": "comfortable"
+                            }
+                        },
+                        "male_features": {
+                            "muscular": {
+                                "name": "Muscular",
+                                "prompt": "muscular, buff",
+                                "negative": "slim, fat"
+                            },
+                            "average": {
+                                "name": "Average",
+                                "prompt": "average build",
+                                "negative": "muscular"
+                            },
+                            "hairy": {
+                                "name": "Hairy",
+                                "prompt": "hairy, chest hair",
+                                "negative": "smooth"
+                            },
+                            "slim": {
+                                "name": "Slim",
+                                "prompt": "slim, lean",
+                                "negative": "muscular, fat"
+                            },
+                            "smooth": {
+                                "name": "Smooth",
+                                "prompt": "smooth, shaved",
+                                "negative": "hairy"
+                            }
+                        },
+                        "female_features": {
+                            "large_breasts": {
+                                "name": "Large Breasts",
+                                "prompt": "large breasts, big chest",
+                                "negative": "small chest"
+                            },
+                            "small_breasts": {
+                                "name": "Small Breasts",
+                                "prompt": "small breasts, petite chest",
+                                "negative": "large chest"
+                            },
+                            "curvy": {
+                                "name": "Curvy",
+                                "prompt": "curvy, hourglass",
+                                "negative": "slim"
+                            },
+                            "slim": {
+                                "name": "Slim",
+                                "prompt": "slim, slender",
+                                "negative": "curvy"
+                            },
+                            "pear": {
+                                "name": "Pear Shape",
+                                "prompt": "pear shape, wide hips",
+                                "negative": "hourglass"
                             }
                         }
                     },
-                    "默认配置": {
-                        "negative_prompt": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, gross proportions, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, cut off at knees, cut off at waist, headshot only, close up only"
+                    "defaults": {
+                        "pose": "missionary",
+                        "intimacy": "lovemaking",
+                        "view_angle": "profile_view",
+                        "environment": "bedroom",
+                        "clothing": "nude",
+                        "emotion": "passionate_desire",
+                        "male_features": "average",
+                        "female_features": "curvy",
+                        "width": 640,
+                        "height": 896,
+                        "steps": 20,
+                        "cfg": 7.0
                     }
                 }
             },
-            "组合模板": {
-                "浪漫晚餐": {
-                    "basic_pose": "hugging",
-                    "intimacy_level": "romantic",
-                    "view_angle": "front_view",
-                    "environment": "restaurant",
-                    "clothing": "formal",
+            "templates": {
+                "romantic_bedroom": {
+                    "pose": "missionary",
+                    "intimacy": "lovemaking",
+                    "view_angle": "profile_view",
+                    "environment": "bedroom",
+                    "clothing": "nude",
                     "emotion": "romantic_love",
-                    "prompt_suffix": "candlelight dinner, wine glasses, romantic atmosphere"
+                    "male_features": "average",
+                    "female_features": "curvy",
+                    "suffix": "romantic, soft lighting, intimate"
                 },
-                "海滩日落": {
-                    "basic_pose": "standing_together",
-                    "intimacy_level": "romantic",
+                "passionate_bathroom": {
+                    "pose": "standing_from_behind",
+                    "intimacy": "hardcore",
+                    "view_angle": "from_behind",
+                    "environment": "bathroom",
+                    "clothing": "nude",
+                    "emotion": "passionate_desire",
+                    "male_features": "muscular",
+                    "female_features": "curvy",
+                    "suffix": "steamy, wet, intense"
+                },
+                "car_adventure": {
+                    "pose": "cowgirl",
+                    "intimacy": "passionate",
+                    "view_angle": "front_view",
+                    "environment": "car",
+                    "clothing": "partially_dressed",
+                    "emotion": "seductive",
+                    "male_features": "average",
+                    "female_features": "slim",
+                    "suffix": "risky, adventurous, cramped"
+                },
+                "bdsm_scene": {
+                    "pose": "bent_over",
+                    "intimacy": "bdsm",
+                    "view_angle": "from_behind",
+                    "environment": "bedroom",
+                    "clothing": "lingerie",
+                    "emotion": "dominant",
+                    "male_features": "muscular",
+                    "female_features": "curvy",
+                    "suffix": "leather, bondage, power exchange"
+                },
+                "threesome": {
+                    "pose": "missionary",
+                    "intimacy": "group_sex",
+                    "view_angle": "front_view",
+                    "environment": "bedroom",
+                    "clothing": "nude",
+                    "emotion": "passionate_desire",
+                    "male_features": "muscular",
+                    "female_features": "curvy",
+                    "suffix": "three bodies, multiple hands"
+                },
+                "beach_sunset": {
+                    "pose": "spooning",
+                    "intimacy": "tender",
                     "view_angle": "profile_view",
                     "environment": "beach",
-                    "clothing": "casual",
-                    "emotion": "tender_care",
-                    "prompt_suffix": "sunset, golden hour, ocean waves, warm glow"
+                    "clothing": "nude",
+                    "emotion": "romantic_love",
+                    "male_features": "average",
+                    "female_features": "slim",
+                    "suffix": "golden sunset, ocean waves"
                 },
-                "深情拥抱": {
-                    "basic_pose": "hugging",
-                    "intimacy_level": "hugging",
-                    "view_angle": "front_view",
-                    "environment": "bedroom",
-                    "clothing": "casual",
-                    "emotion": "deep_connection",
-                    "prompt_suffix": "soft lighting, intimate atmosphere"
+                "office_forbidden": {
+                    "pose": "bent_over",
+                    "intimacy": "passionate",
+                    "view_angle": "from_behind",
+                    "environment": "office",
+                    "clothing": "partially_dressed",
+                    "emotion": "seductive",
+                    "male_features": "smooth",
+                    "female_features": "pear",
+                    "suffix": "on desk, forbidden, risky"
                 },
-                "激情热吻": {
-                    "basic_pose": "kissing",
-                    "intimacy_level": "passionate",
-                    "view_angle": "close_up",
+                "sixty_nine": {
+                    "pose": "sixty_nine",
+                    "intimacy": "lovemaking",
+                    "view_angle": "profile_view",
                     "environment": "bedroom",
-                    "clothing": "casual",
+                    "clothing": "nude",
                     "emotion": "passionate_desire",
-                    "prompt_suffix": "intense passion, closed eyes, romantic mood"
+                    "male_features": "average",
+                    "female_features": "curvy",
+                    "suffix": "mutual pleasure, simultaneous"
                 },
-                "公园漫步": {
-                    "basic_pose": "standing_together",
-                    "intimacy_level": "romantic",
-                    "view_angle": "front_view",
-                    "environment": "park",
-                    "clothing": "casual",
-                    "emotion": "playful_love",
-                    "prompt_suffix": "sunlight through trees, nature, peaceful"
+                "hardcore_from_behind": {
+                    "pose": "standing_from_behind",
+                    "intimacy": "hardcore",
+                    "view_angle": "from_behind",
+                    "environment": "bedroom",
+                    "clothing": "nude",
+                    "emotion": "passionate_desire",
+                    "male_features": "muscular",
+                    "female_features": "curvy",
+                    "suffix": "deep penetration, intense"
                 },
-                "居家温馨": {
-                    "basic_pose": "sitting_embrace",
-                    "intimacy_level": "cuddling",
+                "cowgirl_dominant": {
+                    "pose": "cowgirl",
+                    "intimacy": "passionate",
                     "view_angle": "front_view",
-                    "environment": "living_room",
-                    "clothing": "casual",
-                    "emotion": "tender_care",
-                    "prompt_suffix": "cozy home, relaxed atmosphere, comfortable"
+                    "environment": "bedroom",
+                    "clothing": "nude",
+                    "emotion": "dominant",
+                    "male_features": "hairy",
+                    "female_features": "slim",
+                    "suffix": "woman on top, in control"
+                }
+            },
+            "character_templates": {
+                "chinese_qipao": {
+                    "positive": "masterpiece, best quality, photorealistic, 8k, beautiful Chinese woman, wearing qipao, asian face, in garden, full body, natural lighting",
+                    "negative": "worst quality, low quality, deformed, blurry, bad anatomy, watermark"
+                },
+                "japanese_kimono": {
+                    "positive": "masterpiece, best quality, realistic, 8k, beautiful Japanese woman, wearing kimono, asian features, zen garden, cherry blossoms, full body, soft sunlight",
+                    "negative": "worst quality, low quality, deformed, blurry, bad anatomy, watermark"
+                },
+                "korean_hanbok": {
+                    "positive": "masterpiece, best quality, photorealistic, 8k, beautiful Korean woman, wearing hanbok, Korean palace background, full body, elegant",
+                    "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy"
                 }
             }
         }
+    
     
     def save_config(self):
         """保存配置"""
@@ -320,30 +579,15 @@ class SceneManager:
         """
         根据选择构建提示词 - 精简版
         """
-        # 基础质量词（精简）
         quality = "masterpiece, best quality, realistic, 8k"
         
-        # ✅ 统一使用正确的键名
-        category_map = {
-            "basic_pose": "姿势",
-            "intimacy_level": "亲密程度", 
-            "view_angle": "视角",
-            "environment": "环境",
-            "clothing": "服装",
-            "emotion": "情感",
-            "body_features_man": "男士特征",      # ✅ 修正
-            "body_features_woman": "女士特征"     # ✅ 修正
-        }
+        # ✅ 直接使用新键名，不做映射
+        order = ["pose", "intimacy", "view_angle", "environment", "clothing", "emotion", "male_features", "female_features"]
         
-        # ✅ 优先级顺序（与 category_map 的键一致）
-        order = ["basic_pose", "intimacy_level", "view_angle", "environment", "clothing", "emotion", "body_features_man", "body_features_woman"]
-        
-        # ✅ 收集选择的词条（去重，并限制数量）
         selected_parts = []
         seen = set()
-        
         selected_count = 0
-        max_selections = 6  # ✅ 限制数量，避免提示词过长
+        max_selections = 5  # 限制数量，确保不超过 77 token
         
         for key in order:
             if selected_count >= max_selections:
@@ -352,62 +596,91 @@ class SceneManager:
                 value = selections[key].strip()
                 if value and value not in seen:
                     seen.add(value)
-                    # ✅ 如果 value 太长，截断
                     if len(value) > 50:
                         value = value[:50]
                     selected_parts.append(value)
                     selected_count += 1
         
-        # ✅ 自定义后缀（限制长度）
-        custom_suffix = selections.get("custom_suffix", "").strip()
+        # 自定义后缀
+        custom_suffix = selections.get("suffix", "").strip()
         if custom_suffix and selected_count < max_selections:
-            # 分割成多个关键词
-            suffix_parts = custom_suffix.split('，')
-            for part in suffix_parts[:2]:  # 最多取2个
+            suffix_parts = custom_suffix.split(',')
+            for part in suffix_parts[:2]:
                 part = part.strip()
                 if part and part not in seen and len(part) < 20:
                     selected_parts.append(part)
                     seen.add(part)
         
-        # ✅ 构建提示词
         if selected_parts:
             prompt = f"{quality}, {', '.join(selected_parts)}"
         else:
             prompt = quality
         
-        # ✅ 最终长度限制
+        # 最终长度限制
         if len(prompt) > 200:
             prompt = prompt[:200]
             last_comma = prompt.rfind(',')
             if last_comma > 100:
                 prompt = prompt[:last_comma]
         
-        # 负面提示词（精简）
-        negative = "worst quality, low quality, ugly, deformed, blurry, nsfw"
+        negative = "worst quality, low quality, ugly, deformed, blurry, bad anatomy"
         
         return prompt, negative
     
 
     def get_template(self, template_name: str) -> Dict:
         """获取模板配置"""
-        templates = self.scene_config.get("组合模板", {})
+        templates = self.scene_config.get("templates", {})
         template = templates.get(template_name, {})
         
         selections = {}
-        # ✅ 添加 body_features_man 和 body_features_woman
-        for key in ["basic_pose", "intimacy_level", "view_angle", "environment", "clothing", "emotion", "body_features_man", "body_features_woman"]:
+        # ✅ 使用新键名
+        for key in ["pose", "intimacy", "view_angle", "environment", "clothing", "emotion", "male_features", "female_features"]:
             selections[key] = template.get(key, "")
         
-        selections["custom_suffix"] = template.get("prompt_suffix", "")
+        selections["suffix"] = template.get("suffix", "")
         return selections
     
     def get_all_templates(self) -> List[str]:
         """获取所有模板名称"""
-        return list(self.scene_config.get("组合模板", {}).keys())
-    
+        return list(self.scene_config.get("templates", {}).keys())
+        
     def add_template(self, name: str, config: Dict):
-        """添加模板"""
-        if "组合模板" not in self.scene_config:
-            self.scene_config["组合模板"] = {}
-        self.scene_config["组合模板"][name] = config
+        """添加模板 - 使用新格式"""
+        if "templates" not in self.scene_config:
+            self.scene_config["templates"] = {}
+        
+        # ✅ 如果传入的是旧格式（含 basic_pose, intimacy_level 等），转换为新格式
+        new_config = {}
+        
+        # 新格式键名映射
+        key_map = {
+            "basic_pose": "pose",
+            "intimacy_level": "intimacy",
+            "view_angle": "view_angle",
+            "environment": "environment",
+            "clothing": "clothing",
+            "emotion": "emotion",
+            "body_features_man": "male_features",
+            "body_features_woman": "female_features",
+            "prompt_suffix": "suffix"
+        }
+        
+        # 检查是旧格式还是新格式
+        is_old_format = any(k in config for k in ["basic_pose", "intimacy_level", "prompt_suffix"])
+        
+        if is_old_format:
+            # 旧格式 → 新格式转换
+            for old_key, new_key in key_map.items():
+                if old_key in config:
+                    new_config[new_key] = config[old_key]
+            # 保留其他字段
+            for k, v in config.items():
+                if k not in key_map:
+                    new_config[k] = v
+        else:
+            # 已经是新格式，直接使用
+            new_config = config
+        
+        self.scene_config["templates"][name] = new_config
         self.save_config()

@@ -140,23 +140,40 @@ class SceneTab(BaseTab):
         """更新 NSFW 提示"""
         self.nsfw_hint_label.config(text=self._get_nsfw_hint())
     
+
     def _build_category_widgets(self, parent, start_row) -> int:
         """构建场景分类选择器"""
-        categories = self.scene_manager.get_categories("两人亲密场景")
+        # ✅ 修复：使用新场景名
+        categories = self.scene_manager.get_categories("couple_intimate")
         row = start_row
-        
-        for category_name, items in categories.items():
+
+        # 英文键名 → 中文显示名称映射
+        display_map = {
+            "pose": "姿势",
+            "intimacy": "亲密程度",
+            "view_angle": "视角",
+            "environment": "环境氛围",
+            "clothing": "服装状态",
+            "emotion": "情感表达",
+            "male_features": "男士特征",
+            "female_features": "女士特征"
+        }
+
+        for category_key, items in categories.items():
             if not items:
                 continue
-            
+
             frame = ttk.Frame(parent)
             frame.grid(row=row, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=2, padx=5)
-            
-            ttk.Label(frame, text=category_name + ":", width=10).pack(side=tk.LEFT)
-            
+
+            # 显示中文名
+            display_name = display_map.get(category_key, category_key)
+
+            ttk.Label(frame, text=display_name + ":", width=10).pack(side=tk.LEFT)
+
             var = tk.StringVar()
-            self.category_vars[category_name] = var
-            
+            self.category_vars[category_key] = var
+
             choices = [""]
             for key, value in items.items():
                 if isinstance(value, dict):
@@ -164,17 +181,17 @@ class SceneTab(BaseTab):
                 else:
                     display = value
                 choices.append(display)
-            
+
             combo = ttk.Combobox(frame, textvariable=var, values=choices, width=25)
             combo.pack(side=tk.LEFT, padx=5)
-            self.category_combos[category_name] = combo
-            
+            self.category_combos[category_key] = combo
+
             row += 1
-        
+
         return row
     
     def _apply_template(self):
-        """应用模板"""
+        """应用模板 - 匹配新的键名"""
         template_name = self.template_var.get()
         if not template_name:
             return
@@ -183,90 +200,59 @@ class SceneTab(BaseTab):
         if not selections:
             return
         
-        categories = self.scene_manager.get_categories("两人亲密场景")
+        categories = self.scene_manager.get_categories("couple_intimate")
         
-        key_map = {
-            "基本姿势": "basic_pose",
-            "亲密程度": "intimacy_level",
-            "视角": "view_angle",
-            "环境氛围": "environment",
-            "服装状态": "clothing",
-            "情感表达": "emotion",
-            "男士特征": "body_features_man",
-            "女士特征": "body_features_woman"
-        }
+        for category_key, var in self.category_vars.items():
+            if category_key in selections and selections[category_key]:
+                value = selections[category_key]
+                if category_key in categories:
+                    items = categories[category_key]
+                    for item_key, item_value in items.items():
+                        if isinstance(item_value, dict):
+                            if item_value.get("name") == value or item_key == value:
+                                var.set(item_value.get("name", item_key))
+                                break
+                        else:
+                            if item_value == value or item_key == value:
+                                var.set(item_value if isinstance(item_value, str) else item_key)
+                                break
         
-        for display_name, var in self.category_vars.items():
-            if display_name in key_map:
-                key = key_map[display_name]
-                if key in selections and selections[key]:
-                    value = selections[key]
-                    if display_name in categories:
-                        items = categories[display_name]
-                        for item_key, item_value in items.items():
-                            if isinstance(item_value, dict):
-                                if item_value.get("name") == value or item_key == value:
-                                    var.set(item_value.get("name", item_key))
-                                    break
-                            else:
-                                if item_value == value or item_key == value:
-                                    var.set(item_value if isinstance(item_value, str) else item_key)
-                                    break
-        
-        if "custom_suffix" in selections and selections["custom_suffix"]:
-            self.custom_suffix_var.set(selections["custom_suffix"])
+        if "suffix" in selections and selections["suffix"]:
+            self.custom_suffix_var.set(selections["suffix"])
         
         self._generate_scene_prompt()
-    
+
     def _generate_scene_prompt(self):
-        """生成场景提示词"""
+        """生成场景提示词 - 匹配新的英文键名"""
         selections = {}
-        categories = self.scene_manager.get_categories("两人亲密场景")
+        categories = self.scene_manager.get_categories("couple_intimate")
         
-        key_map = {
-            "基本姿势": "basic_pose",
-            "亲密程度": "intimacy_level",
-            "视角": "view_angle",
-            "环境氛围": "environment",
-            "服装状态": "clothing",
-            "情感表达": "emotion",
-            "男士特征": "body_features_man",
-            "女士特征": "body_features_woman"
-        }
-        
-        for display_name, var in self.category_vars.items():
-            if display_name in key_map:
-                selected_display = var.get()
-                if selected_display:
-                    key = key_map[display_name]
-                    if display_name in categories:
-                        items = categories[display_name]
-                        for item_key, item_value in items.items():
-                            if isinstance(item_value, dict):
-                                if item_value.get("name") == selected_display:
-                                    selections[key] = item_value.get("prompt", item_key)
-                                    break
-                            else:
-                                if item_value == selected_display:
-                                    selections[key] = selected_display
-                                    break
-                    else:
-                        selections[key] = selected_display
+        for category_key, var in self.category_vars.items():
+            selected_display = var.get()
+            if selected_display:
+                if category_key in categories:
+                    items = categories[category_key]
+                    for item_key, item_value in items.items():
+                        if isinstance(item_value, dict):
+                            if item_value.get("name") == selected_display:
+                                selections[category_key] = item_value.get("prompt", item_key)
+                                break
+                        else:
+                            if item_value == selected_display:
+                                selections[category_key] = selected_display
+                                break
+                else:
+                    selections[category_key] = selected_display
         
         custom_suffix = self.custom_suffix_var.get()
         if custom_suffix:
-            selections["custom_suffix"] = custom_suffix
+            selections["suffix"] = custom_suffix
         
         prompt, negative = self.scene_manager.build_prompt(selections)
         
-        # ===== NSFW 过滤 =====
+        # NSFW 过滤
         if nsfw_config.enabled:
             prompt, negative = nsfw_filter.filter_prompt(prompt, negative)
-            print(f"   NSFW 过滤后提示词长度: {len(prompt)} 字符")
-        
-        # ===== 精简提示词 =====
-        prompt = self._shorten_for_clip(prompt, max_len=280)
-        negative = self._shorten_for_clip(negative, max_len=150)
         
         self.prompt_text.delete("1.0", tk.END)
         self.prompt_text.insert("1.0", prompt)
@@ -275,6 +261,8 @@ class SceneTab(BaseTab):
         
         self.update_status("✅ 场景提示词已生成")
     
+    
+
     def _reload_scene(self):
         """重新加载场景"""
         try:
@@ -435,7 +423,7 @@ class SceneTab(BaseTab):
         
         prompts_list = []
         negs_list = []
-        category_keys = ["basic_pose", "intimacy_level", "view_angle", "environment", "clothing", "emotion"]
+        category_keys = ["pose", "intimacy", "view_angle", "environment", "clothing", "emotion"]
         
         for line in prompts:
             parts = line.split('|')
