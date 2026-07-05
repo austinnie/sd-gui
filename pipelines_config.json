@@ -1,0 +1,49 @@
+{
+    "pipelines": {
+        "大理石雕像": {
+            "description": "将人物转换为大理石雕像风格（14种场景）",
+            "steps": [
+                {
+                    "type": "marble",
+                    "config": {
+                        "strength": 0.25,
+                        "max_strength": 0.55,
+                        "cfg": 7.0,
+                        "steps": 15,
+                        "scenes": 14
+                    }
+                }
+            ]
+        },
+        "大理石雕像_快速": {
+            "description": "快速版 - 只生成6种场景",
+            "steps": [
+                {
+                    "type": "marble",
+                    "config": {
+                        "strength": 0.25,
+                        "max_strength": 0.55,
+                        "cfg": 7.0,
+                        "steps": 15,
+                        "scenes": 6
+                    }
+                }
+            ]
+        },
+        "大理石雕像_精致": {
+            "description": "精致版 - 更多步数，更高强度",
+            "steps": [
+                {
+                    "type": "marble",
+                    "config": {
+                        "strength": 0.35,
+                        "max_strength": 0.60,
+                        "cfg": 7.5,
+                        "steps": 25,
+                        "scenes": 14
+                    }
+                }
+            ]
+        }
+    }
+}

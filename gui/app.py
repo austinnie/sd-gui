@@ -37,6 +37,8 @@ from gui.tabs.janus_tab import JanusTab
 from gui.tabs.grid_test_tab import GridTestTab
 from gui.components.nsfw_panel import NSFWPanel
 
+from gui.tabs.pipeline_tab import PipelineTab
+
 class ModelType(Enum):
     """模型类型枚举"""
     SD = "sd"
@@ -796,6 +798,10 @@ class SDApp:
         
         self.grid_test_tab = GridTestTab(self.notebook, self)
         self.notebook.add(self.grid_test_tab.frame, text="🧪 网格测试")
+
+        # ✅ 流水线标签页
+        self.pipeline_tab = PipelineTab(self.notebook, self)
+        self.notebook.add(self.pipeline_tab.get_frame(), text="🔧 流水线")        
         
     def _reload_modules(self):
         """热重载模块"""
@@ -861,7 +867,14 @@ class SDApp:
             # ===== 【新增】NSFW 相关模块 =====
             "config.nsfw_config",
             "core.nsfw_filter",
-            "gui.components.nsfw_panel",            
+            "gui.components.nsfw_panel",    
+            # ===== 【新增】流水线相关 =====
+            "core.pipeline",
+            "core.pipeline.step",
+            "core.pipeline.pipeline",
+            "core.pipeline.steps",
+            "core.pipeline.steps.marble_step",
+            "gui.tabs.pipeline_tab",            
         ]
         
         reloaded = []
@@ -1035,6 +1048,7 @@ class SDApp:
         from gui.tabs.scene_tab import SceneTab
         from gui.tabs.janus_tab import JanusTab
         from gui.tabs.grid_test_tab import GridTestTab
+        from gui.tabs.pipeline_tab import PipelineTab  # ✅ 添加这行
         
         for tab in self.notebook.tabs():
             self.notebook.forget(tab)
@@ -1059,6 +1073,10 @@ class SDApp:
         
         self.grid_test_tab = GridTestTab(self.notebook, self)
         self.notebook.add(self.grid_test_tab.frame, text="🧪 网格测试")
+        
+        # ✅ 添加流水线标签页
+        self.pipeline_tab = PipelineTab(self.notebook, self)
+        self.notebook.add(self.pipeline_tab.get_frame(), text="🔧 流水线")        
 
         
     
