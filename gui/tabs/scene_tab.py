@@ -8,7 +8,13 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from .base_tab import BaseTab
 from gui.scene_manager import SceneManager
-import threading  # ✅ 添加这行
+import threading
+import random
+import time
+
+from core.nsfw_filter import nsfw_filter
+from config.nsfw_config import nsfw_config, ContentLevel
+
 
 class SceneTab(BaseTab):
     """亲密文生图标签页"""
@@ -19,12 +25,10 @@ class SceneTab(BaseTab):
         self.category_vars = {}
         self.category_combos = {}
         
-        # ✅ 添加生成状态
         self.is_generating = False
-
-        # ✅ 使用共享参数面板
+        self.cancel_generation = False
         self.params = app.params_panel
-    
+        
         self._init_vars()
         self.setup_ui()
     
@@ -60,6 +64,7 @@ class SceneTab(BaseTab):
         
         ttk.Button(template_frame, text="应用模板", command=self._apply_template).pack(side=tk.LEFT, padx=5)
         ttk.Button(template_frame, text="🔄 重载场景", command=self._reload_scene).pack(side=tk.LEFT, padx=5)
+        row += 1
         
         # ===== 场景分类选择 =====
         row = self._build_category_widgets(frame, row + 1)
@@ -69,6 +74,18 @@ class SceneTab(BaseTab):
         suffix_frame.grid(row=row, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=5, padx=5)
         ttk.Label(suffix_frame, text="自定义后缀:").pack(side=tk.LEFT, padx=5)
         ttk.Entry(suffix_frame, textvariable=self.custom_suffix_var, width=50).pack(side=tk.LEFT, padx=5)
+        row += 1
+        
+        # ===== NSFW 提示 =====
+        nsfw_hint_frame = ttk.Frame(frame)
+        nsfw_hint_frame.grid(row=row, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=2, padx=5)
+        self.nsfw_hint_label = ttk.Label(
+            nsfw_hint_frame,
+            text=self._get_nsfw_hint(),
+            foreground="orange" if nsfw_config.level != ContentLevel.SAFE else "green",
+            font=("", 8)
+        )
+        self.nsfw_hint_label.pack(side=tk.LEFT, padx=5)
         row += 1
         
         # ===== 生成按钮 =====
@@ -106,7 +123,23 @@ class SceneTab(BaseTab):
         
         self.neg_text = tk.Text(frame, height=4, width=85, wrap=tk.WORD)
         self.neg_text.grid(row=row, column=0, columnspan=3, padx=5, pady=5)
-
+    
+    def _get_nsfw_hint(self) -> str:
+        """获取 NSFW 状态提示"""
+        level = nsfw_config.level
+        if level == ContentLevel.SAFE:
+            return "🔒 当前为安全模式，NSFW 内容会被过滤"
+        elif level == ContentLevel.SUGGESTIVE:
+            return "💋 当前为暗示模式，保留性感内容"
+        elif level == ContentLevel.EXPLICIT:
+            return "🔞 当前为露骨模式，允许明确成人内容"
+        else:
+            return "⚠️ 当前为极端模式，内容不受限制"
+    
+    def _update_nsfw_hint(self):
+        """更新 NSFW 提示"""
+        self.nsfw_hint_label.config(text=self._get_nsfw_hint())
+    
     def _build_category_widgets(self, parent, start_row) -> int:
         """构建场景分类选择器"""
         categories = self.scene_manager.get_categories("两人亲密场景")
@@ -124,10 +157,8 @@ class SceneTab(BaseTab):
             var = tk.StringVar()
             self.category_vars[category_name] = var
             
-            # ✅ 修改：显示中文名称（items 的值），而不是键
             choices = [""]
             for key, value in items.items():
-                # 如果 value 是字典，提取 name 或 prompt
                 if isinstance(value, dict):
                     display = value.get("name", key)
                 else:
@@ -141,7 +172,7 @@ class SceneTab(BaseTab):
             row += 1
         
         return row
-
+    
     def _apply_template(self):
         """应用模板"""
         template_name = self.template_var.get()
@@ -174,7 +205,6 @@ class SceneTab(BaseTab):
                         items = categories[display_name]
                         for item_key, item_value in items.items():
                             if isinstance(item_value, dict):
-                                # ✅ 匹配 name 或 key
                                 if item_value.get("name") == value or item_key == value:
                                     var.set(item_value.get("name", item_key))
                                     break
@@ -187,7 +217,7 @@ class SceneTab(BaseTab):
             self.custom_suffix_var.set(selections["custom_suffix"])
         
         self._generate_scene_prompt()
-
+    
     def _generate_scene_prompt(self):
         """生成场景提示词"""
         selections = {}
@@ -214,7 +244,6 @@ class SceneTab(BaseTab):
                         for item_key, item_value in items.items():
                             if isinstance(item_value, dict):
                                 if item_value.get("name") == selected_display:
-                                    # ✅ 存储 prompt 内容
                                     selections[key] = item_value.get("prompt", item_key)
                                     break
                             else:
@@ -230,6 +259,12 @@ class SceneTab(BaseTab):
         
         prompt, negative = self.scene_manager.build_prompt(selections)
         
+        # ===== NSFW 过滤 =====
+        if nsfw_config.enabled:
+            prompt, negative = nsfw_filter.filter_prompt(prompt, negative)
+            print(f"   NSFW 过滤后提示词长度: {len(prompt)} 字符")
+        
+        # ===== 精简提示词 =====
         prompt = self._shorten_for_clip(prompt, max_len=280)
         negative = self._shorten_for_clip(negative, max_len=150)
         
@@ -275,21 +310,17 @@ class SceneTab(BaseTab):
 
     def _generate_image(self):
         """直接生成图片（调用文生图）"""
-        # ✅ 检查是否已有生成任务
         if self.is_generating:
             messagebox.showwarning("提示", "正在生成中，请等待完成")
             return
 
-        # ✅ 检查文生图 Tab 是否在生成
         if hasattr(self.app, 'txt2img_tab') and self.app.txt2img_tab:
             if self.app.txt2img_tab.is_generating:
                 messagebox.showwarning("提示", "文生图正在生成中，请等待完成")
                 return
             
-        # 先生成提示词
         self._generate_scene_prompt()
         
-        # 获取生成的提示词
         prompt = self.prompt_text.get("1.0", tk.END).strip()
         negative = self.neg_text.get("1.0", tk.END).strip()
         
@@ -297,65 +328,69 @@ class SceneTab(BaseTab):
             messagebox.showwarning("提示", "请先生成场景提示词")
             return
         
-        # 检查文生图标签页是否存在
         if not hasattr(self.app, 'txt2img_tab') or self.app.txt2img_tab is None:
             messagebox.showwarning("提示", "文生图标签页未初始化")
             return
         
-        # ✅ 检查模型是否已加载
         if not self.app.is_pipe_loaded():
             messagebox.showwarning("提示", "请先在主界面加载模型")
             return
 
-        # ✅ 从共享参数面板读取参数
         params = self.app.params_panel.get_params()
         
-        # ✅ 设置参数到文生图标签页
+        # ===== 智能尺寸调整 =====
+        from gui.tabs.txt2img_tab import get_smart_size
+        smart_w, smart_h, size_msg = get_smart_size(params["width"], params["height"], prompt)
+        print(f"📐 {size_msg}")
+        
+        # ===== 智能参数调整 =====
+        from gui.tabs.txt2img_tab import get_smart_params
+        smart_steps, smart_cfg, _, param_msg = get_smart_params(
+            prompt, params["steps"], params["cfg"], None
+        )
+        if smart_steps != params["steps"] or smart_cfg != params["cfg"]:
+            print(f"⚙️ {param_msg}")
+        
         txt2img = self.app.txt2img_tab
-        txt2img.set_params(**params)
+        txt2img.set_params(
+            steps=smart_steps,
+            cfg=smart_cfg,
+            seed=params["seed"],
+            width=smart_w,
+            height=smart_h,
+            num_images=params["num_images"]
+        )
     
-        # ✅ 设置状态：禁用按钮
         self.is_generating = True
         self.generate_image_btn.config(state=tk.DISABLED)
         self.cancel_scene_btn.config(state=tk.NORMAL)
     
-        # 设置提示词到文生图标签页
         self.app.txt2img_tab.set_prompt(prompt, negative)
-        
-        # 调用文生图生成
         self.app.txt2img_tab.start_generate()
         
         self.update_status("🚀 正在生成图片...")
 
-        # ✅ 启动监控线程，等待生成完成
         threading.Thread(target=self._monitor_generation, daemon=True).start()
     
-
     def _cancel_generation(self):
         """取消生成"""
         if hasattr(self.app, 'txt2img_tab') and self.app.txt2img_tab:
             self.app.txt2img_tab.cancel_generation_cmd()
-            # ✅ 恢复文生图 Tab 的按钮状态
             self.app.txt2img_tab.is_generating = False
             self.app.txt2img_tab.generate_btn.config(state=tk.NORMAL)
             self.app.txt2img_tab.cancel_btn.config(state=tk.DISABLED)
         
-        # ✅ 恢复自己的按钮状态
         self.is_generating = False
         self.generate_image_btn.config(state=tk.NORMAL)
         self.cancel_scene_btn.config(state=tk.DISABLED)
         self.update_status("⏹️ 已取消生成")
     
-
     def _shorten_for_clip(self, text, max_len=150):
-        """精简文本以适应 CLIP 77 token 限制（约 150 字符）"""
+        """精简文本以适应 CLIP 77 token 限制"""
         if len(text) <= max_len:
             return text
         
-        # 按逗号分割
         parts = [p.strip() for p in text.split(',') if p.strip()]
-        
-        # 去重
         seen = set()
         unique_parts = []
         for p in parts:
@@ -363,28 +398,24 @@ class SceneTab(BaseTab):
                 seen.add(p)
                 unique_parts.append(p)
         
-        # 按长度从长到短排序，优先保留重要词
         unique_parts.sort(key=lambda x: len(x), reverse=True)
         
         result = []
         current_len = 0
         for p in unique_parts:
-            add_len = len(p) + 2  # +2 for ", "
+            add_len = len(p) + 2
             if current_len + add_len <= max_len:
                 result.append(p)
                 current_len += add_len
         
-        return ', '.join(result) if result else text[:max_len]        
-        
-
+        return ', '.join(result) if result else text[:max_len]
+    
     def _monitor_generation(self):
         """监控文生图生成状态"""
         import time
         while True:
             if hasattr(self.app, 'txt2img_tab'):
-                # ✅ 检查文生图是否还在生成
                 if not self.app.txt2img_tab.is_generating:
-                    # 生成完成，恢复按钮状态
                     self.app.root.after(0, self._on_generation_done)
                     break
             time.sleep(0.5)
@@ -398,14 +429,10 @@ class SceneTab(BaseTab):
 
     def batch_generate(self, prompts):
         """批量生成（场景模式）"""
-        # prompts 格式: 每行一个场景配置
-        # 例如: hugging|romantic|front_view|bedroom|casual|romantic_love
-        
         if self.is_generating:
             messagebox.showwarning("提示", "正在生成中，请等待完成")
             return
         
-        # 解析场景配置
         prompts_list = []
         negs_list = []
         category_keys = ["basic_pose", "intimacy_level", "view_angle", "environment", "clothing", "emotion"]
@@ -427,9 +454,7 @@ class SceneTab(BaseTab):
             messagebox.showwarning("提示", "没有有效的场景配置")
             return
         
-        # 批量生成
         self._run_batch_generation(prompts_list, negs_list)
-
 
     def _run_batch_generation(self, prompts_list, negs_list):
         """运行批量生成（场景模式）"""
@@ -439,27 +464,34 @@ class SceneTab(BaseTab):
         self.is_generating = True
         self.generate_image_btn.config(state=tk.DISABLED)
         
-        # 逐个生成
         for idx, (prompt, negative) in enumerate(zip(prompts_list, negs_list)):
             if self.cancel_generation:
                 break
             
             self.update_status(f"🔄 正在生成第 {idx+1}/{len(prompts_list)} 张...")
             
-            # 调用文生图生成
             if hasattr(self.app, 'txt2img_tab'):
                 txt2img = self.app.txt2img_tab
                 txt2img.set_prompt(prompt, negative)
                 
-                # 获取种子
                 seed = self.app.params_panel.seed_var.get()
                 if seed == -1:
                     seed = random.randint(1, 2**32 - 1)
                 seed = seed + idx
                 
+                # ===== 智能尺寸和参数调整 =====
+                from gui.tabs.txt2img_tab import get_smart_size, get_smart_params
+                params = self.app.params_panel.get_params()
+                smart_w, smart_h, _ = get_smart_size(params["width"], params["height"], prompt)
+                smart_steps, smart_cfg, _, _ = get_smart_params(prompt, params["steps"], params["cfg"], None)
+                
                 txt2img._generate_single_image(
                     prompt, negative,
+                    steps=smart_steps,
+                    cfg=smart_cfg,
                     seed=seed,
+                    height=smart_h,
+                    width=smart_w,
                     index=idx+1,
                     total=len(prompts_list)
                 )
@@ -468,4 +500,4 @@ class SceneTab(BaseTab):
         
         self.is_generating = False
         self.generate_image_btn.config(state=tk.NORMAL)
-        self.update_status("✅ 批量生成完成")    
+        self.update_status("✅ 批量生成完成")
