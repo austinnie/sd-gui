@@ -580,7 +580,10 @@ class SceneManager:
         根据选择构建提示词 - 精简版
         """
         quality = "masterpiece, best quality, realistic, 8k"
-        
+
+        # ✅ 亲密场景默认添加男人和女人
+        base_subject = "man and woman, heterosexual couple"
+    
         # ✅ 直接使用新键名，不做映射
         order = ["pose", "intimacy", "view_angle", "environment", "clothing", "emotion", "male_features", "female_features"]
         

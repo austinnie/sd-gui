@@ -11,6 +11,12 @@ from datetime import datetime
 from diffusers import StableDiffusionPipeline
 import gc
 
+from diffusers import (
+    StableDiffusionPipeline,
+    StableDiffusionXLPipeline,
+    StableDiffusionInpaintPipeline,
+    EulerDiscreteScheduler  # ✅ 添加
+)
 
 class GridRunner:
     """网格测试运行器 - 支持 SD 和 Janus-Pro"""
@@ -53,6 +59,11 @@ class GridRunner:
             self.pipe = self.pipe.to("cpu")
             self.pipe.enable_vae_slicing()
             self.pipe.enable_attention_slicing()
+            
+            # ✅ 使用 EulerDiscreteScheduler
+            self.pipe.scheduler = EulerDiscreteScheduler.from_config(self.pipe.scheduler.config)
+            print("✅ 使用 EulerDiscreteScheduler (稳定调度器)")
+        
             print("✅ SD 模型加载完成")
         return self.pipe
     

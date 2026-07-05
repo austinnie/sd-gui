@@ -16,6 +16,13 @@ from datetime import datetime
 import multiprocessing
 import numpy as np
 
+from diffusers import (
+    StableDiffusionPipeline,
+    StableDiffusionXLPipeline,
+    StableDiffusionInpaintPipeline,
+    EulerDiscreteScheduler  # ✅ 添加
+)
+
 # ==================== 统一缓存目录（必须在导入库之前设置）====================
 CACHE_ROOT = r"E:\hf_cache\.cache"
 
@@ -64,6 +71,12 @@ def load_pipe(model_path):
         pipe.enable_attention_slicing()
         if hasattr(pipe.vae, 'enable_tiling'):
             pipe.vae.enable_tiling()
+            
+
+        # ✅ 使用 EulerDiscreteScheduler
+        pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
+        print(f"✅ 使用 EulerDiscreteScheduler (稳定调度器)")
+        
         print("✅ 模型加载完成！")
         return pipe, is_sdxl
     except Exception as e:

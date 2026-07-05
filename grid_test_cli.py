@@ -12,6 +12,13 @@ import argparse
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 
+from diffusers import (
+    StableDiffusionPipeline,
+    StableDiffusionXLPipeline,
+    StableDiffusionInpaintPipeline,
+    EulerDiscreteScheduler  # ✅ 添加
+)
+
 # 添加项目路径
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -110,6 +117,12 @@ class GridRunnerCLI:
             self.pipe = self.pipe.to("cpu")
             self.pipe.enable_vae_slicing()
             self.pipe.enable_attention_slicing()
+            
+
+            # ✅ 使用 EulerDiscreteScheduler
+            self.pipe.scheduler = EulerDiscreteScheduler.from_config(self.pipe.scheduler.config)
+            print("✅ 使用 EulerDiscreteScheduler (稳定调度器)")
+        
             
             model_label = "SDXL" if is_sdxl else "SD 1.5"
             print(f"✅ {model_label} 模型加载完成")

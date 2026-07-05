@@ -15,6 +15,13 @@ import gc
 import argparse
 from datetime import datetime
 
+from diffusers import (
+    StableDiffusionPipeline,
+    StableDiffusionXLPipeline,
+    StableDiffusionInpaintPipeline,
+    EulerDiscreteScheduler  # ✅ 添加
+)
+
 # ==================== 配置区域 ====================
 SD15_DIR = r"../models/sd-v1-5"
 SDXL_DIR = r"../models/sdxl"
@@ -177,6 +184,12 @@ def load_pipe(model_path, is_sdxl=False):
         pipe = pipe.to("cpu")
         pipe.enable_vae_slicing()
         pipe.enable_attention_slicing()
+        
+
+        # ✅ 使用 EulerDiscreteScheduler
+        pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
+        print("✅ 使用 EulerDiscreteScheduler (稳定调度器)")
+        
         print("✅ 加载完成！")
         return pipe
     except Exception as e:

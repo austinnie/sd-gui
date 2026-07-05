@@ -7,6 +7,13 @@ from diffusers import StableDiffusionPipeline, StableDiffusionXLPipeline
 import gc
 import argparse
 
+from diffusers import (
+    StableDiffusionPipeline,
+    StableDiffusionXLPipeline,
+    StableDiffusionInpaintPipeline,
+    EulerDiscreteScheduler  # ✅ 添加
+)
+
 # ==================== 配置区域 ====================
 SD15_MODEL_PATH = r"../models/sd-v1-5/aiiiiii01_v10.safetensors"
 SDXL_MODEL_PATH = r"../models/sdxl/perfectionAsianILXL_v10.safetensors"
@@ -49,6 +56,11 @@ def load_pipe(model_path, is_sdxl=False):
         pipe = pipe.to("cpu")
         pipe.enable_vae_slicing()
         pipe.enable_attention_slicing()
+        
+        # ✅ 使用 EulerDiscreteScheduler
+        pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
+        print("✅ 使用 EulerDiscreteScheduler (稳定调度器)")
+        
         print("✅ 加载完成！")
         return pipe
     except Exception as e:

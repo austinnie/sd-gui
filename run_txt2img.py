@@ -15,6 +15,13 @@ from PIL import Image
 from diffusers import StableDiffusionPipeline, StableDiffusionXLPipeline
 from datetime import datetime
 
+from diffusers import (
+    StableDiffusionPipeline,
+    StableDiffusionXLPipeline,
+    StableDiffusionInpaintPipeline,
+    EulerDiscreteScheduler  # ✅ 添加
+)
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gui.tabs.txt2img_tab import auto_shorten_prompt
 
@@ -47,6 +54,12 @@ def load_pipe(model_path):
         pipe.enable_attention_slicing()
         if hasattr(pipe.vae, 'enable_tiling'):
             pipe.vae.enable_tiling()
+            
+
+        # ✅ 使用 EulerDiscreteScheduler
+        pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
+        print("✅ 使用 EulerDiscreteScheduler (稳定调度器)")
+        
         print("✅ 模型加载完成！")
         return pipe, is_sdxl
     except Exception as e:

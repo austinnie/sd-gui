@@ -12,6 +12,13 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from enum import Enum
 
+# ✅ 在文件顶部导入 diffusers 相关内容
+from diffusers import (
+    StableDiffusionPipeline,
+    StableDiffusionXLPipeline,
+    DPMSolverMultistepScheduler,
+    EulerDiscreteScheduler  # ✅ 添加这行
+)
 # 添加项目根目录到路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -102,7 +109,8 @@ class ModelManager:
             from diffusers import (
                 StableDiffusionPipeline,
                 StableDiffusionXLPipeline,
-                DPMSolverMultistepScheduler
+                DPMSolverMultistepScheduler,
+                EulerDiscreteScheduler  # ✅ 添加这行
             )
             import torch
 
@@ -158,7 +166,10 @@ class ModelManager:
                 )
                 print(f"⚡ 检测到 Lightning 模型，已配置 EulerDiscreteScheduler (trailing)")
             else:
-                pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
+                # ✅ 用 EulerDiscreteScheduler 替换 DPMSolverMultistepScheduler
+                #pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
+                pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
+                print("✅ 使用 EulerDiscreteScheduler (更稳定)")
 
             # 内存优化 (注意：跳过 CUDA 相关的 offload)
             if app_config.memory.vae_slicing:
