@@ -157,6 +157,68 @@ class MarbleConfigGenerator:
         os.makedirs(self.config_dir, exist_ok=True)
         self.results = {"single": [], "couple": []}
 
+    # ===== 【新增】在这里添加精简函数 =====
+    def _shorten_for_clip(self, text, max_len=300):
+        """
+        精简提示词以适应 CLIP 77 token 限制
+        按逗号分割，去重，优先保留重要的词
+        
+        参数:
+            text: 原始提示词
+            max_len: 最大字符长度 (建议 300)
+        
+        返回:
+            精简后的提示词
+        """
+        if not text or len(text) <= max_len:
+            return text
+        
+        # 按逗号分割
+        parts = [p.strip() for p in text.split(',') if p.strip()]
+        
+        # 去重
+        seen = set()
+        unique_parts = []
+        for p in parts:
+            if p not in seen:
+                seen.add(p)
+                unique_parts.append(p)
+        
+        # 按长度排序（长的更具体，优先保留）
+        unique_parts.sort(key=lambda x: len(x), reverse=True)
+        
+        # 构建结果，限制长度
+        result = []
+        current_len = 0
+        for part in unique_parts:
+            add_len = len(part) + 2  # +2 for ", "
+            if current_len + add_len <= max_len:
+                result.append(part)
+                current_len += add_len
+            else:
+                # 如果当前部分太长，尝试截断
+                remaining = max_len - current_len
+                if remaining > 10:
+                    # 取前几个词
+                    words = part.split()
+                    truncated = ' '.join(words[:remaining // 10])
+                    if truncated and len(truncated) > 5:
+                        result.append(truncated + "...")
+                break
+        
+        shortened = ', '.join(result)
+        if len(shortened) < len(text):
+            print(f"   ✂️ 提示词已精简: {len(text)} -> {len(shortened)} 字符")
+        
+        return shortened if result else text[:max_len]
+    
+    def _count_tokens(self, text):
+        """粗略计算 token 数（CLIP 约 1-2 token/词）"""
+        if not text:
+            return 0
+        # 每个词约 1-2 token，加 2 个特殊 token
+        return len(text.split()) + 2
+        
     def generate_marble_scenes(self, target_image=None, target_gender="auto", base_strength=0.25):
         """
         生成大理石雕像场景配置 - 14个场景（含躺姿+接吻）
@@ -352,7 +414,19 @@ class MarbleConfigGenerator:
                 "strength": s_extreme_low
             },
         ]
-        
+
+        # ===== 【新增】在这里精简所有场景的提示词 =====
+        for scene in scenes:
+            if "prompt" in scene:
+                scene["prompt"] = self._shorten_for_clip(scene["prompt"], max_len=300)
+                # 检查 token 数并打印警告
+                token_count = self._count_tokens(scene["prompt"])
+                if token_count > 75:
+                    print(f"   ⚠️ {scene['name']} token 数: {token_count}，可能被截断")
+            
+            if "negative" in scene:
+                scene["negative"] = self._shorten_for_clip(scene["negative"], max_len=250)
+            
         self.results["single"] = scenes
         return scenes
 

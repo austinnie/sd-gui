@@ -29,7 +29,7 @@ for env_var in ['HF_HOME', 'U2NET_HOME', 'DEEPFACE_HOME']:
     print(f"📁 {env_var} = {path}")
 
 # ✅ 现在才导入依赖库
-from PIL import Image
+from PIL import Image, ImageEnhance
 from diffusers import StableDiffusionPipeline, StableDiffusionXLPipeline, StableDiffusionInpaintPipeline
 from rembg import remove
 
@@ -71,108 +71,75 @@ def load_pipe(model_path):
         return None, None
 
 
-# ==================== 核心生成函数 (修复版) ====================
-def generate_image_v1(pipe, is_sdxl, prompt, negative, image_path, output_path,
-                   strength, steps, cfg, width, height, 
-                   max_strength=0.55,  # ✅ 新增参数，默认 0.55
-                   use_inpaint=False):
+def auto_shorten_prompt_for_clip(prompt, max_tokens=70):
+    """
+    精简提示词以适应 CLIP 77 token 限制
+    参数:
+        prompt: 原始提示词
+        max_tokens: 最大 token 数 (建议 70，留余量)
     
-    try:
-        init_image = Image.open(image_path).convert('RGB')
-        
-        # --- 1. 自动生成人物遮罩 (rembg) ---
-        if use_inpaint:
-            try:
-                foreground = remove(init_image)
-                mask = foreground.convert('L')
-                mask = mask.point(lambda p: 255 if p > 30 else 0, mode='L')
-                print(f"   🖌️ 已生成人物遮罩 (rembg)")
-            except Exception as e:
-                print(f"   ⚠️ rembg 失败，使用全图遮罩: {e}")
-                mask = Image.new('L', init_image.size, 255)
-        else:
-            mask = None
-        
-        # --- 2. 尺寸调整 ---
-        w, h = init_image.size
-        if width > 0 and height > 0:
-            width = ((width + 31) // 64) * 64
-            height = ((height + 31) // 64) * 64
-            init_image = init_image.resize((width, height), Image.Resampling.LANCZOS)
-        else:
-            width = ((w + 31) // 64) * 64
-            height = ((h + 31) // 64) * 64
-            if w != width or h != height:
-                init_image = init_image.resize((width, height), Image.Resampling.LANCZOS)
-        
-        if mask is not None:
-            mask = mask.resize((width, height), Image.Resampling.LANCZOS)
-        
-        # --- 3. ✅ 从配置读取 max_strength，不再硬编码 ---
-        actual_strength = min(strength, max_strength)
-        if actual_strength != strength:
-            print(f"   ⚠️ strength 从 {strength} 降至 {actual_strength} (max_strength={max_strength})")
-        
-        # --- 4. 构造 Inpaint 管道 ---
-        if use_inpaint and mask is not None:
-            inpainting_pipe = StableDiffusionInpaintPipeline(
-                vae=pipe.vae,
-                text_encoder=pipe.text_encoder,
-                tokenizer=pipe.tokenizer,
-                unet=pipe.unet,
-                scheduler=pipe.scheduler,
-                safety_checker=None,
-                feature_extractor=None,
-                requires_safety_checker=False
-            )
-            inpainting_pipe.to("cpu")
-            inpainting_pipe.enable_attention_slicing()
-            inpainting_pipe.vae.enable_slicing()
-            if hasattr(inpainting_pipe.vae, 'enable_tiling'):
-                inpainting_pipe.vae.enable_tiling()
-            pipe = inpainting_pipe
-        
-        generator = torch.Generator("cpu").manual_seed(42)
-        print(f"   🎨 开始重绘 (strength:{actual_strength:.2f}, steps:{steps})")
-
-        # --- 5. 执行 Inpaint ---
-        if use_inpaint and mask is not None:
-            result = pipe(
-                prompt=prompt,
-                negative_prompt=negative,
-                image=init_image,
-                mask_image=mask,
-                strength=actual_strength,
-                num_inference_steps=steps,
-                guidance_scale=cfg,
-                generator=generator,
-            )
-        else:
-            result = pipe(
-                prompt=prompt,
-                negative_prompt=negative,
-                image=init_image,
-                strength=actual_strength,
-                num_inference_steps=steps,
-                guidance_scale=cfg,
-                generator=generator,
-            )
-        
-        result.images[0].save(output_path)
-        print(f"   ✅ 已保存: {os.path.basename(output_path)}")
-        return True
-    except Exception as e:
-        print(f"   ❌ 生成失败: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+    返回:
+        精简后的提示词
+    """
+    if not prompt:
+        return prompt
+    
+    # 按逗号分割
+    parts = [p.strip() for p in prompt.split(',') if p.strip()]
+    
+    # 去重
+    seen = set()
+    unique_parts = []
+    for p in parts:
+        if p not in seen:
+            seen.add(p)
+            unique_parts.append(p)
+    
+    # 按重要性排序（长度较长的通常更具体）
+    # 保留最重要的词（长度长的优先）
+    unique_parts.sort(key=lambda x: len(x), reverse=True)
+    
+    # 构建结果，限制长度
+    result = []
+    current_len = 0
+    for part in unique_parts:
+        # 粗略估计 token 数（每个词约 1-2 token）
+        estimated_tokens = len(part.split()) + 2
+        if current_len + estimated_tokens <= max_tokens:
+            result.append(part)
+            current_len += estimated_tokens
+    
+    return ', '.join(result) if result else prompt[:200]
 
 
+# ===== 【新增】在 auto_shorten_prompt_for_clip 后面添加 count_tokens =====
+def count_tokens(text):
+    """粗略计算 token 数（CLIP 约 1-2 token/词）"""
+    if not text:
+        return 0
+    return len(text.split()) + 2
+    
 def generate_image(pipe, is_sdxl, prompt, negative, image_path, output_path,
                    strength, steps, cfg, width, height, 
                    max_strength=0.55,
                    use_inpaint=False):
+
+    # ===== 【修复】在这里调用精简函数 =====
+    original_prompt_len = len(prompt)
+    original_neg_len = len(negative)
     
+    # ===== 【新增】精简提示词 =====
+    prompt = auto_shorten_prompt_for_clip(prompt, max_tokens=70)
+    negative = auto_shorten_prompt_for_clip(negative, max_tokens=70)
+
+    if len(prompt) < original_prompt_len:
+        print(f"   ✂️ 提示词精简: {original_prompt_len} -> {len(prompt)} 字符")
+    
+    # 检查 token 数
+    token_count = count_tokens(prompt)
+    if token_count > 75:
+        print(f"   ⚠️ 提示词 token 数: {token_count}，可能被截断")
+        
     try:
         init_image = Image.open(image_path).convert('RGB')
         
@@ -316,7 +283,7 @@ def worker_process(jobs_slice, config):
     子进程的工作函数：加载模型、批量生成分配给它的图片
     """
     import torch
-    from PIL import Image
+    from PIL import Image, ImageEnhance
     from diffusers import StableDiffusionPipeline, StableDiffusionXLPipeline, StableDiffusionInpaintPipeline
     from rembg import remove
     
@@ -401,12 +368,17 @@ def run_batch_single(config_file):
         steps = job.get("steps", config.get("steps", 25))
         cfg = job.get("cfg", config.get("cfg", 7.5))
         
+        # ===== 【新增】在生成前精简提示词 =====
+        #prompt = auto_shorten_prompt_for_clip(prompt, max_tokens=70)
+        #negative = auto_shorten_prompt_for_clip(negative, max_tokens=60)        
+        
         if len(prompt) > 280:
             prompt = prompt[:280]
         
         print(f"\n[{idx}/{len(config['jobs'])}] 🚀 {name}")
         print(f"   强度: {strength}, max_strength: {max_strength}, CFG: {cfg}")
         print(f"   提示词长度: {len(prompt)} 字符")
+        #print(f"   预估 token 数: {count_tokens(prompt)}")
         
         safe_name = "".join(c for c in name if c.isalnum() or c in " _-")[:50]
         filename = f"{timestamp}_{idx:03d}_{safe_name}.png"
