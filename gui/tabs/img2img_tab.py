@@ -111,7 +111,7 @@ class Img2ImgTab(BaseTab):
         self.params = self.app.params_panel
     
         self.img_paths_var = tk.StringVar(value="")
-        self.strength_var = tk.DoubleVar(value=0.20)
+        self.strength_var = tk.DoubleVar(value=0.15)
         self.per_image_var = tk.IntVar(value=1)  # 图生图特有：每张图片生成几个变体
         self.size_var = tk.StringVar(value="自动(保持比例)")
         
@@ -551,6 +551,13 @@ class Img2ImgTab(BaseTab):
             if target_height > 0:
                 target_height = min(max_cpu_h, max(size_cfg["min_height"], target_height))
             
+            # ✅ 【修复】重置调度器状态，防止 Euler 调度器在图生图中索引越界
+            from diffusers import EulerDiscreteScheduler
+            if hasattr(pipe, 'scheduler') and isinstance(pipe.scheduler, EulerDiscreteScheduler):
+                # 重新创建调度器，清除内部状态
+                pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
+                print("   🔄 Euler 调度器已重置")
+    
             for img_idx, init_image in enumerate(images):
                 self.update_progress(img_idx / total_images, f"🔄 正在处理图片 {img_idx+1}/{len(images)}...")
                 if self.cancel_generation:
