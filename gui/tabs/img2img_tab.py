@@ -142,7 +142,14 @@ class Img2ImgTab(BaseTab):
         ttk.Button(img_btn_frame, text="选择图片", command=self._select_images).pack(side=tk.LEFT, padx=2)
         ttk.Button(img_btn_frame, text="清空", command=self._clear_images).pack(side=tk.LEFT, padx=2)
         row += 1
-        
+
+        # ===== 【新增】图片预览行 =====
+        preview_frame = ttk.Frame(frame)
+        preview_frame.grid(row=row, column=0, columnspan=3, pady=5, padx=5)
+        self.preview_label = ttk.Label(preview_frame)
+        self.preview_label.pack()
+        row += 1
+    
         # 提示词
         ttk.Label(frame, text="目标提示词:").grid(row=row, column=0, sticky=tk.W, pady=5, padx=5)
         self.prompt_text = tk.Text(frame, height=4, width=70)
@@ -244,16 +251,10 @@ class Img2ImgTab(BaseTab):
             img.thumbnail((300, 300), Image.Resampling.LANCZOS)
             photo = ImageTk.PhotoImage(img)
             
-            # 创建或获取预览标签
-            if not hasattr(self, 'preview_label'):
-                # 在图片选择行下面创建预览标签
-                preview_frame = ttk.Frame(self.frame)
-                preview_frame.grid(row=1, column=1, columnspan=2, pady=5, padx=5)
-                self.preview_label = ttk.Label(preview_frame)
-                self.preview_label.pack()
-            
-            self.preview_label.config(image=photo)
-            self.preview_label.image = photo  # 保持引用
+            # ✅ 直接使用已创建的 preview_label
+            if hasattr(self, 'preview_label'):
+                self.preview_label.config(image=photo)
+                self.preview_label.image = photo
             
         except Exception as e:
             print(f"⚠️ 预览失败: {e}")

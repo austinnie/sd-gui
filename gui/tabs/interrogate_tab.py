@@ -158,12 +158,25 @@ class InterrogateTab(BaseTab):
         self.path_label = ttk.Label(frame, textvariable=self.path_var, 
                                     foreground="gray", background="white", relief="sunken")
         self.path_label.grid(row=row, column=1, sticky=(tk.W, tk.E), pady=5, padx=5)
-        ttk.Button(frame, text="浏览", command=self._select_image).grid(row=row, column=2, sticky=tk.W, padx=5)
+        
+        # ✅ 按钮框架：浏览 + 清除
+        btn_frame = ttk.Frame(frame)
+        btn_frame.grid(row=row, column=2, sticky=tk.W)
+        ttk.Button(btn_frame, text="浏览", command=self._select_image).pack(side=tk.LEFT, padx=2)
+        ttk.Button(btn_frame, text="清除", command=self._clear_image).pack(side=tk.LEFT, padx=2)
         row += 1
         
+        # ===== 【新增】图片预览行 =====
+        preview_frame = ttk.Frame(frame)
+        preview_frame.grid(row=row, column=0, columnspan=3, pady=5, padx=5)
+        self.preview_label = ttk.Label(preview_frame)
+        self.preview_label.pack()
+        row += 1
+
+        # ===== ✅ 参数行 - 先定义 param_frame =====
         param_frame = ttk.Frame(frame)
         param_frame.grid(row=row, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=5, padx=5)
-        
+    
         # 后端选择
         ttk.Label(param_frame, text="后端:").pack(side=tk.LEFT, padx=5)
         self.backend_combo = ttk.Combobox(
@@ -327,23 +340,24 @@ class InterrogateTab(BaseTab):
             img.thumbnail((300, 300), Image.Resampling.LANCZOS)
             photo = ImageTk.PhotoImage(img)
             
-            # 创建或获取预览标签
-            if not hasattr(self, 'preview_label'):
-                # 在路径标签下面创建预览标签
-                preview_frame = ttk.Frame(self.frame)
-                preview_frame.grid(row=1, column=0, columnspan=3, pady=5, padx=5)
-                self.preview_label = ttk.Label(preview_frame)
-                self.preview_label.pack()
-                
-                # 调整后续行的 row 索引
-                # 注意：需要调整下面所有 grid 的 row 值 +1
-            
-            self.preview_label.config(image=photo)
-            self.preview_label.image = photo  # 保持引用
+            # ✅ 直接使用已创建的 preview_label
+            if hasattr(self, 'preview_label'):
+                self.preview_label.config(image=photo)
+                self.preview_label.image = photo
             
         except Exception as e:
             print(f"⚠️ 预览失败: {e}")
-        
+
+
+    def _clear_image(self):
+        """清除图片"""
+        self.interrogate_image_path = None
+        self.path_var.set("")
+        if hasattr(self, 'preview_label'):
+            self.preview_label.config(image='')
+            self.preview_label.image = None
+        self.update_status("已清除图片")
+    
     def _interrogate_blip_for_img2img(self, image_path):
         """BLIP 专门用于图生图 - 生成客观描述"""
         print(f"🔍 使用 BLIP 图生图模式...")
