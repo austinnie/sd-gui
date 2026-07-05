@@ -312,6 +312,37 @@ class InterrogateTab(BaseTab):
         if file:
             self.interrogate_image_path = file
             self.path_var.set(os.path.basename(file))
+
+        # ===== 【新增】显示预览 =====
+        self._show_preview(file)
+            
+
+    def _show_preview(self, filepath):
+        """显示图片预览"""
+        try:
+            from PIL import Image, ImageTk
+            
+            # 打开并缩放图片
+            img = Image.open(filepath)
+            img.thumbnail((300, 300), Image.Resampling.LANCZOS)
+            photo = ImageTk.PhotoImage(img)
+            
+            # 创建或获取预览标签
+            if not hasattr(self, 'preview_label'):
+                # 在路径标签下面创建预览标签
+                preview_frame = ttk.Frame(self.frame)
+                preview_frame.grid(row=1, column=0, columnspan=3, pady=5, padx=5)
+                self.preview_label = ttk.Label(preview_frame)
+                self.preview_label.pack()
+                
+                # 调整后续行的 row 索引
+                # 注意：需要调整下面所有 grid 的 row 值 +1
+            
+            self.preview_label.config(image=photo)
+            self.preview_label.image = photo  # 保持引用
+            
+        except Exception as e:
+            print(f"⚠️ 预览失败: {e}")
         
     def _interrogate_blip_for_img2img(self, image_path):
         """BLIP 专门用于图生图 - 生成客观描述"""

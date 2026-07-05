@@ -230,11 +230,44 @@ class Img2ImgTab(BaseTab):
         if files:
             self.selected_images = list(files)
             self.img_paths_var.set(f"已选择 {len(files)} 张图片")
-    
+            
+        # ===== 【新增】显示预览 =====
+        self._show_preview(files[0])  # 显示第一张的预览            
+
+def _show_preview(self, filepath):
+    """显示图片预览"""
+    try:
+        from PIL import Image, ImageTk
+        
+        # 打开并缩放图片
+        img = Image.open(filepath)
+        img.thumbnail((300, 300), Image.Resampling.LANCZOS)
+        photo = ImageTk.PhotoImage(img)
+        
+        # 创建或获取预览标签
+        if not hasattr(self, 'preview_label'):
+            # 在图片选择行下面创建预览标签
+            preview_frame = ttk.Frame(self.frame)
+            preview_frame.grid(row=1, column=1, columnspan=2, pady=5, padx=5)
+            self.preview_label = ttk.Label(preview_frame)
+            self.preview_label.pack()
+        
+        self.preview_label.config(image=photo)
+        self.preview_label.image = photo  # 保持引用
+        
+    except Exception as e:
+        print(f"⚠️ 预览失败: {e}")
+        
     def _clear_images(self):
         """清空图片"""
         self.selected_images = []
         self.img_paths_var.set("")
+
+        # ===== 【新增】清除预览 =====
+        if hasattr(self, 'preview_label'):
+            self.preview_label.config(image='')
+            self.preview_label.image = None
+        
     
     def _on_size_change(self, event):
         """尺寸改变"""
