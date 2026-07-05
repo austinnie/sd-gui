@@ -1,0 +1,234 @@
+{
+  "关系类型": {
+    "single": {
+      "prompt": "",
+      "count": 1,
+      "special": "single"
+    },
+    "couple": {
+      "prompt": "couple, loving pair, together",
+      "count": 2,
+      "special": "dual"
+    },
+    "family": {
+      "prompt": "family, family members, family portrait",
+      "count": "3+",
+      "special": "group"
+    },
+    "friends": {
+      "prompt": "friends, group of friends, hanging out",
+      "count": "2+",
+      "special": "group"
+    },
+    "colleagues": {
+      "prompt": "colleagues, coworkers, business team",
+      "count": "2+",
+      "special": "group"
+    },
+    "parent_child": {
+      "prompt": "parent and child, father and son, mother and daughter",
+      "count": 2,
+      "special": "dual"
+    }
+  },
+  "亲密程度": {
+    "platonic": {
+      "prompt": "standing together, friendly, just friends",
+      "negative": "intimate, kissing"
+    },
+    "romantic": {
+      "prompt": "romantic, loving, intimate couple",
+      "negative": "fighting, angry"
+    },
+    "passionate": {
+      "prompt": "激情亲吻，法式热吻，激情拥抱，激烈浪漫时刻，闭着眼睛，激情呻吟，男女双方都投入",
+      "negative": "温柔"
+    },
+    "kissing": {
+      "prompt": "kissing, passionate kiss, making out",
+      "negative": ""
+    },
+    "hugging": {
+      "prompt": "hugging, embracing, holding each other",
+      "negative": ""
+    },
+    "cuddling": {
+      "prompt": "cuddling, snuggling, close embrace",
+      "negative": ""
+    },
+    "holding_hands": {
+      "prompt": "holding hands, hand in hand",
+      "negative": ""
+    },
+    "tender": {
+      "prompt": "温柔时刻，轻柔抚摸，温柔爱抚，关怀拥抱，浪漫气氛，柔和灯光，亲密连接，男人女人都投入",
+      "negative": "粗暴，激烈"
+    },
+    "lovemaking": {
+      "prompt": "做爱，亲密性接触，性感姿势，浪漫性爱，温柔爱抚，身体交缠，温柔插入，男女双方愉悦",
+      "negative": "激烈，粗暴"
+    },
+    "hardcore": {
+      "prompt": "激烈性交，猛烈抽插，粗暴插入，深入抽插，激情呻吟，出汗的身体，强烈的快感，男女双方投入",
+      "negative": "温柔，缓慢"
+    },
+    "bdsm": {
+      "prompt": "BDSM，束缚，约束，支配服从，打屁股，鞭打，皮革，屈服，支配，男女双方角色分明",
+      "negative": "普通"
+    },
+    "group_sex": {
+      "prompt": "三人行，群体性交，多个伴侣，多人杂交，双插，群交，激烈的性活动，包含男人和女人",
+      "negative": "一对一的"
+    }
+  },
+  "姿势_双人": {
+    "standing_together": {
+      "prompt": "standing together, side by side",
+      "negative": ""
+    },
+    "facing_each_other": {
+      "prompt": "facing each other, looking at each other",
+      "negative": ""
+    },
+    "hugging": {
+      "prompt": "hugging, arms around each other",
+      "negative": ""
+    },
+    "kissing": {
+      "prompt": "kissing, lips touching",
+      "negative": ""
+    },
+    "sitting_together": {
+      "prompt": "sitting together, close",
+      "negative": ""
+    },
+    "lying_together": {
+      "prompt": "lying together, cuddling",
+      "negative": ""
+    },
+    "holding_hands": {
+      "prompt": "holding hands",
+      "negative": ""
+    },
+    "dancing": {
+      "prompt": "dancing together, ballroom dance",
+      "negative": ""
+    },
+    "piggyback": {
+      "prompt": "piggyback ride",
+      "negative": ""
+    },
+    "man_behind_woman": {
+      "prompt": "man standing behind woman, protective",
+      "negative": ""
+    },
+    "woman_on_lap": {
+      "prompt": "woman sitting on man's lap",
+      "negative": ""
+    },
+    "walking_together": {
+      "prompt": "walking together, strolling",
+      "negative": ""
+    },
+    "standing_embrace": {
+      "prompt": "站立拥抱，互相拥抱，手臂环绕对方，身体紧贴，亲密时刻，脸庞靠近，男人和女人身体都可见",
+      "negative": "画面裁切，肢体缺失"
+    },
+    "sitting_embrace": {
+      "prompt": "坐在腿上拥抱，手臂搂着伴侣，亲密坐姿，双腿交缠，男人女人身体都可见",
+      "negative": "画面裁切"
+    },
+    "lying_down": {
+      "prompt": "一起躺着，身体交缠，侧躺搂抱，依偎，亲密卧姿，水平姿势，男人女人身体都可见",
+      "negative": "画面裁切"
+    },
+    "bent_over": {
+      "prompt": "弯腰，身体前倾，手撑在表面，从后面进入，男人站在女人身后，双方身体可见",
+      "negative": "直立站着"
+    },
+    "missionary": {
+      "prompt": "传教士体位，男人在上，女人躺平，双腿缠绕伴侣，面对面，亲密性爱，男人和女人裸体可见",
+      "negative": "从后面"
+    },
+    "cowgirl": {
+      "prompt": "骑乘体位，女人在上，跨坐伴侣，主动骑乘，亲密眼神接触，男人在下，双方身体可见",
+      "negative": "男人在上"
+    },
+    "reverse_cowgirl": {
+      "prompt": "反向骑乘体位，女人在上背对对方，骑乘，手撑在伴侣膝盖上，主动抽插，男人可见",
+      "negative": "面对面"
+    },
+    "spooning": {
+      "prompt": "侧躺体位，两人侧躺，男人从后面抱住女人，亲密拥抱，温柔性爱，双方身体可见",
+      "negative": "面对面"
+    },
+    "standing_from_behind": {
+      "prompt": "站立后入，男人站在女人身后，两人都站着，男人扶着女人臀部，亲密插入，双方身体可见",
+      "negative": "面对面"
+    },
+    "oral_man": {
+      "prompt": "口交，女人跪着，男人站着，口交阴茎，亲密时刻，双方身体可见",
+      "negative": "女人被口交"
+    },
+    "oral_woman": {
+      "prompt": "舔阴，男人跪在女人双腿间，口交女人，亲密愉悦，双方身体可见",
+      "negative": "男人被口交"
+    },
+    "sixty_nine": {
+      "prompt": "69体位，两人反向躺着，互相口交，亲密愉悦，双方身体完全可见",
+      "negative": "单方面"
+    }
+  },
+  "姿势_多人": {
+    "group_standing": {
+      "prompt": "group standing together, posed",
+      "negative": ""
+    },
+    "group_sitting": {
+      "prompt": "group sitting together",
+      "negative": ""
+    },
+    "group_hug": {
+      "prompt": "group hug, everyone embracing",
+      "negative": ""
+    },
+    "line_up": {
+      "prompt": "lined up, standing in a row",
+      "negative": ""
+    },
+    "circle": {
+      "prompt": "sitting in a circle, facing each other",
+      "negative": ""
+    },
+    "candid": {
+      "prompt": "candid moment, natural interaction",
+      "negative": "posed, stiff"
+    }
+  },
+  "家庭关系": {
+    "nuclear_family": {
+      "prompt": "nuclear family, parents with children",
+      "negative": ""
+    },
+    "extended_family": {
+      "prompt": "extended family, grandparents, parents, children",
+      "negative": ""
+    },
+    "single_parent": {
+      "prompt": "single parent with child",
+      "negative": ""
+    },
+    "grandparent_grandchild": {
+      "prompt": "grandparent with grandchild",
+      "negative": ""
+    },
+    "siblings": {
+      "prompt": "siblings, brothers and sisters",
+      "negative": ""
+    },
+    "three_generations": {
+      "prompt": "three generations, grandparents, parents, children",
+      "negative": ""
+    }
+  }
+}

@@ -1,0 +1,141 @@
+{
+    "年龄": {
+        "baby": {"prompt": "baby, infant", "negative": "adult, child"},
+        "child": {"prompt": "child, young", "negative": "adult, elderly"},
+        "boy": {"prompt": "boy, young male child", "negative": "girl, adult"},
+        "girl": {"prompt": "girl, young female child", "negative": "boy, adult"},
+        "teen": {"prompt": "teenager, adolescent", "negative": "child, elderly"},
+        "young_adult": {"prompt": "young adult, early twenties", "negative": "child, elderly"},
+        "adult": {"prompt": "adult", "negative": "child, elderly"},
+        "middle_aged": {"prompt": "middle aged, mature", "negative": "young, elderly"},
+        "senior": {"prompt": "senior, elderly, old", "negative": "young"},
+        "elderly": {"prompt": "elderly, very old", "negative": "young"}
+    },
+    "性别": {
+        "male": {"prompt": "man, male", "negative": "woman, female, feminine"},
+        "female": {"prompt": "woman, female", "negative": "man, male, masculine"},
+        "non_binary": {"prompt": "androgynous, non-binary", "negative": "clearly male or female"}
+    },
+    "体型": {
+        "slim": {"prompt": "slim body, slender, thin", "negative": "fat, muscular, overweight"},
+        "average": {"prompt": "average build, normal body", "negative": ""},
+        "athletic": {"prompt": "athletic build, fit, toned", "negative": "fat, slim"},
+        "muscular": {"prompt": "muscular, buff, strong, ripped", "negative": "fat, slim"},
+        "curvy": {"prompt": "curvy figure, hourglass shape, voluptuous", "negative": "slim, thin"},
+        "plus_size": {"prompt": "plus size, full figured, chubby", "negative": "slim, thin"},
+        "skinny": {"prompt": "very skinny, thin, underweight", "negative": "muscular, fat"}
+    },
+    "种族_亚洲": {
+        "chinese": {"prompt": "Chinese, East Asian features, black hair, brown eyes", "negative": "western, caucasian, white"},
+        "japanese": {"prompt": "Japanese, East Asian features, straight black hair, fair skin", "negative": "western, caucasian"},
+        "korean": {"prompt": "Korean, East Asian features, flawless skin, dark hair", "negative": "western, caucasian"},
+        "vietnamese": {"prompt": "Vietnamese, Southeast Asian features, tan skin", "negative": "western"},
+        "thai": {"prompt": "Thai, Southeast Asian features, warm skin tone", "negative": "western"},
+        "indian": {"prompt": "Indian, South Asian features, brown skin, dark eyes", "negative": "east asian"},
+        "filipino": {"prompt": "Filipino, Southeast Asian, brown skin", "negative": "western"}
+    },
+    "种族_欧洲": {
+        "british": {"prompt": "British, Caucasian, fair skin, European features", "negative": "asian, african"},
+        "french": {"prompt": "French, elegant European features, fair skin", "negative": ""},
+        "german": {"prompt": "German, fair skin, strong features, light eyes", "negative": ""},
+        "italian": {"prompt": "Italian, Mediterranean features, olive skin, dark hair", "negative": ""},
+        "spanish": {"prompt": "Spanish, Mediterranean, tan skin, dark hair", "negative": ""},
+        "russian": {"prompt": "Russian, Slavic features, fair skin, light eyes, high cheekbones", "negative": ""},
+        "scandinavian": {"prompt": "Scandinavian, Nordic features, very fair skin, blonde hair, blue eyes", "negative": ""},
+        "eastern_european": {"prompt": "Eastern European, Slavic features", "negative": ""}
+    },
+    "种族_美洲": {
+        "american": {"prompt": "American, diverse features", "negative": ""},
+        "latin": {"prompt": "Latina/Latino, Hispanic, tan skin, dark hair", "negative": ""},
+        "mexican": {"prompt": "Mexican, Indigenous Latin American features", "negative": ""},
+        "brazilian": {"prompt": "Brazilian, mixed heritage, tan skin", "negative": ""},
+        "native_american": {"prompt": "Native American, Indigenous features, high cheekbones", "negative": ""}
+    },
+    "种族_非洲": {
+        "african": {"prompt": "African, Black, dark skin, natural hair", "negative": "light skin"},
+        "nigerian": {"prompt": "Nigerian, West African features", "negative": ""},
+        "ethiopian": {"prompt": "Ethiopian, East African features", "negative": ""},
+        "african_american": {"prompt": "African American, Black features", "negative": ""}
+    },
+    "种族_中东": {
+        "arab": {"prompt": "Arab, Middle Eastern features, olive skin, dark hair", "negative": ""},
+        "persian": {"prompt": "Persian, Iranian features, elegant features", "negative": ""},
+        "turkish": {"prompt": "Turkish, Mediterranean features", "negative": ""}
+    },
+    "发型": {
+        "long_straight": {"prompt": "long straight hair", "negative": ""},
+        "long_curly": {"prompt": "long curly hair, voluminous curls", "negative": ""},
+        "long_wavy": {"prompt": "long wavy hair, beach waves", "negative": ""},
+        "short": {"prompt": "short hair", "negative": ""},
+        "pixie": {"prompt": "pixie cut, very short", "negative": ""},
+        "bob": {"prompt": "bob haircut, chin length", "negative": ""},
+        "ponytail": {"prompt": "ponytail", "negative": ""},
+        "bun": {"prompt": "hair bun, updo", "negative": ""},
+        "braids": {"prompt": "braided hair, plaits", "negative": ""},
+        "dreadlocks": {"prompt": "dreadlocks, locs", "negative": ""},
+        "afro": {"prompt": "afro, natural curly hair", "negative": ""},
+        "bald": {"prompt": "bald head, shaved head", "negative": "hair"}
+    },
+    "发色": {
+        "black": {"prompt": "black hair", "negative": ""},
+        "brown": {"prompt": "brown hair, dark brown", "negative": ""},
+        "blonde": {"prompt": "blonde hair, golden", "negative": ""},
+        "red": {"prompt": "red hair, ginger, auburn", "negative": ""},
+        "gray": {"prompt": "gray hair, silver hair", "negative": ""},
+        "white": {"prompt": "white hair, platinum", "negative": ""},
+        "colored": {"prompt": "dyed hair, colorful hair", "negative": ""}
+    },
+    "服装": {
+        "casual": {"prompt": "casual clothes, t-shirt and jeans, everyday wear", "negative": "formal"},
+        "formal": {"prompt": "formal wear, suit, dress, elegant", "negative": "casual"},
+        "business": {"prompt": "business attire, office wear, professional", "negative": "casual"},
+        "sportswear": {"prompt": "sportswear, athletic clothes, gym wear", "negative": "formal"},
+        "swimsuit": {"prompt": "swimsuit, bikini, swim trunks, bathing suit", "negative": "clothes"},
+        "nude": {"prompt": "nude, naked, no clothes", "negative": "clothes"},
+        "lingerie": {"prompt": "lingerie, sexy underwear, lace", "negative": "clothes"},
+        "traditional_chinese": {"prompt": "traditional Chinese clothing, hanfu, qipao", "negative": ""},
+        "traditional_japanese": {"prompt": "traditional Japanese clothing, kimono, yukata", "negative": ""},
+        "traditional_korean": {"prompt": "traditional Korean clothing, hanbok", "negative": ""},
+        "traditional_indian": {"prompt": "traditional Indian clothing, sari, lehenga", "negative": ""},
+        "uniform": {"prompt": "uniform, school uniform, work uniform", "negative": ""},
+        "costume": {"prompt": "costume, cosplay, fancy dress", "negative": ""},
+        "winter": {"prompt": "winter clothes, coat, sweater, scarf", "negative": "summer"},
+        "summer": {"prompt": "summer clothes, shorts, tank top", "negative": "winter"}
+    },
+    "表情": {
+        "happy": {"prompt": "happy, smiling, joyful, cheerful", "negative": "sad, angry"},
+        "sad": {"prompt": "sad, crying, tears, sorrowful", "negative": "happy"},
+        "angry": {"prompt": "angry, furious, mad, annoyed", "negative": "happy"},
+        "surprised": {"prompt": "surprised, shocked, amazed", "negative": ""},
+        "scared": {"prompt": "scared, frightened, fearful", "negative": "brave"},
+        "seductive": {"prompt": "seductive, sultry, sensual gaze", "negative": "innocent"},
+        "neutral": {"prompt": "neutral expression, calm, relaxed", "negative": ""},
+        "serious": {"prompt": "serious, stern, intense gaze", "negative": "happy"},
+        "laughing": {"prompt": "laughing, laughing out loud", "negative": "sad"},
+        "crying": {"prompt": "crying, tears streaming", "negative": "happy"},
+        "thinking": {"prompt": "thinking, thoughtful expression", "negative": ""},
+        "sleepy": {"prompt": "sleepy, tired, yawning", "negative": "energetic"}
+    },
+    "姿势": {
+        "standing": {"prompt": "standing, standing upright", "negative": "sitting"},
+        "sitting": {"prompt": "sitting, seated", "negative": "standing"},
+        "lying": {"prompt": "lying down, reclining", "negative": "standing"},
+        "kneeling": {"prompt": "kneeling, on knees", "negative": "standing"},
+        "walking": {"prompt": "walking, in motion", "negative": "still"},
+        "running": {"prompt": "running, sprinting", "negative": "standing"},
+        "yoga_pose": {"prompt": "yoga pose, stretching", "negative": ""},
+        "dancing": {"prompt": "dancing, in dance pose", "negative": "still"}
+    },
+    "职业/身份": {
+        "doctor": {"prompt": "doctor, medical professional, wearing white coat", "negative": ""},
+        "teacher": {"prompt": "teacher, professor, educator", "negative": ""},
+        "student": {"prompt": "student, studying, school", "negative": ""},
+        "athlete": {"prompt": "athlete, sports person, fit", "negative": ""},
+        "artist": {"prompt": "artist, creative person", "negative": ""},
+        "businessman": {"prompt": "businessman, businesswoman, executive", "negative": ""},
+        "police": {"prompt": "police officer, law enforcement", "negative": ""},
+        "chef": {"prompt": "chef, cook, wearing chef uniform", "negative": ""},
+        "model": {"prompt": "model, fashion model, posing", "negative": ""},
+        "royalty": {"prompt": "royalty, king, queen, prince, princess", "negative": ""}
+    }
+}

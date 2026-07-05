@@ -1,0 +1,434 @@
+{
+    "scenes": {
+        "两人亲密场景": {
+            "categories": {
+                "基本姿势": {
+                    "standing_embrace": {
+                        "name": "站立拥抱",
+                        "prompt": "站立拥抱，互相拥抱，手臂环绕对方，身体紧贴，亲密时刻，脸庞靠近，男人和女人身体都可见",
+                        "negative": "画面裁切，肢体缺失"
+                    },
+                    "sitting_embrace": {
+                        "name": "坐姿拥抱",
+                        "prompt": "坐在腿上拥抱，手臂搂着伴侣，亲密坐姿，双腿交缠，男人女人身体都可见",
+                        "negative": "画面裁切"
+                    },
+                    "lying_down": {
+                        "name": "躺卧姿势",
+                        "prompt": "一起躺着，身体交缠，侧躺搂抱，依偎，亲密卧姿，水平姿势，男人女人身体都可见",
+                        "negative": "画面裁切"
+                    },
+                    "bent_over": {
+                        "name": "弯腰姿势",
+                        "prompt": "弯腰，身体前倾，手撑在表面，从后面进入，男人站在女人身后，双方身体可见",
+                        "negative": "直立站着"
+                    },
+                    "missionary": {
+                        "name": "传教士体位",
+                        "prompt": "传教士体位，男人在上，女人躺平，双腿缠绕伴侣，面对面，亲密性爱，男人和女人裸体可见",
+                        "negative": "从后面"
+                    },
+                    "cowgirl": {
+                        "name": "骑乘体位",
+                        "prompt": "骑乘体位，女人在上，跨坐伴侣，主动骑乘，亲密眼神接触，男人在下，双方身体可见",
+                        "negative": "男人在上"
+                    },
+                    "reverse_cowgirl": {
+                        "name": "反向骑乘",
+                        "prompt": "反向骑乘体位，女人在上背对对方，骑乘，手撑在伴侣膝盖上，主动抽插，男人可见",
+                        "negative": "面对面"
+                    },
+                    "spooning": {
+                        "name": "侧躺体位",
+                        "prompt": "侧躺体位，两人侧躺，男人从后面抱住女人，亲密拥抱，温柔性爱，双方身体可见",
+                        "negative": "面对面"
+                    },
+                    "standing_from_behind": {
+                        "name": "站立后入",
+                        "prompt": "站立后入，男人站在女人身后，两人都站着，男人扶着女人臀部，亲密插入，双方身体可见",
+                        "negative": "面对面"
+                    },
+                    "oral_man": {
+                        "name": "口交-男方",
+                        "prompt": "口交，女人跪着，男人站着，口交阴茎，亲密时刻，双方身体可见",
+                        "negative": "女人被口交"
+                    },
+                    "oral_woman": {
+                        "name": "口交-女方",
+                        "prompt": "舔阴，男人跪在女人双腿间，口交女人，亲密愉悦，双方身体可见",
+                        "negative": "男人被口交"
+                    },
+                    "sixty_nine": {
+                        "name": "69体位",
+                        "prompt": "69体位，两人反向躺着，互相口交，亲密愉悦，双方身体完全可见",
+                        "negative": "单方面"
+                    }
+                },
+                "亲密程度": {
+                    "tender": {
+                        "name": "温柔亲密",
+                        "prompt": "温柔时刻，轻柔抚摸，温柔爱抚，关怀拥抱，浪漫气氛，柔和灯光，亲密连接，男人女人都投入",
+                        "negative": "粗暴，激烈"
+                    },
+                    "passionate": {
+                        "name": "激情热吻",
+                        "prompt": "激情亲吻，法式热吻，激情拥抱，激烈浪漫时刻，闭着眼睛，激情呻吟，男女双方都投入",
+                        "negative": "温柔"
+                    },
+                    "lovemaking": {
+                        "name": "亲密性爱",
+                        "prompt": "做爱，亲密性接触，性感姿势，浪漫性爱，温柔爱抚，身体交缠，温柔插入，男女双方愉悦",
+                        "negative": "激烈，粗暴"
+                    },
+                    "hardcore": {
+                        "name": "激烈性爱",
+                        "prompt": "激烈性交，猛烈抽插，粗暴插入，深入抽插，激情呻吟，出汗的身体，强烈的快感，男女双方投入",
+                        "negative": "温柔，缓慢"
+                    },
+                    "bdsm": {
+                        "name": "BDSM",
+                        "prompt": "BDSM，束缚，约束，支配服从，打屁股，鞭打，皮革，屈服，支配，男女双方角色分明",
+                        "negative": "普通"
+                    },
+                    "group_sex": {
+                        "name": "多人性爱",
+                        "prompt": "三人行，群体性交，多个伴侣，多人杂交，双插，群交，激烈的性活动，包含男人和女人",
+                        "negative": "一对一的"
+                    }
+                },
+                "视角": {
+                    "front_view": {
+                        "name": "正面视角",
+                        "prompt": "正面视角，面对观众，全身可见，脸部可见，亲密表情可见，男人和女人都可见",
+                        "negative": "背面视角"
+                    },
+                    "profile_view": {
+                        "name": "侧面视角",
+                        "prompt": "侧面视角，侧影可见，亲密角度，男人和女人的脸都在侧面可见",
+                        "negative": "正面视角"
+                    },
+                    "from_behind": {
+                        "name": "后方视角",
+                        "prompt": "从后面，后面视角，背部可见，臀部可见，从后面可见插入，男人从女人后面进入可见",
+                        "negative": "正面视角"
+                    },
+                    "overhead_view": {
+                        "name": "俯视视角",
+                        "prompt": "俯视视角，从上面看，鸟瞰视角，躺着从上面看，两个身体都可见",
+                        "negative": "从下面看"
+                    },
+                    "closeup_penetration": {
+                        "name": "性器特写",
+                        "prompt": "生殖器特写，可见插入，阴道和阴茎，亲密特写，露骨性行为，可见男人进入女人",
+                        "negative": "全身，脸部"
+                    },
+                    "closeup_faces": {
+                        "name": "面部特写",
+                        "prompt": "脸部特写，亲密特写，脸贴脸，情感表情可见，呻吟的脸，男人和女人的脸都可见",
+                        "negative": "全身"
+                    }
+                },
+                "环境氛围": {
+                    "bedroom": {
+                        "name": "卧室",
+                        "prompt": "在卧室，柔软的床单，温暖的灯光，舒适的氛围，浪漫的卧室环境，枕头，毯子",
+                        "negative": "户外"
+                    },
+                    "hotel": {
+                        "name": "酒店房间",
+                        "prompt": "酒店房间，豪华床品，氛围灯光，透过窗户的城市景观，镜子，亲密酒店氛围",
+                        "negative": "家里"
+                    },
+                    "bathroom": {
+                        "name": "浴室",
+                        "prompt": "在浴室，淋浴，湿漉漉的身体，蒸汽，瓷砖，亲密沐浴，淋浴性爱",
+                        "negative": "卧室"
+                    },
+                    "nature_outdoor": {
+                        "name": "自然环境",
+                        "prompt": "在大自然中，森林，草地，户外性爱，月光，星空，自然设定，暴露在户外",
+                        "negative": "室内"
+                    },
+                    "beach": {
+                        "name": "海滩",
+                        "prompt": "在海滩，沙滩，海洋，日落，海浪，户外性爱，温暖的微风，半公开场合",
+                        "negative": "室内"
+                    },
+                    "car": {
+                        "name": "车内",
+                        "prompt": "在车里，后座，拥挤，车窗起雾，亲密车内性爱，车辆内部",
+                        "negative": "露天户外"
+                    },
+                    "office": {
+                        "name": "办公室",
+                        "prompt": "办公室，办公桌，工作场所，老板的办公室，专业环境，禁忌性爱，靠在办公桌上",
+                        "negative": "家里"
+                    },
+                    "public": {
+                        "name": "公共场所",
+                        "prompt": "公共场所，半公开，有被看见的风险，暴露癖，户外，冒险的性爱",
+                        "negative": "私密场所"
+                    }
+                },
+                "服装状态": {
+                    "fully_dressed": {
+                        "name": "完全着装",
+                        "prompt": "完全着装，穿着衣服，所有衣物完整，正式穿着，日常穿着，男女都穿着整齐",
+                        "negative": "裸体"
+                    },
+                    "partially_dressed": {
+                        "name": "部分着装",
+                        "prompt": "部分穿着，衣服部分脱掉，衬衫解开，裤子拉下，内衣可见，男女都半裸",
+                        "negative": "完全裸体"
+                    },
+                    "underwear": {
+                        "name": "内衣状态",
+                        "prompt": "只穿内衣，胸罩和内裤，性感内衣，暴露，男女都穿内衣",
+                        "negative": "穿着衣服，裸体"
+                    },
+                    "lingerie": {
+                        "name": "情趣内衣",
+                        "prompt": "情趣内衣，蕾丝，性感内衣，娃娃装，紧身胸衣，吊袜带，丝袜，透明面料，女人穿情趣内衣，男人也可穿着",
+                        "negative": "普通内衣"
+                    },
+                    "nude": {
+                        "name": "全裸",
+                        "prompt": "裸体，完全脱光，暴露的身体，自然裸体，没有衣服，艺术裸体，男人和女人都全裸",
+                        "negative": "穿着衣服"
+                    },
+                    "costume": {
+                        "name": "角色扮演",
+                        "prompt": "角色扮演，女仆装，校服，护士装，警服，幻想服装，男女都穿角色服装",
+                        "negative": "普通衣服"
+                    }
+                },
+                "情感表达": {
+                    "romantic_love": {
+                        "name": "浪漫爱情",
+                        "prompt": "浪漫的爱情，深情，关怀的眼神，温柔触摸，情感连接，坠入爱河，男女双方都深情",
+                        "negative": "愤怒，悲伤"
+                    },
+                    "passionate_desire": {
+                        "name": "激情欲望",
+                        "prompt": "激情的欲望，渴望的眼神，燃烧的热情，强烈的吸引力，诱惑的目光，想要对方，男女互相渴望",
+                        "negative": "冷漠"
+                    },
+                    "seductive": {
+                        "name": "诱惑",
+                        "prompt": "诱惑，挑逗，调情，迷人，暗示性的目光，邀请，勾引，一方诱惑另一方",
+                        "negative": "纯真"
+                    },
+                    "submissive": {
+                        "name": "顺从",
+                        "prompt": "顺从，服从，屈服，跪下，乞求，渴望取悦，遵从命令，一方服从另一方",
+                        "negative": "支配"
+                    },
+                    "dominant": {
+                        "name": "支配",
+                        "prompt": "支配，掌控，命令，权威，主导，掌控局势，强势，一方支配另一方",
+                        "negative": "顺从"
+                    },
+                    "pain_pleasure": {
+                        "name": "痛并快乐",
+                        "prompt": "痛并快乐着，受虐，享受痛苦，强烈的表情，呻吟，混合着痛苦的狂喜，男女双方体验",
+                        "negative": "舒适"
+                    }
+                },
+                "男士特征": {
+                    "muscular_man": {
+                        "name": "肌肉男",
+                        "prompt": "肌肉男，健美的男性身体，分明的肌肉，强壮的手臂，运动体格，宽阔的肩膀，男人身材健壮",
+                        "negative": "瘦弱，肥胖"
+                    },
+                    "average_man": {
+                        "name": "普通身材",
+                        "prompt": "普通身材的男人，正常的男性身体，自然体格，不胖不瘦",
+                        "negative": "肌肉男"
+                    },
+                    "hairy_man": {
+                        "name": "体毛浓密",
+                        "prompt": "体毛浓密的男人，胸毛，腹毛，男性体毛丰富，成熟男性",
+                        "negative": "光滑无毛"
+                    },
+                    "slim_man": {
+                        "name": "瘦削型",
+                        "prompt": "slim man, lean body, slender masculine build",
+                        "negative": "muscular, fat"
+                    },
+                    "clean_man": {
+                        "name": "干净光滑",
+                        "prompt": "干净光滑的男人，刮过体毛，光滑的皮肤，整洁的男性身体",
+                        "negative": "体毛浓密"
+                    }
+                },
+                "女士特征": {
+                    "large_breasts": {
+                        "name": "大胸",
+                        "prompt": "大胸部，丰满的乳房，巨乳，丰满的胸部，饱满的胸围，沉重的胸部，女人身材丰满",
+                        "negative": "小胸部"
+                    },
+                    "small_breasts": {
+                        "name": "小胸",
+                        "prompt": "小胸部，娇小的胸部，适中的胸部，小乳，胸平，坚挺的乳房",
+                        "negative": "大胸部"
+                    },
+                    "curvy_figure": {
+                        "name": "曲线身材",
+                        "prompt": "曲线身材，沙漏型身材，宽臀，细腰，丰满，大腿粗壮，女人身材性感",
+                        "negative": "苗条，瘦"
+                    },
+                    "slim_figure": {
+                        "name": "苗条身材",
+                        "prompt": "苗条身材，纤细，瘦长的身体，优雅的线条，女人身材修长",
+                        "negative": "丰满"
+                    },
+                    "pear_shape": {
+                        "name": "梨形身材",
+                        "prompt": "梨形身材，臀部丰满，大腿粗壮，腰细，下身丰满，女人下身丰满",
+                        "negative": "沙漏型"
+                    }
+                }
+            },
+            "默认配置": {
+                "basic_pose": "missionary",
+                "intimacy_level": "lovemaking",
+                "view_angle": "profile_view",
+                "environment": "bedroom",
+                "clothing": "nude",
+                "emotion": "passionate_desire",
+                "body_features_man": "average_man",
+                "body_features_woman": "curvy_figure",
+                "width": 640,
+                "height": 896,
+                "steps": 20,
+                "cfg": 7.0
+            }
+        }
+    },
+    "组合模板": {
+        "浪漫卧室性爱": {
+            "basic_pose": "missionary",
+            "intimacy_level": "lovemaking",
+            "view_angle": "profile_view",
+            "environment": "bedroom",
+            "clothing": "nude",
+            "emotion": "romantic_love",
+            "body_features_man": "average_man",
+            "body_features_woman": "curvy_figure",
+            "prompt_suffix": "温暖烛光，柔软床单，亲密性爱，浪漫氛围，男人温柔对待女人"
+        },
+        "激情浴室性爱": {
+            "basic_pose": "standing_from_behind",
+            "intimacy_level": "hardcore",
+            "view_angle": "from_behind",
+            "environment": "bathroom",
+            "clothing": "nude",
+            "emotion": "passionate_desire",
+            "body_features_man": "muscular_man",
+            "body_features_woman": "curvy_figure",
+            "prompt_suffix": "蒸汽弥漫，湿滑的身体，水花四溅，激烈抽插，激情呻吟，男人从后面进入女人"
+        },
+        "野外车震": {
+            "basic_pose": "cowgirl",
+            "intimacy_level": "passionate",
+            "view_angle": "front_view",
+            "environment": "car",
+            "clothing": "partially_dressed",
+            "emotion": "seductive",
+            "body_features_man": "average_man",
+            "body_features_woman": "slim_figure",
+            "prompt_suffix": "车窗起雾，狭小空间，冒险的户外性爱，兴奋的表情，女人主动骑乘男人"
+        },
+        "BDSM支配场景": {
+            "basic_pose": "bent_over",
+            "intimacy_level": "bdsm",
+            "view_angle": "from_behind",
+            "environment": "bedroom",
+            "clothing": "lingerie",
+            "emotion": "dominant",
+            "body_features_man": "muscular_man",
+            "body_features_woman": "curvy_figure",
+            "prompt_suffix": "皮革束缚，打屁股，权力交换，强烈感受，男人支配女人"
+        },
+        "三人激情": {
+            "basic_pose": "missionary",
+            "intimacy_level": "group_sex",
+            "view_angle": "front_view",
+            "environment": "bedroom",
+            "clothing": "nude",
+            "emotion": "passionate_desire",
+            "body_features_man": "muscular_man",
+            "body_features_woman": "curvy_figure",
+            "prompt_suffix": "三个身体交缠，多双手，强烈的快感，色情氛围，两个男人一个女人"
+        },
+        "海滩日落缠绵": {
+            "basic_pose": "spooning",
+            "intimacy_level": "tender",
+            "view_angle": "profile_view",
+            "environment": "beach",
+            "clothing": "nude",
+            "emotion": "romantic_love",
+            "body_features_man": "average_man",
+            "body_features_woman": "slim_figure",
+            "prompt_suffix": "金色日落，海浪，温暖微风，亲密拥抱，浪漫心情，男人从后面抱住女人"
+        },
+        "办公室禁忌": {
+            "basic_pose": "bent_over",
+            "intimacy_level": "passionate",
+            "view_angle": "from_behind",
+            "environment": "office",
+            "clothing": "partially_dressed",
+            "emotion": "seductive",
+            "body_features_man": "clean_man",
+            "body_features_woman": "pear_shape",
+            "prompt_suffix": "趴在办公桌上，散乱的工作文件，冒险的工作场所性爱，强烈的吸引力，男人从后面进入女人"
+        },
+        "69互相口交": {
+            "basic_pose": "sixty_nine",
+            "intimacy_level": "lovemaking",
+            "view_angle": "profile_view",
+            "environment": "bedroom",
+            "clothing": "nude",
+            "emotion": "passionate_desire",
+            "body_features_man": "average_man",
+            "body_features_woman": "curvy_figure",
+            "prompt_suffix": "互相愉悦，亲密连接，双方同时给予和接受，男人和女人互相口交"
+        },
+        "后入激烈抽插": {
+            "basic_pose": "standing_from_behind",
+            "intimacy_level": "hardcore",
+            "view_angle": "from_behind",
+            "environment": "bedroom",
+            "clothing": "nude",
+            "emotion": "passionate_desire",
+            "body_features_man": "muscular_man",
+            "body_features_woman": "curvy_figure",
+            "prompt_suffix": "深度插入，激烈抽插，激情呻吟，男人抓住女人臀部，激烈性交"
+        },
+        "骑乘位主动": {
+            "basic_pose": "cowgirl",
+            "intimacy_level": "passionate",
+            "view_angle": "front_view",
+            "environment": "bedroom",
+            "clothing": "nude",
+            "emotion": "dominant",
+            "body_features_man": "hairy_man",
+            "body_features_woman": "slim_figure",
+            "prompt_suffix": "女人在上，主动骑乘，主动控制，上下起伏，手撑在男人胸口"
+        }
+    },
+    "人物组合模板": {
+        "经典亚洲旗袍": {
+            "positive_prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Chinese woman, wearing traditional qipao dress, asian face, flawless skin, standing in a garden, full body shot, natural lighting",
+            "negative_prompt": "worst quality, low quality, deformed, blurry, bad anatomy, watermark"
+        },
+        "日本和服庭院": {
+            "positive_prompt": "masterpiece, best quality, realistic, 8k, a beautiful Japanese woman, wearing kimono, asian features, in a zen garden with cherry blossoms, full body, soft sunlight",
+            "negative_prompt": "worst quality, low quality, deformed, blurry, bad anatomy, watermark"
+        },
+        "韩国韩服宫殿": {
+            "positive_prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Korean woman, wearing hanbok, Korean traditional palace background, full body, elegant pose",
+            "negative_prompt": "worst quality, low quality, ugly, deformed, blurry, bad anatomy"
+        }
+    }
+}

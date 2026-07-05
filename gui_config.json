@@ -1,0 +1,79 @@
+{
+    "paths": {
+        "model_base_paths": [
+            "../models/sd-v1-5",
+            "../models/sdxl"
+        ],
+        "lora_base_paths": [
+            "../models/sd15-lora",
+            "../models/sdxl-lora"
+        ],
+        "output_dir": "./output"
+    },
+    "janus": {
+        "model_1b_path": "../models/janus/janus-pro-1b",
+        "model_7b_path": "../models/janus/janus-pro-7b",
+        "device": "cpu",
+        "temperature": 0.8,
+        "max_tokens": 2048
+    },
+    "generation": {
+        "steps": {
+            "min": 1,
+            "max": 150,
+            "default": 10
+        },
+        "cfg": {
+            "min": 1.0,
+            "max": 30.0,
+            "default": 2.0
+        },
+		"size": {
+			"min_width": 256,
+			"max_width": 2048,
+			"min_height": 256,
+			"max_height": 2048,
+			"default_width": 512,
+			"default_height": 768,
+            "cpu_safe_max_width": 1024,
+            "cpu_safe_max_height": 1024			
+		},
+        "max_images": 4,
+        "positive_prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Asian woman, Chinese, wearing elegant qipao dress, full body shot, traditional garden background, natural lighting",
+        "negative_prompt": "worst quality, low quality, deformed, blurry, bad anatomy, bad hands, watermark, text",
+        "img2img_prompt": "masterpiece, best quality, realistic, 8k, same person, transformed",
+		"default_remove_watermark": false
+    },
+    "memory": {
+        "cleanup_interval": 4,
+        "threshold_gb": 12,
+        "rest_time": 0.5,
+        "use_half_precision": false,
+        "enable_cpu_offload": false,
+        "enable_sequential_offload": true,
+        "vae_slicing": true,
+        "vae_tiling": true,
+        "attention_slicing": true
+    },
+    "ui": {
+        "window_width": 1000,
+        "window_height": 900,
+        "show_memory_monitor": false,
+        "memory_update_interval": 5000
+    },
+    "model": {
+        "use_recommended_sort": true,
+        "auto_load_first": true,
+        "min_size_mb": 2000,
+        "priority_keywords": [
+            "perfectionAsianILXL",
+            "xlAsianRealisticMix",
+            "t3_sdVer3",
+            "realisticmix",
+            "anycharactermix",
+            "anytimeRealistic",
+            "asianrealistic",
+            "aiiiiiii01"
+        ]
+    }
+}

@@ -1,0 +1,79 @@
+{
+  "name": "人物肖像测试",
+  "description": "测试不同步数和CFG对亚洲女性肖像的影响",
+  "model": "aiiiiiii01_v10.safetensors",
+  "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Asian woman, wearing elegant dress, full body shot, detailed face",
+  "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, watermark, text",
+  "output_dir": "./output/grid_tests",
+  
+  "grid": [
+    {
+      "name": "标准参数",
+      "params": {
+        "steps": 20,
+        "cfg": 7.5,
+        "width": 512,
+        "height": 768,
+        "seed": 42,
+        "hires": false
+      }
+    },
+    {
+      "name": "高细节",
+      "params": {
+        "steps": 30,
+        "cfg": 8.0,
+        "width": 512,
+        "height": 768,
+        "seed": 43,
+        "hires": false
+      }
+    },
+    {
+      "name": "高引导",
+      "params": {
+        "steps": 25,
+        "cfg": 8.5,
+        "width": 512,
+        "height": 768,
+        "seed": 44,
+        "hires": false
+      }
+    },
+    {
+      "name": "大尺寸",
+      "params": {
+        "steps": 25,
+        "cfg": 7.5,
+        "width": 640,
+        "height": 960,
+        "seed": 45,
+        "hires": false
+      }
+    },
+    {
+      "name": "高清修复",
+      "params": {
+        "steps": 25,
+        "cfg": 7.5,
+        "width": 512,
+        "height": 768,
+        "seed": 46,
+        "hires": true,
+        "hires_scale": 1.5,
+        "hires_denoise": 0.4
+      }
+    },
+    {
+      "name": "横图测试",
+      "params": {
+        "steps": 25,
+        "cfg": 7.5,
+        "width": 896,
+        "height": 512,
+        "seed": 47,
+        "hires": false
+      }
+    }
+  ]
+}

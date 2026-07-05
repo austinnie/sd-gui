@@ -1,0 +1,16 @@
+{
+    "janus": {
+        "model_1b_path": "../models/janus/janus-pro-1b",
+        "model_7b_path": "../models/janus/janus-pro-7b",
+        "device": "cpu",
+        "temperature": 0.8,
+        "max_tokens": 2048
+    },
+    "paths": {
+        "output_dir": "./output/janus"
+    },
+    "ui": {
+        "window_width": 850,
+        "window_height": 750
+    }
+}

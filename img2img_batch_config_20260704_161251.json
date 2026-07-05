@@ -1,0 +1,1004 @@
+{
+  "model_path": "../models/sd-v1-5/aiiiiii01_v10.safetensors",
+  "target_image": "output\\good\\sample.png",
+  "output_dir": "./output/batch_img2img",
+  "strength": 0.45,
+  "cfg": 7.5,
+  "steps": 25,
+  "jobs": [
+    {
+      "name": "chinese_female_young_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, young adult, early twenties, woman, female, slim body, slender, thin, Chinese, East Asian features, black hair, brown eyes, long straight hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "chinese_female_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, adult, woman, female, slim body, slender, thin, Chinese, East Asian features, black hair, brown eyes, long straight hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "chinese_female_middle_aged",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, middle aged, mature, woman, female, slim body, slender, thin, Chinese, East Asian features, black hair, brown eyes, long straight hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, young, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "chinese_male_young_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, young adult, early twenties, man, male, slim body, slender, thin, Chinese, East Asian features, black hair, brown eyes, long straight hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "chinese_male_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, adult, man, male, slim body, slender, thin, Chinese, East Asian features, black hair, brown eyes, long straight hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "chinese_male_middle_aged",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, middle aged, mature, man, male, slim body, slender, thin, Chinese, East Asian features, black hair, brown eyes, long straight hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, young, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "japanese_female_young_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, young adult, early twenties, woman, female, slim body, slender, thin, Japanese, East Asian features, straight black hair, fair skin, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "japanese_female_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, adult, woman, female, slim body, slender, thin, Japanese, East Asian features, straight black hair, fair skin, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "japanese_female_middle_aged",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, middle aged, mature, woman, female, slim body, slender, thin, Japanese, East Asian features, straight black hair, fair skin, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, young, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "japanese_male_young_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, young adult, early twenties, man, male, slim body, slender, thin, Japanese, East Asian features, straight black hair, fair skin, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "japanese_male_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, adult, man, male, slim body, slender, thin, Japanese, East Asian features, straight black hair, fair skin, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "japanese_male_middle_aged",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, middle aged, mature, man, male, slim body, slender, thin, Japanese, East Asian features, straight black hair, fair skin, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, young, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "korean_female_young_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, young adult, early twenties, woman, female, slim body, slender, thin, Korean, East Asian features, flawless skin, dark hair, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "korean_female_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, adult, woman, female, slim body, slender, thin, Korean, East Asian features, flawless skin, dark hair, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "korean_female_middle_aged",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, middle aged, mature, woman, female, slim body, slender, thin, Korean, East Asian features, flawless skin, dark hair, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, young, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "korean_male_young_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, young adult, early twenties, man, male, slim body, slender, thin, Korean, East Asian features, flawless skin, dark hair, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "korean_male_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, adult, man, male, slim body, slender, thin, Korean, East Asian features, flawless skin, dark hair, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "korean_male_middle_aged",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, middle aged, mature, man, male, slim body, slender, thin, Korean, East Asian features, flawless skin, dark hair, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, young, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "vietnamese_female_young_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, young adult, early twenties, woman, female, slim body, slender, thin, Vietnamese, Southeast Asian features, tan skin, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "vietnamese_female_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, adult, woman, female, slim body, slender, thin, Vietnamese, Southeast Asian features, tan skin, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "vietnamese_female_middle_aged",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, middle aged, mature, woman, female, slim body, slender, thin, Vietnamese, Southeast Asian features, tan skin, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, young, elderly, man, male, masculine, fat, muscular, overweight, western, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "vietnamese_male_young_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, young adult, early twenties, man, male, slim body, slender, thin, Vietnamese, Southeast Asian features, tan skin, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "vietnamese_male_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, adult, man, male, slim body, slender, thin, Vietnamese, Southeast Asian features, tan skin, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "vietnamese_male_middle_aged",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, middle aged, mature, man, male, slim body, slender, thin, Vietnamese, Southeast Asian features, tan skin, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, young, elderly, woman, female, feminine, fat, muscular, overweight, western, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "thai_female_young_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, young adult, early twenties, woman, female, slim body, slender, thin, Thai, Southeast Asian features, warm skin tone, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "thai_female_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, adult, woman, female, slim body, slender, thin, Thai, Southeast Asian features, warm skin tone, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "thai_female_middle_aged",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, middle aged, mature, woman, female, slim body, slender, thin, Thai, Southeast Asian features, warm skin tone, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, young, elderly, man, male, masculine, fat, muscular, overweight, western, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "thai_male_young_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, young adult, early twenties, man, male, slim body, slender, thin, Thai, Southeast Asian features, warm skin tone, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "thai_male_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, adult, man, male, slim body, slender, thin, Thai, Southeast Asian features, warm skin tone, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "thai_male_middle_aged",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, middle aged, mature, man, male, slim body, slender, thin, Thai, Southeast Asian features, warm skin tone, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, young, elderly, woman, female, feminine, fat, muscular, overweight, western, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "british_female_young_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, young adult, early twenties, woman, female, slim body, slender, thin, British, Caucasian, fair skin, European features, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, asian, african, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "british_female_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, adult, woman, female, slim body, slender, thin, British, Caucasian, fair skin, European features, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, asian, african, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "british_female_middle_aged",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, middle aged, mature, woman, female, slim body, slender, thin, British, Caucasian, fair skin, European features, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, young, elderly, man, male, masculine, fat, muscular, overweight, asian, african, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "british_male_young_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, young adult, early twenties, man, male, slim body, slender, thin, British, Caucasian, fair skin, European features, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, asian, african, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "british_male_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, adult, man, male, slim body, slender, thin, British, Caucasian, fair skin, European features, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, asian, african, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "british_male_middle_aged",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, middle aged, mature, man, male, slim body, slender, thin, British, Caucasian, fair skin, European features, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, young, elderly, woman, female, feminine, fat, muscular, overweight, asian, african, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "french_female_young_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, young adult, early twenties, woman, female, slim body, slender, thin, French, elegant European features, fair skin, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "french_female_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, adult, woman, female, slim body, slender, thin, French, elegant European features, fair skin, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "french_female_middle_aged",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, middle aged, mature, woman, female, slim body, slender, thin, French, elegant European features, fair skin, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, young, elderly, man, male, masculine, fat, muscular, overweight, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "french_male_young_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, young adult, early twenties, man, male, slim body, slender, thin, French, elegant European features, fair skin, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "french_male_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, adult, man, male, slim body, slender, thin, French, elegant European features, fair skin, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "french_male_middle_aged",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, middle aged, mature, man, male, slim body, slender, thin, French, elegant European features, fair skin, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, young, elderly, woman, female, feminine, fat, muscular, overweight, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "german_female_young_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, young adult, early twenties, woman, female, slim body, slender, thin, German, fair skin, strong features, light eyes, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "german_female_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, adult, woman, female, slim body, slender, thin, German, fair skin, strong features, light eyes, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "german_female_middle_aged",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, middle aged, mature, woman, female, slim body, slender, thin, German, fair skin, strong features, light eyes, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, young, elderly, man, male, masculine, fat, muscular, overweight, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "german_male_young_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, young adult, early twenties, man, male, slim body, slender, thin, German, fair skin, strong features, light eyes, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "german_male_adult",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, adult, man, male, slim body, slender, thin, German, fair skin, strong features, light eyes, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "german_male_middle_aged",
+      "prompt": "photorealistic, 8k, ultra HD, highly detailed, sharp focus, middle aged, mature, man, male, slim body, slender, thin, German, fair skin, strong features, light eyes, long straight hair, black hair, casual clothes, t-shirt and jeans, everyday wear, happy, smiling, joyful, cheerful, standing, standing upright, real photo",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, young, elderly, woman, female, feminine, fat, muscular, overweight, formal",
+      "width": 512,
+      "height": 768
+    },
+    {
+      "name": "chinese_male+chinese_female@restaurant",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, restaurant, dining setting, tables, romantic atmosphere, warm lighting, golden hour, cozy, adult, man, male, slim body, slender, thin, Chinese, East Asian ",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, casual, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_male+chinese_female@restaurant",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, restaurant, dining setting, tables, romantic atmosphere, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Chinese,",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, casual, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_male+chinese_female@restaurant",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, restaurant, dining setting, tables, romantic atmosphere, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Chines",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, casual, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_male+chinese_female@beach",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, beach, sand, ocean, waves, seaside, warm lighting, golden hour, cozy, adult, man, male, slim body, slender, thin, Chinese, East Asian features, black hair,",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_male+chinese_female@beach",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, beach, sand, ocean, waves, seaside, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Chinese, East Asian features,",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_male+chinese_female@beach",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, beach, sand, ocean, waves, seaside, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Chinese, East Asian feature",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_male+chinese_female@city_street",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, city street, urban background, buildings, sidewalk, warm lighting, golden hour, cozy, adult, man, male, slim body, slender, thin, Chinese, East Asian featu",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_male+chinese_female@city_street",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, city street, urban background, buildings, sidewalk, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Chinese, East",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_male+chinese_female@city_street",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, city street, urban background, buildings, sidewalk, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Chinese, Ea",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_male+chinese_female@bedroom",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, bedroom, cozy atmosphere, soft lighting, bed, warm lighting, golden hour, cozy, adult, man, male, slim body, slender, thin, Chinese, East Asian features, b",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_male+chinese_female@bedroom",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, bedroom, cozy atmosphere, soft lighting, bed, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Chinese, East Asian",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_male+chinese_female@bedroom",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, bedroom, cozy atmosphere, soft lighting, bed, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Chinese, East Asi",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "japanese_male+japanese_female@restaurant",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, restaurant, dining setting, tables, romantic atmosphere, warm lighting, golden hour, cozy, adult, man, male, slim body, slender, thin, Japanese, East Asian",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, casual, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "japanese_male+japanese_female@restaurant",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, restaurant, dining setting, tables, romantic atmosphere, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Japanese",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, casual, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "japanese_male+japanese_female@restaurant",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, restaurant, dining setting, tables, romantic atmosphere, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Japane",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, casual, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "japanese_male+japanese_female@beach",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, beach, sand, ocean, waves, seaside, warm lighting, golden hour, cozy, adult, man, male, slim body, slender, thin, Japanese, East Asian features, straight b",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "japanese_male+japanese_female@beach",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, beach, sand, ocean, waves, seaside, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Japanese, East Asian features",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "japanese_male+japanese_female@beach",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, beach, sand, ocean, waves, seaside, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Japanese, East Asian featur",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "japanese_male+japanese_female@city_street",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, city street, urban background, buildings, sidewalk, warm lighting, golden hour, cozy, adult, man, male, slim body, slender, thin, Japanese, East Asian feat",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "japanese_male+japanese_female@city_street",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, city street, urban background, buildings, sidewalk, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Japanese, Eas",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "japanese_male+japanese_female@city_street",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, city street, urban background, buildings, sidewalk, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Japanese, E",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "japanese_male+japanese_female@bedroom",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, bedroom, cozy atmosphere, soft lighting, bed, warm lighting, golden hour, cozy, adult, man, male, slim body, slender, thin, Japanese, East Asian features, ",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "japanese_male+japanese_female@bedroom",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, bedroom, cozy atmosphere, soft lighting, bed, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Japanese, East Asia",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "japanese_male+japanese_female@bedroom",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, bedroom, cozy atmosphere, soft lighting, bed, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Japanese, East As",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "korean_male+korean_female@restaurant",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, restaurant, dining setting, tables, romantic atmosphere, warm lighting, golden hour, cozy, adult, man, male, slim body, slender, thin, Korean, East Asian f",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, casual, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "korean_male+korean_female@restaurant",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, restaurant, dining setting, tables, romantic atmosphere, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Korean, ",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, casual, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "korean_male+korean_female@restaurant",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, restaurant, dining setting, tables, romantic atmosphere, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Korean",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, casual, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "korean_male+korean_female@beach",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, beach, sand, ocean, waves, seaside, warm lighting, golden hour, cozy, adult, man, male, slim body, slender, thin, Korean, East Asian features, flawless ski",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "korean_male+korean_female@beach",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, beach, sand, ocean, waves, seaside, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Korean, East Asian features, ",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "korean_male+korean_female@beach",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, beach, sand, ocean, waves, seaside, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Korean, East Asian features",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "korean_male+korean_female@city_street",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, city street, urban background, buildings, sidewalk, warm lighting, golden hour, cozy, adult, man, male, slim body, slender, thin, Korean, East Asian featur",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "korean_male+korean_female@city_street",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, city street, urban background, buildings, sidewalk, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Korean, East ",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "korean_male+korean_female@city_street",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, city street, urban background, buildings, sidewalk, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Korean, Eas",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "korean_male+korean_female@bedroom",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, bedroom, cozy atmosphere, soft lighting, bed, warm lighting, golden hour, cozy, adult, man, male, slim body, slender, thin, Korean, East Asian features, fl",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "korean_male+korean_female@bedroom",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, bedroom, cozy atmosphere, soft lighting, bed, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Korean, East Asian ",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "korean_male+korean_female@bedroom",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, bedroom, cozy atmosphere, soft lighting, bed, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Korean, East Asia",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_male+russian_female@restaurant",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, restaurant, dining setting, tables, romantic atmosphere, warm lighting, golden hour, cozy, adult, man, male, slim body, slender, thin, Chinese, East Asian ",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, casual, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_male+russian_female@restaurant",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, restaurant, dining setting, tables, romantic atmosphere, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Chinese,",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, casual, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_male+russian_female@restaurant",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, restaurant, dining setting, tables, romantic atmosphere, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Chines",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, casual, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_male+russian_female@beach",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, beach, sand, ocean, waves, seaside, warm lighting, golden hour, cozy, adult, man, male, slim body, slender, thin, Chinese, East Asian features, black hair,",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_male+russian_female@beach",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, beach, sand, ocean, waves, seaside, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Chinese, East Asian features,",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_male+russian_female@beach",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, beach, sand, ocean, waves, seaside, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Chinese, East Asian feature",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_male+russian_female@city_street",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, city street, urban background, buildings, sidewalk, warm lighting, golden hour, cozy, adult, man, male, slim body, slender, thin, Chinese, East Asian featu",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_male+russian_female@city_street",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, city street, urban background, buildings, sidewalk, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Chinese, East",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_male+russian_female@city_street",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, city street, urban background, buildings, sidewalk, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Chinese, Ea",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_male+russian_female@bedroom",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, bedroom, cozy atmosphere, soft lighting, bed, warm lighting, golden hour, cozy, adult, man, male, slim body, slender, thin, Chinese, East Asian features, b",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_male+russian_female@bedroom",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, bedroom, cozy atmosphere, soft lighting, bed, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Chinese, East Asian",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_male+russian_female@bedroom",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, bedroom, cozy atmosphere, soft lighting, bed, natural lighting, daylight, soft sunlight, adult, man, male, slim body, slender, thin, Chinese, East Asi",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_female+american_male@restaurant",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, restaurant, dining setting, tables, romantic atmosphere, warm lighting, golden hour, cozy, adult, woman, female, slim body, slender, thin, Chinese, East As",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white, casual, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_female+american_male@restaurant",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, restaurant, dining setting, tables, romantic atmosphere, natural lighting, daylight, soft sunlight, adult, woman, female, slim body, slender, thin, Chin",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white, casual, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_female+american_male@restaurant",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, restaurant, dining setting, tables, romantic atmosphere, natural lighting, daylight, soft sunlight, adult, woman, female, slim body, slender, thin, Ch",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white, casual, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_female+american_male@beach",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, beach, sand, ocean, waves, seaside, warm lighting, golden hour, cozy, adult, woman, female, slim body, slender, thin, Chinese, East Asian features, black h",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_female+american_male@beach",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, beach, sand, ocean, waves, seaside, natural lighting, daylight, soft sunlight, adult, woman, female, slim body, slender, thin, Chinese, East Asian featu",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_female+american_male@beach",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, beach, sand, ocean, waves, seaside, natural lighting, daylight, soft sunlight, adult, woman, female, slim body, slender, thin, Chinese, East Asian fea",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_female+american_male@city_street",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, city street, urban background, buildings, sidewalk, warm lighting, golden hour, cozy, adult, woman, female, slim body, slender, thin, Chinese, East Asian f",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_female+american_male@city_street",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, city street, urban background, buildings, sidewalk, natural lighting, daylight, soft sunlight, adult, woman, female, slim body, slender, thin, Chinese, ",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_female+american_male@city_street",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, city street, urban background, buildings, sidewalk, natural lighting, daylight, soft sunlight, adult, woman, female, slim body, slender, thin, Chinese",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_female+american_male@bedroom",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, bedroom, cozy atmosphere, soft lighting, bed, warm lighting, golden hour, cozy, adult, woman, female, slim body, slender, thin, Chinese, East Asian feature",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_female+american_male@bedroom",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, bedroom, cozy atmosphere, soft lighting, bed, natural lighting, daylight, soft sunlight, adult, woman, female, slim body, slender, thin, Chinese, East A",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_female+american_male@bedroom",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, bedroom, cozy atmosphere, soft lighting, bed, natural lighting, daylight, soft sunlight, adult, woman, female, slim body, slender, thin, Chinese, East",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, white, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "japanese_female+british_male@restaurant",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, restaurant, dining setting, tables, romantic atmosphere, warm lighting, golden hour, cozy, adult, woman, female, slim body, slender, thin, Japanese, East A",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, casual, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, asian, african",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "japanese_female+british_male@restaurant",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, restaurant, dining setting, tables, romantic atmosphere, natural lighting, daylight, soft sunlight, adult, woman, female, slim body, slender, thin, Japa",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, casual, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, asian, african",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "japanese_female+british_male@restaurant",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, restaurant, dining setting, tables, romantic atmosphere, natural lighting, daylight, soft sunlight, adult, woman, female, slim body, slender, thin, Ja",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, casual, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, asian, african",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "japanese_female+british_male@beach",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, beach, sand, ocean, waves, seaside, warm lighting, golden hour, cozy, adult, woman, female, slim body, slender, thin, Japanese, East Asian features, straig",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, asian, african, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "japanese_female+british_male@beach",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, beach, sand, ocean, waves, seaside, natural lighting, daylight, soft sunlight, adult, woman, female, slim body, slender, thin, Japanese, East Asian feat",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, asian, african, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "japanese_female+british_male@beach",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, beach, sand, ocean, waves, seaside, natural lighting, daylight, soft sunlight, adult, woman, female, slim body, slender, thin, Japanese, East Asian fe",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, asian, african, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "japanese_female+british_male@city_street",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, city street, urban background, buildings, sidewalk, warm lighting, golden hour, cozy, adult, woman, female, slim body, slender, thin, Japanese, East Asian ",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, asian, african, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "japanese_female+british_male@city_street",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, city street, urban background, buildings, sidewalk, natural lighting, daylight, soft sunlight, adult, woman, female, slim body, slender, thin, Japanese,",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, asian, african, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "japanese_female+british_male@city_street",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, city street, urban background, buildings, sidewalk, natural lighting, daylight, soft sunlight, adult, woman, female, slim body, slender, thin, Japanes",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, asian, african, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "japanese_female+british_male@bedroom",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, bedroom, cozy atmosphere, soft lighting, bed, warm lighting, golden hour, cozy, adult, woman, female, slim body, slender, thin, Japanese, East Asian featur",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, asian, african, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "japanese_female+british_male@bedroom",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, bedroom, cozy atmosphere, soft lighting, bed, natural lighting, daylight, soft sunlight, adult, woman, female, slim body, slender, thin, Japanese, East ",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, asian, african, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "japanese_female+british_male@bedroom",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, bedroom, cozy atmosphere, soft lighting, bed, natural lighting, daylight, soft sunlight, adult, woman, female, slim body, slender, thin, Japanese, Eas",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, asian, african, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "korean_female+french_male@restaurant",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, restaurant, dining setting, tables, romantic atmosphere, warm lighting, golden hour, cozy, adult, woman, female, slim body, slender, thin, Korean, East Asi",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, casual, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "korean_female+french_male@restaurant",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, restaurant, dining setting, tables, romantic atmosphere, natural lighting, daylight, soft sunlight, adult, woman, female, slim body, slender, thin, Kore",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, casual, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "korean_female+french_male@restaurant",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, restaurant, dining setting, tables, romantic atmosphere, natural lighting, daylight, soft sunlight, adult, woman, female, slim body, slender, thin, Ko",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, casual, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "korean_female+french_male@beach",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, beach, sand, ocean, waves, seaside, warm lighting, golden hour, cozy, adult, woman, female, slim body, slender, thin, Korean, East Asian features, flawless",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "korean_female+french_male@beach",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, beach, sand, ocean, waves, seaside, natural lighting, daylight, soft sunlight, adult, woman, female, slim body, slender, thin, Korean, East Asian featur",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "korean_female+french_male@beach",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, beach, sand, ocean, waves, seaside, natural lighting, daylight, soft sunlight, adult, woman, female, slim body, slender, thin, Korean, East Asian feat",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "korean_female+french_male@city_street",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, city street, urban background, buildings, sidewalk, warm lighting, golden hour, cozy, adult, woman, female, slim body, slender, thin, Korean, East Asian fe",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "korean_female+french_male@city_street",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, city street, urban background, buildings, sidewalk, natural lighting, daylight, soft sunlight, adult, woman, female, slim body, slender, thin, Korean, E",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "korean_female+french_male@city_street",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, city street, urban background, buildings, sidewalk, natural lighting, daylight, soft sunlight, adult, woman, female, slim body, slender, thin, Korean,",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "korean_female+french_male@bedroom",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, romantic, loving, intimate couple, standing together, side by side, bedroom, cozy atmosphere, soft lighting, bed, warm lighting, golden hour, cozy, adult, woman, female, slim body, slender, thin, Korean, East Asian features",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, fighting, angry, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "korean_female+french_male@bedroom",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, kissing, passionate kiss, making out, standing together, side by side, bedroom, cozy atmosphere, soft lighting, bed, natural lighting, daylight, soft sunlight, adult, woman, female, slim body, slender, thin, Korean, East As",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "korean_female+french_male@bedroom",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, full body shot, entire body visible, couple, loving pair, together, hugging, embracing, holding each other, standing together, side by side, bedroom, cozy atmosphere, soft lighting, bed, natural lighting, daylight, soft sunlight, adult, woman, female, slim body, slender, thin, Korean, East ",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, man, male, masculine, fat, muscular, overweight, western, caucasian, formal, worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, malformed limbs, missing arms, missing legs, watermark, text, mutated hands, fused fingers, too many fingers, bad hands, missing fingers, extra digits, bad feet, cropped, out of frame, child, elderly, woman, female, feminine, fat, muscular, overweight, formal",
+      "width": 768,
+      "height": 512
+    },
+    {
+      "name": "chinese_nuclear_family",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, wide shot, establishing shot, family, family members, family portrait, nuclear family, parents with children, group standing together, posed, park, green grass, trees, nature, sunny, natural lighting, daylight, soft sunlight, four people",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers",
+      "width": 1024,
+      "height": 768
+    },
+    {
+      "name": "chinese_three_generations",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, wide shot, establishing shot, family, family members, family portrait, three generations, grandparents, parents, children, group standing together, posed, garden, flowers, plants, beautiful landscaping, natural lighting, daylight, soft sunlight, 6 people",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers",
+      "width": 1024,
+      "height": 768
+    },
+    {
+      "name": "japanese_nuclear_family",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, wide shot, establishing shot, family, family members, family portrait, nuclear family, parents with children, group standing together, posed, park, green grass, trees, nature, sunny, natural lighting, daylight, soft sunlight, four people",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers",
+      "width": 1024,
+      "height": 768
+    },
+    {
+      "name": "japanese_three_generations",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, wide shot, establishing shot, family, family members, family portrait, three generations, grandparents, parents, children, group standing together, posed, garden, flowers, plants, beautiful landscaping, natural lighting, daylight, soft sunlight, 6 people",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers",
+      "width": 1024,
+      "height": 768
+    },
+    {
+      "name": "korean_nuclear_family",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, wide shot, establishing shot, family, family members, family portrait, nuclear family, parents with children, group standing together, posed, park, green grass, trees, nature, sunny, natural lighting, daylight, soft sunlight, four people",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers",
+      "width": 1024,
+      "height": 768
+    },
+    {
+      "name": "korean_three_generations",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, wide shot, establishing shot, family, family members, family portrait, three generations, grandparents, parents, children, group standing together, posed, garden, flowers, plants, beautiful landscaping, natural lighting, daylight, soft sunlight, 6 people",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers",
+      "width": 1024,
+      "height": 768
+    },
+    {
+      "name": "indian_nuclear_family",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, wide shot, establishing shot, family, family members, family portrait, nuclear family, parents with children, group standing together, posed, park, green grass, trees, nature, sunny, natural lighting, daylight, soft sunlight, four people",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers",
+      "width": 1024,
+      "height": 768
+    },
+    {
+      "name": "indian_three_generations",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, wide shot, establishing shot, family, family members, family portrait, three generations, grandparents, parents, children, group standing together, posed, garden, flowers, plants, beautiful landscaping, natural lighting, daylight, soft sunlight, 6 people",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers",
+      "width": 1024,
+      "height": 768
+    },
+    {
+      "name": "american_nuclear_family",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, wide shot, establishing shot, family, family members, family portrait, nuclear family, parents with children, group standing together, posed, park, green grass, trees, nature, sunny, natural lighting, daylight, soft sunlight, four people",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers",
+      "width": 1024,
+      "height": 768
+    },
+    {
+      "name": "american_three_generations",
+      "prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed, wide shot, establishing shot, family, family members, family portrait, three generations, grandparents, parents, children, group standing together, posed, garden, flowers, plants, beautiful landscaping, natural lighting, daylight, soft sunlight, 6 people",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, watermark, text, mutated hands, fused fingers",
+      "width": 1024,
+      "height": 768
+    }
+  ]
+}

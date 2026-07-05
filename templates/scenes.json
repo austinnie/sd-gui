@@ -1,0 +1,58 @@
+{
+    "场景类型": {
+        "indoor": {"prompt": "indoors, interior setting", "negative": "outdoor"},
+        "outdoor": {"prompt": "outdoors, exterior, open air", "negative": "indoor"},
+        "studio": {"prompt": "studio photography, professional backdrop, seamless background", "negative": "natural setting"}
+    },
+    "具体场景": {
+        "bedroom": {"prompt": "bedroom, cozy atmosphere, soft lighting, bed", "negative": "office"},
+        "living_room": {"prompt": "living room, comfortable home setting, sofa", "negative": ""},
+        "kitchen": {"prompt": "kitchen, cooking area, modern appliances", "negative": ""},
+        "office": {"prompt": "office, professional environment, desk, computer", "negative": ""},
+        "beach": {"prompt": "beach, sand, ocean, waves, seaside", "negative": "city"},
+        "park": {"prompt": "park, green grass, trees, nature, sunny", "negative": ""},
+        "city_street": {"prompt": "city street, urban background, buildings, sidewalk", "negative": ""},
+        "restaurant": {"prompt": "restaurant, dining setting, tables, romantic atmosphere", "negative": ""},
+        "cafe": {"prompt": "cafe, coffee shop, cozy interior, coffee cups", "negative": ""},
+        "gym": {"prompt": "gym, fitness center, workout equipment", "negative": ""},
+        "pool": {"prompt": "swimming pool, water, lounge chairs", "negative": ""},
+        "forest": {"prompt": "forest, trees, woods, natural setting, sunlight through leaves", "negative": ""},
+        "mountain": {"prompt": "mountain, scenic view, landscape", "negative": ""},
+        "garden": {"prompt": "garden, flowers, plants, beautiful landscaping", "negative": ""},
+        "school": {"prompt": "school, classroom, educational setting", "negative": ""},
+        "hospital": {"prompt": "hospital, medical setting, clean", "negative": ""},
+        "wedding": {"prompt": "wedding venue, ceremony, romantic decoration", "negative": ""},
+        "party": {"prompt": "party, celebration, festive atmosphere", "negative": ""}
+    },
+    "灯光": {
+        "natural": {"prompt": "natural lighting, daylight, soft sunlight", "negative": "artificial"},
+        "warm": {"prompt": "warm lighting, golden hour, cozy", "negative": "cold"},
+        "cold": {"prompt": "cold lighting, blue tone, clinical", "negative": "warm"},
+        "dramatic": {"prompt": "dramatic lighting, strong shadows, contrast", "negative": "flat"},
+        "soft": {"prompt": "soft lighting, diffused, gentle", "negative": "harsh"},
+        "neon": {"prompt": "neon lighting, cyberpunk, colorful", "negative": "natural"},
+        "studio": {"prompt": "studio lighting, professional, well-lit", "negative": "natural"},
+        "candlelight": {"prompt": "candlelight, romantic, flickering", "negative": "bright"},
+        "sunset": {"prompt": "sunset lighting, golden, warm glow", "negative": ""},
+        "night": {"prompt": "night lighting, dark, street lamps", "negative": "day"}
+    },
+    "画质": {
+        "standard": {"prompt": "high quality, detailed", "negative": "low quality"},
+        "photorealistic": {"prompt": "photorealistic, real photo, 8k, ultra HD, highly detailed", "negative": "anime, drawing, cartoon"},
+        "artistic": {"prompt": "artistic, painting style, masterpiece", "negative": "photo"},
+        "anime": {"prompt": "anime style, manga, Japanese animation", "negative": "realistic"},
+        "cinematic": {"prompt": "cinematic lighting, movie still, film grain", "negative": ""},
+        "portrait": {"prompt": "portrait photography, professional, bokeh background", "negative": ""},
+        "fashion": {"prompt": "fashion photography, editorial, glamorous", "negative": "amateur"}
+    },
+    "构图": {
+        "full_body": {"prompt": "full body shot, entire body visible", "negative": "cropped, close up"},
+        "half_body": {"prompt": "half body shot, from waist up", "negative": "full body"},
+        "headshot": {"prompt": "headshot, face only", "negative": "body"},
+        "close_up": {"prompt": "close up, detailed view", "negative": "wide shot"},
+        "wide_shot": {"prompt": "wide shot, establishing shot", "negative": "close up"},
+        "eye_level": {"prompt": "eye level shot", "negative": ""},
+        "low_angle": {"prompt": "low angle shot, looking up", "negative": ""},
+        "high_angle": {"prompt": "high angle shot, looking down", "negative": ""}
+    }
+}
