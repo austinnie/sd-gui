@@ -13,10 +13,16 @@ import argparse
 from datetime import datetime
 from PIL import Image
 
+# ==================== 统一缓存目录 ====================
+CACHE_ROOT = r"E:\hf_cache\.cache"
+os.environ['DEEPFACE_HOME'] = os.path.join(CACHE_ROOT, "deepface")
+os.makedirs(os.environ['DEEPFACE_HOME'], exist_ok=True)
+
 # 尝试导入 deepface（可选）
 try:
     from deepface import DeepFace
     DEEPFACE_AVAILABLE = True
+    print(f"✅ deepface 已加载，缓存目录: {os.environ['DEEPFACE_HOME']}")
 except ImportError:
     DEEPFACE_AVAILABLE = False
     print("⚠️ deepface 未安装，性别检测将使用默认值")
@@ -214,7 +220,7 @@ class MarbleConfigGenerator:
             gender_negative = "woman, female, feminine, breasts, curvy, soft features, girly"
             pronoun = "he"
         else:
-            base_prompt = "a beautiful woman turned into a flawless pure white marble statue, full body, full length, entire figure, , same woman, same face, same features, feminine figure, elegant pose"
+            base_prompt = "a beautiful woman turned into a flawless pure white marble statue, full body, full length, entire figure, same woman, same face, same features, feminine figure, elegant pose"
             gender_negative = "man, male, masculine, beard, mustache, muscular, broad shoulders, masculine features, bodybuilder"
             pronoun = "she"
         

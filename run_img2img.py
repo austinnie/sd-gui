@@ -12,12 +12,26 @@ import json
 import gc
 import torch
 import argparse
-from PIL import Image
-from diffusers import StableDiffusionPipeline, StableDiffusionXLPipeline, StableDiffusionInpaintPipeline
 from datetime import datetime
 import multiprocessing
 import numpy as np
-from rembg import remove  # 自动去背景库
+
+# ==================== 统一缓存目录（必须在导入库之前设置）====================
+CACHE_ROOT = r"E:\hf_cache\.cache"
+
+os.environ['HF_HOME'] = CACHE_ROOT
+os.environ['U2NET_HOME'] = os.path.join(CACHE_ROOT, "u2net")
+os.environ['DEEPFACE_HOME'] = os.path.join(CACHE_ROOT, "deepface")
+
+for env_var in ['HF_HOME', 'U2NET_HOME', 'DEEPFACE_HOME']:
+    path = os.environ[env_var]
+    os.makedirs(path, exist_ok=True)
+    print(f"📁 {env_var} = {path}")
+
+# ✅ 现在导入依赖
+from PIL import Image
+from diffusers import StableDiffusionPipeline, StableDiffusionXLPipeline, StableDiffusionInpaintPipeline
+from rembg import remove
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gui.tabs.img2img_tab import auto_shorten_prompt, safe_del
