@@ -157,6 +157,20 @@ class ModelManager:
             if progress_callback:
                 progress_callback(0.6, f"⚙️ 配置优化...")
 
+            # ===== 【新增】加载 LoRA =====
+            if lora_path and os.path.exists(lora_path):
+                try:
+                    print(f"🔗 加载 LoRA: {os.path.basename(lora_path)} (权重: {lora_weight})")
+                    pipe.load_lora_weights(lora_path)
+                    # 设置 LoRA 权重
+                    if lora_weight != 1.0:
+                        # 如果权重不是 1.0，需要重新调整
+                        for name, _ in pipe.lora_weights.items():
+                            pipe.lora_weights[name] = lora_weight
+                    print(f"✅ LoRA 加载成功")
+                except Exception as e:
+                    print(f"⚠️ LoRA 加载失败: {e}")
+                
             # ✅ 获取用户选择的调度器
             scheduler_name = self.app.params_panel.get_scheduler_type()
     
@@ -493,6 +507,35 @@ class SDApp:
         self.reload_btn = ttk.Button(model_frame, text="🔄 重载模块", command=self._reload_modules)
         self.reload_btn.pack(side=tk.LEFT, padx=5)
         
+        # ===== 【新增】LoRA 选择 =====
+        lora_frame = ttk.Frame(main_frame)
+        lora_frame.pack(fill=tk.X, pady=2, padx=5)
+
+        ttk.Label(lora_frame, text="🔗 LoRA 模型:").pack(side=tk.LEFT, padx=5)
+
+        self.lora_var = tk.StringVar(value="")
+        self.lora_combo = ttk.Combobox(lora_frame, textvariable=self.lora_var, width=40)
+        self.lora_combo.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
+
+        ttk.Label(lora_frame, text="权重:").pack(side=tk.LEFT, padx=5)
+        self.lora_weight_var = tk.DoubleVar(value=1.0)
+        self.lora_weight_spinbox = ttk.Spinbox(
+            lora_frame,
+            from_=0.0,
+            to=2.0,
+            increment=0.1,
+            textvariable=self.lora_weight_var,
+            width=6
+        )
+        self.lora_weight_spinbox.pack(side=tk.LEFT, padx=5)
+
+        self.clear_lora_btn = ttk.Button(
+            lora_frame,
+            text="✖ 清除",
+            command=self._clear_lora
+        )
+        self.clear_lora_btn.pack(side=tk.LEFT, padx=5)
+        
         # ===== 状态信息 =====
         opt_info = self._get_optimization_info()
         ttk.Label(main_frame, text=opt_info, foreground="purple", font=("", 8)).pack(anchor=tk.W, padx=5)
@@ -533,7 +576,15 @@ class SDApp:
         self.model_combo['values'] = self.checkpoints
         if self.checkpoints:
             self.model_var.set(self.checkpoints[0])
-        
+
+
+        # ✅ 扫描 LoRA
+        self.lora_files, self.lora_paths = self._scan_loras()
+        self.lora_combo['values'] = self.lora_files
+        if self.lora_files:
+            self.lora_var.set("")  # 默认不选择
+
+    
         self._update_model_ui()
     
     def _update_model_ui(self):
@@ -646,6 +697,15 @@ class SDApp:
         if not model_path:
             self.update_status("❌ 找不到模型文件")
             return
+            
+        # ✅ 获取 LoRA 信息
+        lora_display = self.lora_var.get()
+        lora_path = None
+        lora_weight = 1.0
+        if lora_display and lora_display in self.lora_paths:
+            lora_path = self.lora_paths[lora_display]
+            lora_weight = self.lora_weight_var.get()
+            print(f"🔗 将加载 LoRA: {lora_display} (权重: {lora_weight})")
         
         self.update_status(f"📦 加载 SD 模型...")
         self.load_btn.config(state=tk.DISABLED)
@@ -679,7 +739,47 @@ class SDApp:
             self._load_sd_model()
         else:
             self.update_status("⚠️ 未找到模型文件，请检查模型目录")
-    
+
+    def _scan_loras(self):
+        """扫描所有 LoRA 文件"""
+        lora_files = []
+        lora_paths = {}
+        
+        for search_dir in app_config.paths.lora_base_paths:
+            if not os.path.exists(search_dir):
+                continue
+            for item in os.listdir(search_dir):
+                if item.endswith('.safetensors'):
+                    file_path = os.path.join(search_dir, item)
+                    size_mb = os.path.getsize(file_path) // (1024 * 1024)
+                    display_name = f"{item} ({size_mb}MB)"
+                    lora_files.append(display_name)
+                    lora_paths[display_name] = file_path
+        
+        return lora_files, lora_paths
+
+    def _clear_lora(self):
+        """清除 LoRA 选择"""
+        self.lora_var.set("")
+        self.lora_weight_var.set(1.0)
+        self._update_lora_status()
+        
+        # 如果模型已加载，重新加载以移除 LoRA
+        if self.model_manager.is_sd_loaded:
+            # 重新加载当前模型（不带 LoRA）
+            model_name = self.model_var.get()
+            if model_name and model_name in self.checkpoint_paths:
+                self._load_sd_model()
+
+    def _update_lora_status(self):
+        """更新 LoRA 状态显示"""
+        lora_name = self.lora_var.get()
+        if lora_name:
+            weight = self.lora_weight_var.get()
+            self.update_status(f"🔗 LoRA: {lora_name} (权重: {weight:.1f})")
+        else:
+            self.update_status("🔗 未加载 LoRA")
+        
     def _get_optimization_info(self) -> str:
         mem = app_config.memory
         info = "⚡ 内存优化: "
