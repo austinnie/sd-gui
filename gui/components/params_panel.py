@@ -149,15 +149,40 @@ class ParamsPanel:
 
         # ✅ 调度器选择（放在数量后面）
         ttk.Label(param_row1, text="调度器:").pack(side=tk.LEFT, padx=5)
+        
+        # ✅ 定义切换事件（必须在 bind 之前）
+        def on_scheduler_change(event):
+            from utils.scheduler_factory import get_scheduler_recommended_steps
+            scheduler = self.scheduler_var.get()
+            recommended = get_scheduler_recommended_steps(scheduler)
+            # 更新步数为推荐值
+            self.steps_var.set(recommended)
+            print(f"🔄 切换到 {scheduler}，推荐步数: {recommended}")
+    
         scheduler_combo = ttk.Combobox(
             param_row1,
             textvariable=self.scheduler_var,
-            values=["euler", "dpm", "lms", "pndm"],
-            width=6,
+            values=[
+                "euler",           # EulerDiscreteScheduler - 稳定写实
+                "euler_ancestral", # EulerAncestralDiscreteScheduler - 创造性强
+                "dpm",             # DPMSolverMultistepScheduler - 速度快
+                "dpm++",           # DPMSolver++ - 更优版本
+                "lms",             # LMSDiscreteScheduler - 艺术风格
+                "heun",            # HeunDiscreteScheduler - 高精度
+                "pndm",            # PNDMScheduler - 经典稳定
+                "unipc",           # UniPCMultistepScheduler - 极速
+                "deis",            # DEISMultistepScheduler - 快速高质量
+                "ddim",            # DDIMScheduler - 确定性
+                "ddpm",            # DDPMScheduler - 标准扩散
+                "kdpm2",           # KDPM2DiscreteScheduler - Karras 高画质
+                "kdpm2_ancestral", # KDPM2AncestralDiscreteScheduler - Karras 创意
+            ],
+            width=10,
             state="readonly"
         )
         scheduler_combo.pack(side=tk.LEFT, padx=5)
-        scheduler_combo.set("euler")
+        scheduler_combo.set("euler")  # 默认
+        scheduler_combo.bind('<<ComboboxSelected>>', on_scheduler_change)
         
         # ===== 第二模块：预设尺寸 =====
         param_row2 = ttk.Frame(self.frame)
@@ -328,7 +353,18 @@ class ParamsPanel:
     def get_scheduler_type(self) -> str:
         """获取当前选择的调度器类型"""
         return self.scheduler_var.get()
-    
+
+    from utils.scheduler_factory import get_scheduler_description, get_scheduler_recommended_steps
+
+    def get_scheduler_info(self) -> dict:
+        """获取当前调度器的信息"""
+        scheduler = self.scheduler_var.get()
+        return {
+            "name": scheduler,
+            "description": get_scheduler_description(scheduler),
+            "recommended_steps": get_scheduler_recommended_steps(scheduler),
+        }
+        
     def get_postprocess_params(self) -> dict:
         """获取图片后期处理参数"""
         return {

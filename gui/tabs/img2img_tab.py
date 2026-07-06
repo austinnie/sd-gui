@@ -3,14 +3,8 @@
 """
 图生图标签页 - 集成完整的 SD 图生图逻辑
 """
-from utils import (
-    WatermarkRemover,
-    post_process_image,
-    get_scheduler,
-    inject_exif,
-    smart_clean_image,
-    make_photo_realistic
-)
+from utils.watermark_remover import WatermarkRemover
+from utils.image_post_processor import post_process_image
 
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
