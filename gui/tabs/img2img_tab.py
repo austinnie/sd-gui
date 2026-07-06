@@ -5,6 +5,7 @@
 """
 from utils.watermark_remover import WatermarkRemover
 from utils.image_post_processor import post_process_image
+from utils.scheduler_fix import fix_euler_scheduler_for_img2img
 
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
@@ -228,6 +229,13 @@ class Img2ImgTab(BaseTab):
         self.cancel_btn = ttk.Button(btn_frame, text="⏹️ 取消", command=self.cancel_generation, state=tk.DISABLED)
         self.cancel_btn.pack(side=tk.LEFT, padx=10)
         ttk.Button(btn_frame, text="📁 打开输出文件夹", command=self.app.open_output_folder).pack(side=tk.LEFT, padx=10)
+        
+        # 在 btn_frame 中添加
+        ttk.Button(
+            btn_frame,
+            text="🎯 强度测试",
+            command=self._run_strength_test
+        ).pack(side=tk.LEFT, padx=5)       
     
     def _select_images(self):
         """选择图片"""
@@ -474,10 +482,13 @@ class Img2ImgTab(BaseTab):
             saved_paths = []
             start_time = time.time()
             
-
+            # ===== 1. 获取 pipeline 并修复调度器 =====
             pipe = self.app.pipeline
-
-            # ===== [新增] 如果启用了局部重绘，切换为 Inpaint 管道 =====
+            
+            ## ✅ 修复：使用 strength 变量，不是 current_strength
+            pipe, steps, current_strength = fix_euler_scheduler_for_img2img(pipe, steps, strength)
+            
+            # ===== 2. 如果启用了局部重绘，切换为 Inpaint 管道 =====
             use_inpaint = self.use_inpaint_var.get()
             mask_image = self.mask_image
             
@@ -517,6 +528,10 @@ class Img2ImgTab(BaseTab):
                     
                     # 切换到 Inpaint 管道
                     pipe = self._inpaint_pipe
+
+                    # ✅ 如果是 Inpaint 管道，也需要修复调度器
+                    pipe, steps, current_strength = fix_euler_scheduler_for_img2img(pipe, steps, current_strength)
+                    
                     # 将遮罩转换为灰度图
                     mask_tensor = mask_image.convert("L")
                     print(f"🖌️ 启用局部重绘，遮罩已加载")
@@ -552,12 +567,12 @@ class Img2ImgTab(BaseTab):
             if target_height > 0:
                 target_height = min(max_cpu_h, max(size_cfg["min_height"], target_height))
             
-            # ✅ 【修复】重置调度器状态，防止 Euler 调度器在图生图中索引越界
-            from diffusers import EulerDiscreteScheduler
-            if hasattr(pipe, 'scheduler') and isinstance(pipe.scheduler, EulerDiscreteScheduler):
-                # 重新创建调度器，清除内部状态
-                pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
-                print("   🔄 Euler 调度器已重置")
+            ## ✅ 【修复】重置调度器状态，防止 Euler 调度器在图生图中索引越界
+            #from diffusers import EulerDiscreteScheduler
+            #if hasattr(pipe, 'scheduler') and isinstance(pipe.scheduler, EulerDiscreteScheduler):
+            #    # 重新创建调度器，清除内部状态
+            #    pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
+            #    print("   🔄 Euler 调度器已重置")
     
             for img_idx, init_image in enumerate(images):
                 self.update_progress(img_idx / total_images, f"🔄 正在处理图片 {img_idx+1}/{len(images)}...")
@@ -880,6 +895,8 @@ class Img2ImgTab(BaseTab):
         # 说明标签
         ttk.Label(mask_window, text="💡 在图片上涂抹红色区域，这些区域将被重新生成（用于去除衣物等）").pack(pady=5)
     
+
+    
     # ==================== 外部调用接口 ====================
 
     
@@ -962,7 +979,113 @@ class Img2ImgTab(BaseTab):
             self.selected_images = original_images
             self.is_generating = False
             self.update_status("✅ 批量生成完成")
+          
+
+    def _run_strength_test(self):
+        """运行强度批量测试"""
+        if not self.selected_images:
+            messagebox.showwarning("提示", "请先选择一张图片")
+            return
+        
+        if self.is_generating:
+            messagebox.showwarning("提示", "正在生成中，请等待完成")
+            return
+        
+        if self.app.pipeline is None:
+            messagebox.showwarning("提示", "请先加载模型")
+            return
+        
+        # 获取提示词
+        prompt = self.prompt_text.get("1.0", tk.END).strip()
+        negative = self.neg_text.get("1.0", tk.END).strip()
+        
+        if not prompt:
+            # 如果图生图没有提示词，使用默认中性提示词
+            prompt = "a high-quality photograph, detailed, sharp focus, natural lighting"
+            self.update_status("ℹ️ 使用默认中性提示词")
+        
+        # 选择第一张图片
+        image_path = self.selected_images[0]
+        
+        # 确定基础强度
+        base_strength = self.strength_var.get()
+        
+        # 确认
+        if not messagebox.askyesno("确认测试",
+            f"将进行强度批量测试\n\n"
+            f"图片: {os.path.basename(image_path)}\n"
+            f"基础强度: {base_strength:.2f}\n"
+            f"测试范围: ±0.20\n"
+            f"预计生成 9 张图片\n\n"
+            f"确定开始吗？"
+        ):
+            return
+        
+        self.update_status("🧪 开始强度测试...")
+        self.generate_btn.config(state=tk.DISABLED)
+        
+        # 在后台线程中运行
+        import threading
+        threading.Thread(
+            target=self._run_strength_test_thread,
+            args=(image_path, prompt, negative, base_strength),
+            daemon=True
+        ).start()
+
+    def _run_strength_test_thread(self, image_path: str, prompt: str, negative: str, base_strength: float):
+        """后台线程运行强度测试"""
+        try:
+            from utils.strength_tester import run_strength_test
             
+            def progress_cb(current, total, msg):
+                self.app.root.after(0, lambda: self.app.update_progress(
+                    current / total,
+                    f"🧪 [{current}/{total}] {msg}"
+                ))
+            
+            result = run_strength_test(
+                app=self.app,
+                image_path=image_path,
+                prompt=prompt,
+                negative=negative,
+                base_strength=base_strength,
+                output_dir="./output/strength_tests",
+                progress_callback=progress_cb
+            )
+            
+            self.app.root.after(0, lambda: self._on_test_complete(result))
+            
+        except Exception as e:
+            self.app.root.after(0, lambda err=e: self._on_test_error(err))
+
+    def _on_test_complete(self, result):
+        """测试完成"""
+        self.is_generating = False
+        self.generate_btn.config(state=tk.NORMAL)
+        self.update_progress(1.0, "✅ 强度测试完成")
+        self.update_status(f"✅ 测试完成！共 {result['total']} 张，输出: {result['test_dir']}")
+        
+        # 打开输出目录
+        try:
+            os.startfile(result['test_dir'])
+        except:
+            pass
+        
+        messagebox.showinfo("测试完成",
+            f"✅ 强度测试完成\n\n"
+            f"测试数: {result['total']}\n"
+            f"成功: {sum(1 for r in result['results'] if r['success'])}\n"
+            f"输出目录: {result['test_dir']}\n\n"
+            f"📊 请查看 report.html 获得详细报告"
+        )
+
+    def _on_test_error(self, error):
+        """测试出错"""
+        self.is_generating = False
+        self.generate_btn.config(state=tk.NORMAL)
+        self.update_status(f"❌ 测试失败: {error}")
+        messagebox.showerror("错误", f"测试失败:\n{error}")
+    
 # ========== 辅助函数 ==========
 def safe_del(obj):
     try:

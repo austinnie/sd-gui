@@ -31,6 +31,17 @@ from .image_post_processor import (
     PostProcessConfig,
     post_process_file
 )
+
+from .strength_tester import (
+    StrengthTester,
+    run_strength_test
+)
+
+from .scheduler_fix import (          # ✅ 新增
+    fix_euler_scheduler_for_img2img,
+    fix_scheduler_before_step
+)
+
 from .scheduler_factory import (
     get_scheduler,
     get_scheduler_description
@@ -66,6 +77,14 @@ __all__ = [
     'post_process_image',
     'PostProcessConfig',
     'post_process_file',
+
+    # strength_tester
+    'StrengthTester',
+    'run_strength_test',
+    
+    # scheduler_fix                         # ✅ 新增
+    'fix_euler_scheduler_for_img2img',
+    'fix_scheduler_before_step',
     
     # scheduler_factory
     'get_scheduler',

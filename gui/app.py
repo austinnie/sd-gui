@@ -901,7 +901,12 @@ class SDApp:
             "utils.exif_injector",
             "utils.photo_realistic",
             "utils.image_post_processor",
-            "utils.scheduler_factory",  # ✅ 新增            
+            "utils.scheduler_factory",  # ✅ 新增   
+
+            "utils.strength_tester",      # ✅ 新增
+            "utils.scheduler_fix",        # ✅ 新增 
+
+         
         ]
         
         reloaded = []
