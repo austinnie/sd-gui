@@ -433,7 +433,13 @@ class PipelineTab(BaseTab):
             
             # 将 pipe 注入到流水线的上下文中
             def on_progress(current, total, msg):
-                self.app.root.after(0, lambda: self._update_progress(current, total, msg))
+                # ✅ 带 source
+                self.app.root.after(0, lambda: self.app.progress_bar.update(
+                    current / total,
+                    f"{msg} ({current}/{total})",
+                    "流水线"
+                ))
+            
             
             pipeline.set_progress_callback(on_progress)
             

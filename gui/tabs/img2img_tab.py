@@ -57,7 +57,7 @@ def auto_shorten_prompt(prompt, max_len=350):
 # ========== 进度回调类 ==========
 class Img2ImgStepCallback:
     def __init__(self, progress_callback, total_steps, start_time, cancel_flag_ref,
-                 img_idx, var_idx, total_imgs, total_vars):
+                 img_idx, var_idx, total_imgs, total_vars, source=""):  # ✅ 添加 source
         self.progress_callback = progress_callback
         self.total_steps = total_steps
         self.start_time = start_time
@@ -67,6 +67,7 @@ class Img2ImgStepCallback:
         self.var_idx = var_idx
         self.total_imgs = total_imgs
         self.total_vars = total_vars
+        self.source = source  # ✅ 新增
         
     def __call__(self, pipe, step, timestep, callback_kwargs):
         # ✅ 兼容两种方式
@@ -594,7 +595,11 @@ class Img2ImgTab(BaseTab):
             #    # 重新创建调度器，清除内部状态
             #    pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
             #    print("   🔄 Euler 调度器已重置")
-    
+
+            # ✅ 进度回调带 source
+            def progress_cb(value, msg):
+                self.app.root.after(0, lambda: self.app.progress_bar.update(value, msg, "图生图"))
+            
             for img_idx, init_image in enumerate(images):
                 self.update_progress(img_idx / total_images, f"🔄 正在处理图片 {img_idx+1}/{len(images)}...")
                 if self.cancel_generation:
@@ -668,10 +673,12 @@ class Img2ImgTab(BaseTab):
                     # 创建取消标志引用
                     cancel_flag = lambda: self.cancel_generation
                     
-                    # 创建进度回调
+
+                    # ✅ 步骤回调带 source
                     step_callback = Img2ImgStepCallback(
-                        self._progress_callback, steps, start_time, cancel_flag,
-                        img_idx, i, len(images), num_images_per
+                        progress_cb, steps, start_time, cancel_flag,
+                        img_idx, i, len(images), num_images_per,
+                        source="图生图"
                     )
                     
                     log("调用 pipeline...")

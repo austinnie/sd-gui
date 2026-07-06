@@ -425,37 +425,40 @@ class GridTestTab(BaseTab):
     
     def _run_in_thread(self, config_path):
         """在后台线程运行测试（使用独立 pipeline）"""
-
         from utils.pipeline_pool import pipeline_pool
         from PIL import Image
         import os
-    
+        
         def update_progress(current, total, name):
-            self.app.root.after(0, lambda: self._update_progress(current, total, name))
+            # ✅ 带 source
+            self.app.root.after(0, lambda: self.app.progress_bar.update(
+                current / total,
+                f"{name} ({current}/{total})",
+                "网格测试"
+            ))
+            self._append_log(f"[{current}/{total}] {name}")
         
         def update_log(msg):
             self.app.root.after(0, lambda: self._append_log(msg))
-
+        
         model_path = None
         lora_path = None
-    
+        model_type = "sd"
+        
         try:
             update_log("🚀 开始运行网格测试...")
             
-            # 获取选择的模型
             model_choice = self.model_choice_var.get()
             model_type = self.model_type_var.get()
             
-            # 读取配置文件
             with open(config_path, 'r', encoding='utf-8') as f:
                 config = json.load(f)
             
-            # 如果模型类型是 janus，设置 runner
             if model_type == "janus":
                 config['model_type'] = 'janus'
                 self.runner.model_type = 'janus'
+                self.runner.load_model(None, "janus")
             else:
-                # ✅ SD 模型：从 pool 获取独立 pipeline
                 if model_choice and hasattr(self.app, 'checkpoint_paths'):
                     model_path = self.app.checkpoint_paths.get(model_choice)
                 else:
@@ -465,8 +468,7 @@ class GridTestTab(BaseTab):
                     update_log("❌ 找不到模型文件")
                     self.app.root.after(0, self._on_finish)
                     return
-            
-                # 获取 LoRA 信息
+                
                 lora_path = None
                 lora_weight = 1.0
                 if hasattr(self.app, 'lora_var') and hasattr(self.app, 'lora_paths'):
@@ -475,16 +477,14 @@ class GridTestTab(BaseTab):
                         lora_path = self.app.lora_paths.get(lora_display)
                         lora_weight = self.app.lora_weight_var.get() if hasattr(self.app, 'lora_weight_var') else 1.0
                 
-                # ✅ 使用 pipeline_pool 获取独立实例
                 pipe, is_new = pipeline_pool.get_pipeline(
                     model_path=model_path,
                     model_name=os.path.basename(model_path),
                     lora_path=lora_path,
                     lora_weight=lora_weight,
-                    task_id=f"gridtest_{datetime.now().strftime('%H%M%S')}"  # ✅ 不同 ID
+                    task_id=f"gridtest_{datetime.now().strftime('%H%M%S')}"
                 )
                 
-                # 将 pipe 注入到 runner
                 self.runner.pipe = pipe
                 self.runner.model_type = 'sd'
                 self.runner._loaded = True
@@ -493,7 +493,7 @@ class GridTestTab(BaseTab):
                 update_log(f"📦 获取 Pipeline: {os.path.basename(model_path)}")
             
             results = self.runner.run_grid(config_path, update_progress)
-
+            
             # ===== 图片后期处理 =====
             from utils.image_post_processor import post_process_image
             
@@ -513,7 +513,6 @@ class GridTestTab(BaseTab):
                         except Exception as e:
                             update_log(f"⚠️ 后期处理失败: {e}")
             
-            # ✅ 释放 pipeline（仅 SD 模型）
             if model_type != "janus" and model_path:
                 pipeline_pool.release_pipeline(model_path, lora_path)
                 update_log("🗑️ Pipeline 已释放")
@@ -525,7 +524,6 @@ class GridTestTab(BaseTab):
             self.app.root.after(0, self._on_finish)
             
         except Exception as e:
-            # ✅ 出错时也要释放
             if model_type != "janus" and model_path:
                 try:
                     pipeline_pool.release_pipeline(model_path, lora_path)
@@ -535,6 +533,7 @@ class GridTestTab(BaseTab):
             import traceback
             traceback.print_exc()
             self.app.root.after(0, self._on_finish)
+
         
         
     def _update_progress(self, current, total, name):

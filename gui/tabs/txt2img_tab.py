@@ -229,12 +229,13 @@ def auto_shorten_prompt(prompt, max_len=350):
 
 
 class Txt2ImgStepCallback:
-    def __init__(self, progress_callback, total_steps, start_time, cancel_flag_ref):
+    def __init__(self, progress_callback, total_steps, start_time, cancel_flag_ref, source=""):
         self.progress_callback = progress_callback
         self.total_steps = total_steps
         self.start_time = start_time
         self.last_percent = 0
         self.cancel_flag_ref = cancel_flag_ref
+        self.source = source  # ✅ 新增
         
     def __call__(self, pipe, step, timestep, callback_kwargs):
         if self.cancel_flag_ref and callable(self.cancel_flag_ref):
@@ -679,7 +680,11 @@ class Txt2ImgTab(BaseTab):
             lora_weight=lora_weight,
             task_id=f"txt2img_{datetime.now().strftime('%H%M%S')}"  # ✅ 不同的 ID
         )
-    
+
+        # ✅ 定义进度回调（带 source）
+        def progress_cb(value, msg):
+            self.app.root.after(0, lambda: self.app.progress_bar.update(value, msg, "文生图"))
+        
         try:
             for i in range(num_images):
                 if self.cancel_generation:
@@ -785,7 +790,7 @@ class Txt2ImgTab(BaseTab):
             generator = torch.Generator("cpu").manual_seed(seed)
             
             cancel_flag = lambda: self.cancel_generation
-            step_callback = Txt2ImgStepCallback(progress_cb, steps, start_time, cancel_flag)
+            step_callback = Txt2ImgStepCallback(progress_cb, steps, start_time, cancel_flag, source="文生图")
             
             log("调用 pipeline...")
             with torch.no_grad():
@@ -975,8 +980,10 @@ class Txt2ImgTab(BaseTab):
         
         # ===== 更新进度 =====
         start_time = time.time()
+        
+        # ✅ 进度回调带 source
         def progress_cb(value, msg):
-            self.app.root.after(0, lambda: self.update_progress(value, msg))
+            self.app.root.after(0, lambda: self.app.progress_bar.update(value, msg, "文生图"))
         
         progress_cb((index - 1) / total, f"🎨 生成第 {index}/{total} 张...")
         
@@ -989,7 +996,12 @@ class Txt2ImgTab(BaseTab):
             generator = torch.Generator("cpu").manual_seed(seed)
             
             cancel_flag = lambda: self.cancel_generation
-            step_callback = Txt2ImgStepCallback(progress_cb, steps, start_time, cancel_flag)
+            
+            # ✅ 步骤回调带 source
+            step_callback = Txt2ImgStepCallback(
+                progress_cb, steps, start_time, cancel_flag,
+                source="文生图"
+            )
             
             log("调用 pipeline...")
             with torch.no_grad():
