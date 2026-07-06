@@ -111,7 +111,8 @@ def make_photo_realistic(
     style: str = "portrait",
     custom_params: Optional[Dict] = None,
     inject_exif_data: bool = True,
-    randomize: bool = True
+    randomize: bool = True,
+    strength: str = "medium"  # ✅ 新增
 ) -> str:
     """
     让 AI 图片看起来像真实相机照片
@@ -129,6 +130,20 @@ def make_photo_realistic(
     返回:
         输出路径
     """
+    # 映射 strength 到 ISO 等参数
+    strength_map = {
+        "light": {"iso": 200, "noise": 0.3, "vignette": 0.15},
+        "medium": {"iso": 400, "noise": 0.5, "vignette": 0.25},
+        "strong": {"iso": 800, "noise": 0.8, "vignette": 0.35},
+    }
+    
+    if custom_params is None:
+        custom_params = {}
+    
+    # 如果 custom_params 没有指定，使用 strength 映射
+    if "ISO" not in custom_params:
+        custom_params["ISO"] = strength_map.get(strength, strength_map["medium"])["iso"]
+        
     if output_path is None:
         base, ext = os.path.splitext(input_path)
         output_path = f"{base}_realistic.jpg"
