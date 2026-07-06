@@ -11,6 +11,8 @@ from .interrogate_tab import InterrogateTab
 from .universal_tab import UniversalTab
 from .scene_tab import SceneTab
 from .janus_tab import JanusTab
+from .grid_test_tab import GridTestTab
+from .pipeline_tab import PipelineTab
 
 __all__ = [
     'BaseTab',
@@ -19,5 +21,7 @@ __all__ = [
     'InterrogateTab',
     'UniversalTab',
     'SceneTab',
-    'JanusTab'
+    'JanusTab',
+    'GridTestTab',
+    'PipelineTab'
 ]

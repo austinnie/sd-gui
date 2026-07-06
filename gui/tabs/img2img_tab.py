@@ -4,6 +4,7 @@
 图生图标签页 - 集成完整的 SD 图生图逻辑
 """
 from utils.watermark_remover import WatermarkRemover
+from utils.image_post_processor import post_process_image
 
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
@@ -681,8 +682,41 @@ class Img2ImgTab(BaseTab):
                     os.makedirs(output_dir, exist_ok=True)
                     filepath = os.path.join(output_dir, filename)
                     image.save(filepath)
-                    
                     self.update_progress((img_idx + 1) / total_images, f"✅ 图片 {img_idx+1}/{len(images)} 已生成并保存。")
+                    
+                    # ===== 【新增】水印去除（图生图也支持） =====
+                    from utils.watermark_remover import WatermarkRemover
+                    watermark_remover = WatermarkRemover()
+                    
+                    if self.params.remove_watermark_var.get() and self.params.watermark_post_process_var.get():
+                        methods = ["opencv_inpaint", "opencv_blur"]
+                        cleaned = watermark_remover.remove_watermark(
+                            image,
+                            methods=methods,
+                            strength=self.params.watermark_strength_var.get(),
+                            auto_detect=self.params.watermark_auto_detect_var.get()
+                        )
+                        cleaned.save(filepath, quality=95)
+                        print(f"✅ 图生图水印已去除: {filename}")
+                    else:
+                        image.save(filepath)
+                    
+                    # ===== 图片后期处理（清理元数据/注入EXIF/真实化） =====
+                    from utils.image_post_processor import post_process_image
+                    
+                    final_path = post_process_image(
+                        filepath,
+                        self.params,
+                        prompt=prompt,
+                        log_prefix="[图生图]"
+                    )
+                    
+                    if final_path != filepath:
+                        try:
+                            os.remove(filepath)
+                        except:
+                            pass
+                        filepath = final_path
                     
                     # ===== 添加到预览 =====
                     self.app.root.after(0, lambda fp=filepath, img=image: self.app.add_to_preview(fp, img))

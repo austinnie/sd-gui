@@ -21,6 +21,10 @@ from gui.components.memory_monitor import force_memory_cleanup, get_memory_usage
 from core.nsfw_filter import nsfw_filter
 from config.nsfw_config import nsfw_config, ContentLevel
 
+import os
+from config.app_config import app_config
+from utils.watermark_remover import WatermarkRemover
+from utils.image_post_processor import post_process_image
 
 def log(msg):
     print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
@@ -425,9 +429,8 @@ class Txt2ImgTab(BaseTab):
     def _generate_single_image(self, prompt, negative, steps=None, cfg=None, seed=None,
                                 height=None, width=None, index=1, total=1, callback=None):
         """生成单张图片 - 核心生成逻辑"""
-        import os
-        from config.app_config import app_config
-        from utils.watermark_remover import WatermarkRemover
+
+       
         
         log(f"开始生成第 {index}/{total} 张")
         
@@ -575,8 +578,8 @@ class Txt2ImgTab(BaseTab):
             output_dir = app_config.paths.output_dir
             os.makedirs(output_dir, exist_ok=True)
             filepath = os.path.join(output_dir, filename)
-            
-            # ===== 后处理：水印去除 =====
+                        
+            # ===== 先处理水印去除（如果有） =====
             if self.params.remove_watermark_var.get() and self.params.watermark_post_process_var.get():
                 methods = ["opencv_inpaint", "opencv_blur"]
                 cleaned = watermark_remover.remove_watermark(
@@ -589,6 +592,25 @@ class Txt2ImgTab(BaseTab):
                 print(f"✅ 水印已去除: {filename}")
             else:
                 image.save(filepath)
+
+            # ===== 【新增】图片后期处理 =====
+            from utils.image_post_processor import post_process_image
+
+            # 执行后期处理（注意：这里不要再次保存 image，因为上面已经保存过了）
+            final_path = post_process_image(
+                filepath,  # ← 传入已保存的文件路径
+                self.params,
+                prompt=prompt,
+                log_prefix="[文生图]"
+            )
+
+            # 如果后期处理返回了不同路径，使用最终路径
+            if final_path != filepath:
+                try:
+                    os.remove(filepath)
+                except:
+                    pass
+                filepath = final_path
             
             # ===== 添加到预览 =====
             self.app.root.after(0, lambda: self.app.add_to_preview(filepath, image))

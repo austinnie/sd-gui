@@ -464,7 +464,22 @@ class GridTestTab(BaseTab):
                     self.runner.load_model(model_path, "sd")
             
             results = self.runner.run_grid(config_path, update_progress)
+
+            # ===== 【新增】对生成的图片进行后期处理 =====
+            from utils.image_post_processor import post_process_image
             
+            output_dir = config.get('output_dir', './output/grid_tests')
+            for filename in os.listdir(output_dir):
+                if filename.endswith('.png'):
+                    filepath = os.path.join(output_dir, filename)
+                    final_path = post_process_image(
+                        filepath,
+                        self.app.params_panel,
+                        log_prefix="[网格测试]"
+                    )
+                    if final_path != filepath:
+                        os.remove(filepath)
+                
             success = sum(1 for r in results if r.get('success', False))
             total = len(results)
             

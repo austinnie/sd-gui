@@ -8,6 +8,7 @@ from .memory_monitor import MemoryMonitor, get_memory_usage, force_memory_cleanu
 from .progress_bar import ProgressBar
 from .image_preview import ImagePreview
 from .nsfw_panel import NSFWPanel  # ← 确保有这行
+from .params_panel import ParamsPanel  # ✅ 确保导出
 
 __all__ = ['MemoryMonitor', 'get_memory_usage', 'force_memory_cleanup', 
-           'ProgressBar', 'ImagePreview','NSFWPanel']
+           'ProgressBar', 'ImagePreview','NSFWPanel' ,'ParamsPanel']

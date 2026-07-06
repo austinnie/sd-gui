@@ -71,7 +71,14 @@ class ParamsPanel:
             ("🟥 HD 方图(1024x1024)", 1024, 1024),  # ✅ 新增，适合 SDXL 或 CPU 高清
             ("📺 宽屏(1024x512)", 1024, 512),      # ✅ 新增，适合宽幅背景
         ]
-        
+
+        # ===== 图片后期处理参数 =====
+        self.clear_metadata_var = tk.BooleanVar(value=False)
+        self.inject_exif_var = tk.BooleanVar(value=False)
+        self.realistic_var = tk.BooleanVar(value=False)
+        self.camera_var = tk.StringVar(value="sony_a7iv")
+        self.realistic_strength_var = tk.StringVar(value="medium")
+    
         if parent:
             self.create_widgets(parent)
     
@@ -184,7 +191,8 @@ class ParamsPanel:
         ttk.Label(hires_frame, text="重绘幅度:").pack(side=tk.LEFT, padx=5)
         ttk.Combobox(hires_frame, textvariable=self.hires_denoise_var, values=[0.3, 0.4, 0.5, 0.6], width=5).pack(side=tk.LEFT, padx=5)
         ttk.Label(hires_frame, text="💡 放大后重绘细节，适合全身照", foreground="gray", font=("", 8)).pack(side=tk.LEFT, padx=5)
-        # 👆 新增结束 👆        
+        # 👆 新增结束 👆  
+        
         # ===== 第四模块：水印去除 =====
         param_row3 = ttk.Frame(self.frame)
         param_row3.grid(row=row, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=2, padx=5)
@@ -223,8 +231,95 @@ class ParamsPanel:
         ).pack(side=tk.LEFT, padx=5)
         
         row += 1
+
+        # ===== 【新增】第五模块：图片后期处理 =====
+        post_frame = ttk.LabelFrame(self.frame, text="🖼️ 图片后期处理", padding=5)
+        post_frame.grid(row=row, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=2, padx=5)
+
+        # ===== 功能1：清除元数据 =====
+        pp_row1 = ttk.Frame(post_frame)
+        pp_row1.pack(fill=tk.X, pady=2)
+
+        ttk.Checkbutton(
+            pp_row1,
+            text="🧹 清除元数据",
+            variable=self.clear_metadata_var
+        ).pack(side=tk.LEFT, padx=5)
+
+        ttk.Label(
+            pp_row1,
+            text="清除 PNG tEXt / EXIF 等元数据，转换为 JPG",
+            foreground="gray",
+            font=("", 8)
+        ).pack(side=tk.LEFT, padx=15)
+
+        # ===== 功能2：注入 EXIF 信息 =====
+        pp_row2 = ttk.Frame(post_frame)
+        pp_row2.pack(fill=tk.X, pady=2)
+
+        ttk.Checkbutton(
+            pp_row2,
+            text="📷 注入 EXIF 信息",
+            variable=self.inject_exif_var
+        ).pack(side=tk.LEFT, padx=5)
+
+        ttk.Label(pp_row2, text="相机:").pack(side=tk.LEFT, padx=15)
+        ttk.Combobox(
+            pp_row2,
+            textvariable=self.camera_var,
+            values=[
+                "sony_a7iv", "sony_a7iii", "canon_r5", "canon_r6",
+                "nikon_z8", "fuji_x100v", "iphone_15", "pixel_8"
+            ],
+            width=12
+        ).pack(side=tk.LEFT, padx=5)
+
+        ttk.Label(
+            pp_row2,
+            text="💡 添加相机元数据，让图片更像真实照片",
+            foreground="gray",
+            font=("", 8)
+        ).pack(side=tk.LEFT, padx=15)
+
+        # ===== 功能3：照片真实化 =====
+        pp_row3 = ttk.Frame(post_frame)
+        pp_row3.pack(fill=tk.X, pady=2)
+
+        ttk.Checkbutton(
+            pp_row3,
+            text="🎯 照片真实化",
+            variable=self.realistic_var
+        ).pack(side=tk.LEFT, padx=5)
+
+        ttk.Label(pp_row3, text="强度:").pack(side=tk.LEFT, padx=15)
+        ttk.Combobox(
+            pp_row3,
+            textvariable=self.realistic_strength_var,
+            values=["light", "medium", "strong"],
+            width=8
+        ).pack(side=tk.LEFT, padx=5)
+
+        ttk.Label(
+            pp_row3,
+            text="💡 添加噪点/暗角/锐化，模拟真实相机效果",
+            foreground="gray",
+            font=("", 8)
+        ).pack(side=tk.LEFT, padx=15)
+        
+        row += 1
         
         return self.frame
+
+
+    def get_postprocess_params(self) -> dict:
+        """获取图片后期处理参数"""
+        return {
+            "clear_metadata": self.clear_metadata_var.get(),
+            "inject_exif": self.inject_exif_var.get(),
+            "realistic": self.realistic_var.get(),
+            "camera": self.camera_var.get(),
+            "realistic_strength": self.realistic_strength_var.get()
+        }
     
     def _set_size(self, width: int, height: int):
         """设置尺寸"""

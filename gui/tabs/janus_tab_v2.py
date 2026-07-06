@@ -28,6 +28,7 @@ class JanusTabV2(BaseTab):
     def __init__(self, parent, app, model_manager):
         super().__init__(parent, app)
         self.model_manager = model_manager
+        self.params = self.app.params_panel  # ✅ 添加这行
         self._image_path = None
         self._is_generating = False
         self._cancel = False
@@ -582,6 +583,23 @@ class JanusTabV2(BaseTab):
             os.makedirs(output_dir, exist_ok=True)
             filepath = os.path.join(output_dir, filename)
             image.save(filepath)
+
+            # ===== 【新增】图片后期处理 =====
+            from utils.image_post_processor import post_process_image
+            
+            final_path = post_process_image(
+                filepath,
+                self.params,  # 需要传入 params
+                prompt=prompt,
+                log_prefix="[Janus-Pro]"
+            )
+            
+            if final_path != filepath:
+                try:
+                    os.remove(filepath)
+                except:
+                    pass
+                filepath = final_path
             
             self.app.root.after(0, lambda: self.app.add_to_preview(filepath, image))
             self.app.root.after(0, lambda: self._on_operation_complete(

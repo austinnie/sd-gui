@@ -231,7 +231,32 @@ class GridRunner:
             generator=generator,
         )
         
-        return result.images[0]
+        image = result.images[0]
+        
+        # ===== 【新增】图片后期处理 =====
+        from utils.image_post_processor import post_process_image
+        
+        # 需要获取 params_panel 的引用
+        if hasattr(self, 'app') and self.app:
+            params_panel = self.app.params_panel
+            # 临时保存
+            temp_path = f"temp_{seed_offset}.png"
+            image.save(temp_path)
+            
+            final_path = post_process_image(
+                temp_path,
+                params_panel,
+                prompt=prompt,
+                log_prefix="[网格测试]"
+            )
+            
+            # 加载处理后的图片
+            if final_path != temp_path:
+                os.remove(temp_path)
+                image = Image.open(final_path)
+                os.remove(final_path)
+        
+        return image
     
     def _generate_janus_one(self, params, seed_offset=0):
         """Janus-Pro 生成"""

@@ -440,7 +440,34 @@ class PipelineTab(BaseTab):
     
     def _show_results(self, results, output_dir):
         """显示结果"""
+        from utils.image_post_processor import post_process_image
         success_count = 0
+
+        from utils.image_post_processor import post_process_image
+        
+        success_count = 0
+        
+        # ===== 【新增】对所有成功生成的图片进行后期处理 =====
+        for name, result in results.items():
+            if result.success and result.output_path and os.path.exists(result.output_path):
+                try:
+                    final_path = post_process_image(
+                        result.output_path,
+                        self.app.params_panel,  # 传入参数面板
+                        log_prefix=f"[流水线-{name}]"
+                    )
+                    # 如果后期处理返回了不同路径，更新 result
+                    if final_path != result.output_path:
+                        # 删除原始文件
+                        try:
+                            os.remove(result.output_path)
+                        except:
+                            pass
+                        result.output_path = final_path
+                        self._append_log(f"🖼️ {name}: 已应用后期处理")
+                except Exception as e:
+                    self._append_log(f"⚠️ {name}: 后期处理失败 - {e}")
+                
         for name, result in results.items():
             if result.success:
                 success_count += 1
