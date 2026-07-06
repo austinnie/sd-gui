@@ -58,6 +58,9 @@ class ParamsPanel:
         self.watermark_methods_var = tk.StringVar(value="all")
         self.watermark_auto_detect_var = tk.BooleanVar(value=True)
         self.watermark_post_process_var = tk.BooleanVar(value=True)
+
+        # ===== 调度器选择 =====
+        self.scheduler_var = tk.StringVar(value="euler")
         
         # ===== 预设尺寸 (名称, 宽度, 高度, 描述显示) =====
         self.preset_sizes = [
@@ -143,6 +146,18 @@ class ParamsPanel:
                     width=3).pack(side=tk.LEFT)
         
         row += 1
+
+        # ✅ 调度器选择（放在数量后面）
+        ttk.Label(param_row1, text="调度器:").pack(side=tk.LEFT, padx=5)
+        scheduler_combo = ttk.Combobox(
+            param_row1,
+            textvariable=self.scheduler_var,
+            values=["euler", "dpm", "lms", "pndm"],
+            width=6,
+            state="readonly"
+        )
+        scheduler_combo.pack(side=tk.LEFT, padx=5)
+        scheduler_combo.set("euler")
         
         # ===== 第二模块：预设尺寸 =====
         param_row2 = ttk.Frame(self.frame)
@@ -310,7 +325,10 @@ class ParamsPanel:
         
         return self.frame
 
-
+    def get_scheduler_type(self) -> str:
+        """获取当前选择的调度器类型"""
+        return self.scheduler_var.get()
+    
     def get_postprocess_params(self) -> dict:
         """获取图片后期处理参数"""
         return {

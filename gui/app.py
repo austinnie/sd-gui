@@ -157,10 +157,15 @@ class ModelManager:
             if progress_callback:
                 progress_callback(0.6, f"⚙️ 配置优化...")
 
+            # ✅ 获取用户选择的调度器
+            scheduler_name = self.app.params_panel.get_scheduler_type()
+    
             # 配置调度器
+            from utils.scheduler_factory import get_scheduler
             is_lightning = "lightning" in model_name.lower()
 
             if is_lightning:
+                # Lightning 模型强制使用 Euler 的 trailing 模式
                 from diffusers import EulerDiscreteScheduler
                 pipe.scheduler = EulerDiscreteScheduler.from_config(
                     pipe.scheduler.config,
@@ -168,10 +173,14 @@ class ModelManager:
                 )
                 print(f"⚡ 检测到 Lightning 模型，已配置 EulerDiscreteScheduler (trailing)")
             else:
-                # ✅ 用 EulerDiscreteScheduler 替换 DPMSolverMultistepScheduler
-                #pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
-                pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
-                print("✅ 使用 EulerDiscreteScheduler (更稳定)")
+                # 使用用户选择的调度器
+                try:
+                    pipe.scheduler = get_scheduler(scheduler_name, pipe.scheduler.config)
+                    desc = get_scheduler_description(scheduler_name)
+                    print(f"✅ 使用调度器: {scheduler_name.upper()} ({desc})")
+                except Exception as e:
+                    print(f"⚠️ 调度器切换失败，使用默认: {e}")
+                    pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
 
             # 内存优化 (注意：跳过 CUDA 相关的 offload)
             if app_config.memory.vae_slicing:
@@ -845,13 +854,16 @@ class SDApp:
         print("=" * 60)
         
         modules_to_reload = [
+            # ===== GUI 组件 =====
             "gui.components.memory_monitor",
             "gui.components.progress_bar",
             "gui.components.image_preview",
             "gui.components.params_panel",
             "gui.components.batch_panel",
+            "gui.components.nsfw_panel", 
+            
+            # ===== GUI 标签页 =====
             "gui.tabs.base_tab",
-            "gui.scene_manager",
             "gui.tabs.txt2img_tab",
             "gui.tabs.img2img_tab",
             "gui.tabs.interrogate_tab",
@@ -859,22 +871,37 @@ class SDApp:
             "gui.tabs.scene_tab",
             "gui.tabs.janus_tab",
             "gui.tabs.grid_test_tab",
+            "gui.tabs.pipeline_tab",  
+
+            # ===== GUI 管理 =====
+            "gui.scene_manager", 
+            
+            # ===== Core 模块 =====
             "core.janus_loader",
             "core.janus_generator",
             "core.janus_analyzer",
             "core.janus_chat",
-            "core.grid_runner",
-            # ===== 【新增】NSFW 相关模块 =====
-            "config.nsfw_config",
-            "core.nsfw_filter",
-            "gui.components.nsfw_panel",    
-            # ===== 【新增】流水线相关 =====
+            "core.grid_runner",  
+            "core.nsfw_filter",            
             "core.pipeline",
             "core.pipeline.step",
             "core.pipeline.pipeline",
             "core.pipeline.steps",
-            "core.pipeline.steps.marble_step",
-            "gui.tabs.pipeline_tab",            
+            "core.pipeline.steps.marble_step",            
+
+            # ===== Config 模块 =====
+            "config.nsfw_config",
+            "config.app_config",
+            "config.janus_config",
+        
+            # ===== Utils 模块（全部添加） =====
+            "utils",
+            "utils.watermark_remover",
+            "utils.imagemeta_cleaner",
+            "utils.exif_injector",
+            "utils.photo_realistic",
+            "utils.image_post_processor",
+            "utils.scheduler_factory",  # ✅ 新增            
         ]
         
         reloaded = []
