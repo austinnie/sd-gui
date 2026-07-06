@@ -38,6 +38,7 @@ from gui.tabs.grid_test_tab import GridTestTab
 from gui.components.nsfw_panel import NSFWPanel
 
 from gui.tabs.pipeline_tab import PipelineTab
+from utils.scheduler_factory import get_scheduler, get_scheduler_description 
 
 class ModelType(Enum):
     """模型类型枚举"""
@@ -89,7 +90,8 @@ class ModelManager:
     def get_sd_model_name(self):
         return self._sd_model_name
     
-    def load_sd(self, model_path: str, model_name: str, progress_callback=None) -> bool:
+    def load_sd(self, model_path: str, model_name: str, progress_callback=None,
+                lora_path: str = None, lora_weight: float = 1.0) -> bool:  # ✅ 添加这两个参数
         with self._lock:
             if self._loading:
                 return False
@@ -421,6 +423,22 @@ class SDApp:
     
     def set_pipeline(self, pipe):
         self.pipeline = pipe
+
+
+    def _show_pipeline_status(self):
+        """显示 Pipeline 池状态"""
+        from utils.pipeline_pool import pipeline_pool
+        status = pipeline_pool.get_status()
+        print("\n" + "=" * 50)
+        print("📊 Pipeline 池状态")
+        print(f"   总创建: {status['total_created']}")
+        print(f"   活跃数: {status['active_count']}")
+        print(f"   最大数: {status['max_instances']}")
+        for pipe_info in status['pipes']:
+            print(f"   - {pipe_info['model']} (引用: {pipe_info['ref_count']})")
+        print("=" * 50)
+        return status
+
     
     def _init_components(self):
         self.memory_monitor = MemoryMonitor(self.root, app_config.ui.memory_update_interval)
@@ -528,6 +546,24 @@ class SDApp:
             width=6
         )
         self.lora_weight_spinbox.pack(side=tk.LEFT, padx=5)
+
+
+        # ✅ 添加「加载 LoRA」按钮
+        self.load_lora_btn = ttk.Button(
+            lora_frame,
+            text="📦 加载 LoRA",
+            command=self._load_lora
+        )
+        self.load_lora_btn.pack(side=tk.LEFT, padx=5)
+
+        # ✅ 添加「卸载 LoRA」按钮
+        self.unload_lora_btn = ttk.Button(
+            lora_frame,
+            text="🗑️ 卸载 LoRA",
+            command=self._unload_lora,
+            state=tk.DISABLED
+        )
+        self.unload_lora_btn.pack(side=tk.LEFT, padx=5)
 
         self.clear_lora_btn = ttk.Button(
             lora_frame,
@@ -719,6 +755,7 @@ class SDApp:
         
         threading.Thread(target=load_thread, daemon=True).start()
     
+
     def _on_load_sd_complete(self, success: bool):
         self.load_btn.config(state=tk.NORMAL)
         self._update_model_ui()
@@ -727,10 +764,13 @@ class SDApp:
             mem_gb = self._get_memory_usage()
             self.update_status(f"✅ SD 模型加载完成 (内存: {mem_gb:.1f} GB)")
             self.update_progress(1.0, "✅ SD 模型就绪")
+            
+            # ✅ 更新 LoRA 状态
+            self._update_lora_status()
         else:
             self.update_status("❌ SD 模型加载失败")
             messagebox.showerror("错误", "SD 模型加载失败，请查看控制台输出")
-    
+        
     def _auto_load_model(self):
         if self.checkpoints:
             first_model = self.checkpoints[0]
@@ -758,6 +798,107 @@ class SDApp:
         
         return lora_files, lora_paths
 
+
+    def _load_lora(self):
+        """加载选中的 LoRA（不重新加载主模型）"""
+        lora_display = self.lora_var.get()
+        if not lora_display:
+            messagebox.showwarning("提示", "请先选择 LoRA 模型")
+            return
+        
+        if lora_display not in self.lora_paths:
+            messagebox.showwarning("提示", "找不到 LoRA 文件")
+            return
+        
+        if not self.model_manager.is_sd_loaded:
+            if messagebox.askyesno("提示", "主模型未加载，是否同时加载主模型和 LoRA？"):
+                self._load_sd_model()
+            return
+        
+        lora_path = self.lora_paths[lora_display]
+        lora_weight = self.lora_weight_var.get()
+        
+        self.update_status(f"🔗 正在加载 LoRA: {lora_display}...")
+        self.load_lora_btn.config(state=tk.DISABLED)
+        
+        # ✅ 保存 self 到 app 变量
+        app = self
+        
+        def load_thread():
+            try:
+                pipe = app.model_manager._sd_pipe
+                if pipe is None:
+                    app.root.after(0, lambda: app._on_lora_load_error("Pipeline 未加载"))
+                    return
+                
+                pipe.load_lora_weights(lora_path)
+                print(f"✅ LoRA 加载成功: {lora_display} (权重: {lora_weight})")
+                
+                app.root.after(0, lambda: app._on_lora_load_success(lora_display))
+                
+            except Exception as e:
+                app.root.after(0, lambda err=e: app._on_lora_load_error(str(err)))
+        
+        threading.Thread(target=load_thread, daemon=True).start()
+    
+    def _on_lora_load_success(self, lora_display):
+        """LoRA 加载成功"""
+        self.load_lora_btn.config(state=tk.NORMAL)
+        self.unload_lora_btn.config(state=tk.NORMAL)
+        self.update_status(f"✅ LoRA 加载成功: {lora_display}")
+
+    def _on_lora_load_error(self, error):
+        """LoRA 加载失败"""
+        self.load_lora_btn.config(state=tk.NORMAL)
+        self.update_status(f"❌ LoRA 加载失败: {error}")
+        messagebox.showerror("错误", f"LoRA 加载失败:\n{error}")
+
+    def _unload_lora(self):
+        """卸载 LoRA（重新加载主模型，不带 LoRA）"""
+        if not self.model_manager.is_sd_loaded:
+            return
+        
+        if not messagebox.askyesno("确认卸载", "卸载 LoRA 将重新加载主模型，确定吗？"):
+            return
+        
+        self.update_status("🔄 正在卸载 LoRA...")
+        self.unload_lora_btn.config(state=tk.DISABLED)
+        
+        self.lora_var.set("")
+        self.lora_weight_var.set(1.0)
+        
+        model_name = self.model_var.get()
+        if model_name and model_name in self.checkpoint_paths:
+            model_path = self.checkpoint_paths[model_name]
+            
+            # ✅ 保存 self 到 app 变量
+            app = self
+            
+            def reload_thread():
+                def progress_cb(value, msg):
+                    app.root.after(0, lambda: app.update_progress(value, msg))
+                
+                success = app.model_manager.load_sd(
+                    model_path, model_name, progress_cb,
+                    lora_path=None, lora_weight=1.0
+                )
+                app.root.after(0, lambda: app._on_lora_unload_complete(success))
+            
+            threading.Thread(target=reload_thread, daemon=True).start()
+        else:
+            self.unload_lora_btn.config(state=tk.NORMAL)
+        
+    def _on_lora_unload_complete(self, success):
+        """LoRA 卸载完成"""
+        self.unload_lora_btn.config(state=tk.DISABLED)
+        self.load_lora_btn.config(state=tk.NORMAL)
+        
+        if success:
+            self.update_status("✅ LoRA 已卸载")
+        else:
+            self.update_status("❌ LoRA 卸载失败")
+        
+        
     def _clear_lora(self):
         """清除 LoRA 选择"""
         self.lora_var.set("")
@@ -1006,7 +1147,7 @@ class SDApp:
             "utils.strength_tester",      # ✅ 新增
             "utils.scheduler_fix",        # ✅ 新增 
 
-         
+            "utils.pipeline_pool",  # ✅ 新增
         ]
         
         reloaded = []

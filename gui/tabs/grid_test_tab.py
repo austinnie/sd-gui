@@ -424,13 +424,21 @@ class GridTestTab(BaseTab):
         threading.Thread(target=self._run_in_thread, args=(config_path,), daemon=True).start()
     
     def _run_in_thread(self, config_path):
-        """在后台线程运行测试"""
+        """在后台线程运行测试（使用独立 pipeline）"""
+
+        from utils.pipeline_pool import pipeline_pool
+        from PIL import Image
+        import os
+    
         def update_progress(current, total, name):
             self.app.root.after(0, lambda: self._update_progress(current, total, name))
         
         def update_log(msg):
             self.app.root.after(0, lambda: self._append_log(msg))
-        
+
+        model_path = None
+        lora_path = None
+    
         try:
             update_log("🚀 开始运行网格测试...")
             
@@ -447,39 +455,69 @@ class GridTestTab(BaseTab):
                 config['model_type'] = 'janus'
                 self.runner.model_type = 'janus'
             else:
-                # SD/SDXL 模型
+                # ✅ SD 模型：从 pool 获取独立 pipeline
                 if model_choice and hasattr(self.app, 'checkpoint_paths'):
-                    if model_choice in self.app.checkpoint_paths:
-                        model_path = self.app.checkpoint_paths[model_choice]
-                        config['model'] = model_path
+                    model_path = self.app.checkpoint_paths.get(model_choice)
+                else:
+                    model_path = config.get('model')
                 
-                self.runner.model_type = 'sd'
+                if not model_path:
+                    update_log("❌ 找不到模型文件")
+                    self.app.root.after(0, self._on_finish)
+                    return
             
-            # 加载模型到 runner
-            if model_type == "janus":
-                self.runner.load_model(None, "janus")
-            else:
-                model_path = config.get('model')
-                if model_path:
-                    self.runner.load_model(model_path, "sd")
+                # 获取 LoRA 信息
+                lora_path = None
+                lora_weight = 1.0
+                if hasattr(self.app, 'lora_var') and hasattr(self.app, 'lora_paths'):
+                    lora_display = self.app.lora_var.get()
+                    if lora_display:
+                        lora_path = self.app.lora_paths.get(lora_display)
+                        lora_weight = self.app.lora_weight_var.get() if hasattr(self.app, 'lora_weight_var') else 1.0
+                
+                # ✅ 使用 pipeline_pool 获取独立实例
+                pipe, is_new = pipeline_pool.get_pipeline(
+                    model_path=model_path,
+                    model_name=os.path.basename(model_path),
+                    lora_path=lora_path,
+                    lora_weight=lora_weight,
+                    task_id=f"gridtest_{datetime.now().strftime('%H%M%S')}"  # ✅ 不同 ID
+                )
+                
+                # 将 pipe 注入到 runner
+                self.runner.pipe = pipe
+                self.runner.model_type = 'sd'
+                self.runner._loaded = True
+                
+                config['model'] = model_path
+                update_log(f"📦 获取 Pipeline: {os.path.basename(model_path)}")
             
             results = self.runner.run_grid(config_path, update_progress)
 
-            # ===== 【新增】对生成的图片进行后期处理 =====
+            # ===== 图片后期处理 =====
             from utils.image_post_processor import post_process_image
             
             output_dir = config.get('output_dir', './output/grid_tests')
-            for filename in os.listdir(output_dir):
-                if filename.endswith('.png'):
-                    filepath = os.path.join(output_dir, filename)
-                    final_path = post_process_image(
-                        filepath,
-                        self.app.params_panel,
-                        log_prefix="[网格测试]"
-                    )
-                    if final_path != filepath:
-                        os.remove(filepath)
-                
+            if os.path.exists(output_dir):
+                for filename in os.listdir(output_dir):
+                    if filename.endswith('.png'):
+                        filepath = os.path.join(output_dir, filename)
+                        try:
+                            final_path = post_process_image(
+                                filepath,
+                                self.app.params_panel,
+                                log_prefix="[网格测试]"
+                            )
+                            if final_path != filepath:
+                                os.remove(filepath)
+                        except Exception as e:
+                            update_log(f"⚠️ 后期处理失败: {e}")
+            
+            # ✅ 释放 pipeline（仅 SD 模型）
+            if model_type != "janus" and model_path:
+                pipeline_pool.release_pipeline(model_path, lora_path)
+                update_log("🗑️ Pipeline 已释放")
+            
             success = sum(1 for r in results if r.get('success', False))
             total = len(results)
             
@@ -487,11 +525,18 @@ class GridTestTab(BaseTab):
             self.app.root.after(0, self._on_finish)
             
         except Exception as e:
+            # ✅ 出错时也要释放
+            if model_type != "janus" and model_path:
+                try:
+                    pipeline_pool.release_pipeline(model_path, lora_path)
+                except:
+                    pass
             update_log(f"❌ 错误: {e}")
             import traceback
             traceback.print_exc()
             self.app.root.after(0, self._on_finish)
-    
+        
+        
     def _update_progress(self, current, total, name):
         """更新进度"""
         progress = (current / total) * 100

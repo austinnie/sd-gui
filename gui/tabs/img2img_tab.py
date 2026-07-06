@@ -437,7 +437,10 @@ class Img2ImgTab(BaseTab):
         """在后台线程中生成图生图"""
         
         log("开始图生图...")
-        
+
+        from utils.pipeline_pool import pipeline_pool
+        from utils.scheduler_fix import fix_euler_scheduler_for_img2img
+    
         # ===== 【核心修改】图生图强制使用原图尺寸逻辑 =====
         # 不管共享面板传什么尺寸过来，图生图强制设为 0
         
@@ -481,9 +484,27 @@ class Img2ImgTab(BaseTab):
             
             saved_paths = []
             start_time = time.time()
+
+            # ===== 获取独立的 pipeline 实例 =====
+            model_name = self.app.model_var.get()
+            model_path = self.app._get_model_path(model_name)
             
-            # ===== 1. 获取 pipeline 并修复调度器 =====
-            pipe = self.app.pipeline
+            # 获取 LoRA 信息
+            lora_display = self.app.lora_var.get() if hasattr(self.app, 'lora_var') else ""
+            lora_path = None
+            lora_weight = 1.0
+            if lora_display and hasattr(self.app, 'lora_paths'):
+                lora_path = self.app.lora_paths.get(lora_display)
+                lora_weight = self.app.lora_weight_var.get() if hasattr(self.app, 'lora_weight_var') else 1.0
+            
+            pipe, is_new = pipeline_pool.get_pipeline(
+                model_path=model_path,
+                model_name=model_name,
+                lora_path=lora_path,
+                lora_weight=lora_weight,
+                task_id=f"img2img_{datetime.now().strftime('%H%M%S')}"  # ✅ 不同的 ID
+            )
+        
             
             ## ✅ 修复：使用 strength 变量，不是 current_strength
             pipe, steps, current_strength = fix_euler_scheduler_for_img2img(pipe, steps, strength)
@@ -762,7 +783,10 @@ class Img2ImgTab(BaseTab):
                 self.app.root.after(0, lambda: self.update_status("⏹️ 已取消"))
             else:
                 self.app.root.after(0, lambda err=error_msg: self._on_generation_error(err))
-
+        finally:
+            # ✅ 释放 pipeline
+            if 'model_path' in locals() and 'lora_path' in locals():
+                pipeline_pool.release_pipeline(model_path, lora_path)
 
     def _save_mask(self, mask_layer, window):
         """保存遮罩并关闭窗口"""

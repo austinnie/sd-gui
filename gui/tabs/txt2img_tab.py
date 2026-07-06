@@ -654,9 +654,32 @@ class Txt2ImgTab(BaseTab):
     def _generate_images(self, prompt, negative, steps, cfg, seed, height, width, num_images):
         """在后台线程中生成多张图片"""
         from config.app_config import app_config
+        from utils.pipeline_pool import pipeline_pool
+        
         max_allowed = app_config.generation.max_images
         num_images = max(1, min(max_allowed, num_images))
         
+
+        # ===== 获取独立的 pipeline 实例 =====
+        model_name = self.app.model_var.get()
+        model_path = self.app._get_model_path(model_name)
+        
+        # 获取 LoRA 信息
+        lora_display = self.app.lora_var.get() if hasattr(self.app, 'lora_var') else ""
+        lora_path = None
+        lora_weight = 1.0
+        if lora_display and hasattr(self.app, 'lora_paths'):
+            lora_path = self.app.lora_paths.get(lora_display)
+            lora_weight = self.app.lora_weight_var.get() if hasattr(self.app, 'lora_weight_var') else 1.0
+        
+        pipe, is_new = pipeline_pool.get_pipeline(
+            model_path=model_path,
+            model_name=model_name,
+            lora_path=lora_path,
+            lora_weight=lora_weight,
+            task_id=f"txt2img_{datetime.now().strftime('%H%M%S')}"  # ✅ 不同的 ID
+        )
+    
         try:
             for i in range(num_images):
                 if self.cancel_generation:
@@ -676,7 +699,10 @@ class Txt2ImgTab(BaseTab):
             
         except Exception as e:
             self.app.root.after(0, lambda err=e: self._on_generation_error(err))
-    
+        finally:
+            # ✅ 释放 pipeline
+            pipeline_pool.release_pipeline(model_path, lora_path)
+        
     def _generate_single_image(self, prompt, negative, steps=None, cfg=None, seed=None,
                                 height=None, width=None, index=1, total=1, callback=None):
         """生成单张图片 - 核心生成逻辑"""
@@ -886,7 +912,206 @@ class Txt2ImgTab(BaseTab):
             else:
                 self.app.root.after(0, lambda err=error_msg: self._on_generation_error(err))
                 raise
-    
+
+
+    def _generate_single_image_with_pipe(self, pipe, prompt, negative, steps=None, cfg=None, seed=None,
+                                          height=None, width=None, index=1, total=1, callback=None):
+        """使用指定的 pipe 生成单张图片"""
+        from config.app_config import app_config
+        from utils.watermark_remover import WatermarkRemover
+        from utils.image_post_processor import post_process_image
+        
+        log(f"开始生成第 {index}/{total} 张")
+        
+        # 使用默认值
+        if steps is None:
+            steps = self.params.steps_var.get()
+        if cfg is None:
+            cfg = self.params.cfg_var.get()
+        if seed is None:
+            seed = self.params.seed_var.get()
+        if height is None or height <= 0:
+            height = self.params.height_var.get()
+        if width is None or width <= 0:
+            width = self.params.width_var.get()
+        
+        # ===== 安全检查 =====
+        if pipe is None:
+            self.app.root.after(0, lambda: self._on_generation_error("Pipeline 未加载"))
+            return
+        
+        # ===== 尺寸安全处理 =====
+        width = max(1, width)
+        height = max(1, height)
+        
+        gen_cfg = app_config.generation
+        size_cfg = gen_cfg.size
+        
+        width = ((width + 31) // 64) * 64
+        height = ((height + 31) // 64) * 64
+        
+        max_cpu_w = size_cfg.get("cpu_safe_max_width", 1024)
+        max_cpu_h = size_cfg.get("cpu_safe_max_height", 1024)
+        
+        width = min(max_cpu_w, max(size_cfg["min_width"], width))
+        height = min(max_cpu_h, max(size_cfg["min_height"], height))
+        
+        steps = max(gen_cfg.steps["min"], min(gen_cfg.steps["max"], steps))
+        cfg = max(gen_cfg.cfg["min"], min(gen_cfg.cfg["max"], cfg))
+        
+        if seed == -1:
+            seed = random.randint(1, 2**32 - 1)
+        
+        prompt = auto_shorten_prompt(prompt, max_len=150)
+        negative = auto_shorten_prompt(negative, max_len=150)
+        
+        # ===== 水印去除 - 增强负面提示词 =====
+        watermark_remover = WatermarkRemover()
+        enhanced_negative = negative
+        if self.params.remove_watermark_var.get():
+            strength = self.params.watermark_strength_var.get()
+            enhanced_negative = watermark_remover.get_enhanced_negative(enhanced_negative, strength)
+            print(f"✅ 负面提示词已增强 (水印强度: {strength})")
+        
+        # ===== 更新进度 =====
+        start_time = time.time()
+        def progress_cb(value, msg):
+            self.app.root.after(0, lambda: self.update_progress(value, msg))
+        
+        progress_cb((index - 1) / total, f"🎨 生成第 {index}/{total} 张...")
+        
+        # ===== 获取高清修复参数 =====
+        hires_enabled = self.params.hires_fix_var.get()
+        hires_scale = self.params.hires_scale_var.get()
+        hires_denoise = self.params.hires_denoise_var.get()
+        
+        try:
+            generator = torch.Generator("cpu").manual_seed(seed)
+            
+            cancel_flag = lambda: self.cancel_generation
+            step_callback = Txt2ImgStepCallback(progress_cb, steps, start_time, cancel_flag)
+            
+            log("调用 pipeline...")
+            with torch.no_grad():
+                if not hires_enabled:
+                    result = pipe(
+                        prompt=prompt,
+                        negative_prompt=enhanced_negative,
+                        num_inference_steps=steps,
+                        guidance_scale=cfg,
+                        generator=generator,
+                        height=height,
+                        width=width,
+                        num_images_per_prompt=1,
+                        callback_on_step_end=step_callback
+                    )
+                else:
+                    low_res_w = int(width / hires_scale)
+                    low_res_h = int(height / hires_scale)
+                    low_res_w = max(512, ((low_res_w + 31) // 64) * 64)
+                    low_res_h = max(512, ((low_res_h + 31) // 64) * 64)
+                    
+                    print(f"📐 启用高清修复: 初稿 {low_res_w}x{low_res_h} -> 最终 {width}x{height}")
+                    progress_cb((index - 1) / total, f"🎨 生成初稿 ({low_res_w}x{low_res_h})...")
+                    
+                    low_res_result = pipe(
+                        prompt=prompt,
+                        negative_prompt=enhanced_negative,
+                        num_inference_steps=steps,
+                        guidance_scale=cfg,
+                        generator=generator,
+                        height=low_res_h,
+                        width=low_res_w,
+                        num_images_per_prompt=1,
+                        callback_on_step_end=step_callback
+                    )
+                    low_res_img = low_res_result.images[0]
+                    
+                    progress_cb((index - 1) / total, f"🔄 放大并重绘 (幅度 {hires_denoise})...")
+                    result = pipe(
+                        prompt=prompt,
+                        negative_prompt=enhanced_negative,
+                        image=low_res_img,
+                        strength=hires_denoise,
+                        num_inference_steps=steps,
+                        guidance_scale=cfg,
+                        generator=generator,
+                        height=height,
+                        width=width,
+                        num_images_per_prompt=1,
+                        callback_on_step_end=step_callback
+                    )
+                    
+                    safe_del(low_res_result)
+                    safe_del(low_res_img)
+            
+            log("pipeline 调用完成")
+            image = result.images[0]
+            
+            # ===== 保存图片 =====
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            prompt_preview = "".join(c for c in prompt[:30] if c.isalnum() or c in " _-") or "image"
+            if len(prompt_preview) > 50:
+                prompt_preview = prompt_preview[:50]
+            filename = f"{timestamp}_txt2img_{index}_{prompt_preview}.png"
+            
+            output_dir = app_config.paths.output_dir
+            os.makedirs(output_dir, exist_ok=True)
+            filepath = os.path.join(output_dir, filename)
+            
+            # ===== 先处理水印去除（如果有） =====
+            if self.params.remove_watermark_var.get() and self.params.watermark_post_process_var.get():
+                methods = ["opencv_inpaint", "opencv_blur"]
+                cleaned = watermark_remover.remove_watermark(
+                    image,
+                    methods=methods,
+                    strength=self.params.watermark_strength_var.get(),
+                    auto_detect=self.params.watermark_auto_detect_var.get()
+                )
+                cleaned.save(filepath, quality=95)
+                print(f"✅ 水印已去除: {filename}")
+            else:
+                image.save(filepath)
+            
+            # ===== 图片后期处理 =====
+            final_path = post_process_image(
+                filepath,
+                self.params,
+                prompt=prompt,
+                log_prefix="[文生图]"
+            )
+            
+            if final_path != filepath:
+                try:
+                    os.remove(filepath)
+                except:
+                    pass
+                filepath = final_path
+            
+            # ===== 添加到预览 =====
+            self.app.root.after(0, lambda: self.app.add_to_preview(filepath, image))
+            
+            # ===== 清理内存 =====
+            safe_del(result)
+            safe_del(generator)
+            
+            mem_gb = get_memory_usage()
+            if mem_gb > 8.0:
+                force_memory_cleanup()
+            
+            progress_cb(index / total, f"✅ 已保存 {index}/{total}")
+            
+            if callback:
+                callback()
+                
+        except Exception as e:
+            error_msg = str(e)
+            if "用户取消" in error_msg or "cancelled" in error_msg.lower():
+                self.app.root.after(0, lambda: self.update_status("⏹️ 已取消"))
+            else:
+                self.app.root.after(0, lambda err=error_msg: self._on_generation_error(err))
+                raise
+                
     def _on_generation_complete(self):
         """生成完成"""
         self.is_generating = False

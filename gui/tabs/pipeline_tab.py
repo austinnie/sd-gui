@@ -397,12 +397,41 @@ class PipelineTab(BaseTab):
             daemon=True
         ).start()
     
+
+    # gui/tabs/pipeline_tab.py
+
     def _run_pipeline_thread(self, image_path, pipeline_config, output_dir):
-        """在后台线程运行流水线"""
+        """在后台线程运行流水线（使用独立 pipeline）"""
+        from utils.pipeline_pool import pipeline_pool
+        
         try:
+            # ===== 获取独立的 pipeline =====
+            model_name = self.app.model_var.get()
+            model_path = self.app._get_model_path(model_name)
+            
+            # 获取 LoRA 信息
+            lora_path = None
+            lora_weight = 1.0
+            if hasattr(self.app, 'lora_var') and hasattr(self.app, 'lora_paths'):
+                lora_display = self.app.lora_var.get()
+                if lora_display:
+                    lora_path = self.app.lora_paths.get(lora_display)
+                    lora_weight = self.app.lora_weight_var.get() if hasattr(self.app, 'lora_weight_var') else 1.0
+            
+            pipe, is_new = pipeline_pool.get_pipeline(
+                model_path=model_path,
+                model_name=os.path.basename(model_path),
+                lora_path=lora_path,
+                lora_weight=lora_weight,
+                task_id=f"pipeline_{datetime.now().strftime('%H%M%S')}"  # ✅ 添加 task_id
+            )
+            
+            self._append_log(f"📦 获取 Pipeline: {os.path.basename(model_path)}")
+            
             # 创建流水线
             pipeline = PipelineRegistry.create_pipeline_from_config(pipeline_config)
             
+            # 将 pipe 注入到流水线的上下文中
             def on_progress(current, total, msg):
                 self.app.root.after(0, lambda: self._update_progress(current, total, msg))
             
@@ -411,26 +440,40 @@ class PipelineTab(BaseTab):
             # 加载图片
             image = Image.open(image_path).convert('RGB')
             
-            # 创建上下文
+            # 创建上下文（传入 pipe）
             context = StepContext(
                 input_image=image,
                 input_path=image_path,
                 output_dir=output_dir,
                 global_config={
-                    "model_path": "../models/sd-v1-5/aiiiiii01_v10.safetensors"
+                    "model_path": model_path,
+                    "pipe": pipe,  # ✅ 传入独立 pipeline
+                    "lora_path": lora_path,
+                    "lora_weight": lora_weight
                 }
             )
             
             # 运行流水线
             results = pipeline.run(context)
             
+            # ===== 释放 pipeline =====
+            pipeline_pool.release_pipeline(model_path, lora_path)
+            self._append_log("🗑️ Pipeline 已释放")
+            
             # 显示结果
             self.app.root.after(0, lambda: self._show_results(results, output_dir))
             
         except Exception as e:
+            # 确保释放 pipeline
+            if 'model_path' in locals() and model_path:
+                try:
+                    pipeline_pool.release_pipeline(model_path, lora_path if 'lora_path' in locals() else None)
+                except:
+                    pass
+            
             error_msg = str(e)
             self.app.root.after(0, lambda: self._on_error(error_msg))
-    
+        
     def _update_progress(self, current, total, msg):
         """更新进度"""
         progress = (current / total) * 100

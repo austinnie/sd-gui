@@ -47,6 +47,8 @@ from .scheduler_factory import (
     get_scheduler_description
 )
 
+from .pipeline_pool import PipelinePool, pipeline_pool  # ✅ 新
+
 __all__ = [
     # watermark_remover
     'WatermarkRemover',
@@ -89,4 +91,7 @@ __all__ = [
     # scheduler_factory
     'get_scheduler',
     'get_scheduler_description',
+    
+    'PipelinePool',
+    'pipeline_pool',
 ]

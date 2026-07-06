@@ -35,9 +35,10 @@ class MarbleStep(PipelineStep):
             "scenes": {"type": "int", "default": 14, "choices": [6, 12, 14]},
             "model_path": {"type": "str", "default": "../models/sd-v1-5/aiiiiii01_v10.safetensors"}
         }
-
+        
+    # core/pipeline/steps/marble_step.py
     def execute(self, context: StepContext) -> StepResult:
-        """执行大理石转换"""
+        """执行大理石转换（使用上下文中的 pipe）"""
         config = self._config
         image_path = context.input_path
         
@@ -53,9 +54,33 @@ class MarbleStep(PipelineStep):
         os.makedirs(output_dir, exist_ok=True)
         
         try:
-            # ✅ 设置环境变量
-            env = os.environ.copy()
-            env['PYTHONIOENCODING'] = 'utf-8'
+            # ===== 从上下文获取 pipe =====
+            pipe = context.global_config.get('pipe')
+            model_path = context.global_config.get('model_path')
+            
+            if pipe is None and model_path:
+                # 如果没有传入 pipe，独立加载（兼容旧逻辑）
+                from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
+                import torch
+                
+                common_args = {
+                    "torch_dtype": torch.float32,
+                    "safety_checker": None,
+                    "requires_safety_checker": False,
+                    "use_safetensors": True,
+                    "low_cpu_mem_usage": True,
+                }
+                pipe = StableDiffusionPipeline.from_single_file(model_path, **common_args)
+                pipe.to("cpu")
+                pipe.enable_vae_slicing()
+                pipe.enable_attention_slicing()
+                pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
+            
+            if pipe is None:
+                return StepResult(
+                    status=StepStatus.FAILED,
+                    error="无法获取 Pipeline"
+                )
             
             # ============================================================
             # 步骤 1: 生成配置文件
@@ -72,11 +97,10 @@ class MarbleStep(PipelineStep):
             
             print(f"\n📦 生成配置: {config_cmd}")
             
-            # ✅ 方案 1：不捕获输出，直接显示在控制台
             result = subprocess.run(
                 config_cmd,
                 shell=True,
-                env=env
+                capture_output=False
             )
             
             if result.returncode != 0:
@@ -111,63 +135,72 @@ class MarbleStep(PipelineStep):
             print(f"✅ 配置文件: {latest_config}")
             
             # ============================================================
-            # 步骤 3: 执行生成（直接输出到控制台）
+            # 步骤 3: 使用 pipe 执行生成（直接调用，不用 subprocess）
             # ============================================================
-            run_cmd = f'python run_marble.py -c "{latest_config}"'
-            print(f"\n🎨 执行生成: {run_cmd}")
-            print("-" * 60)
+            with open(latest_config, 'r', encoding='utf-8') as f:
+                config_data = json.load(f)
             
-            # ✅ 方案 1：不捕获输出，直接显示在控制台
-            result = subprocess.run(
-                run_cmd,
-                shell=True,
-                env=env
-            )
+            jobs = config_data.get('jobs', [])
+            target_image = config_data.get('target_image', image_path)
+            steps_override = config.get("steps", 15)
+            cfg_override = config.get("cfg", 7.0)
+            strength_override = config.get("strength", 0.25)
             
-            print("-" * 60)
+            print(f"\n🎨 执行生成: {len(jobs)} 个场景")
             
-            if result.returncode != 0:
-                return StepResult(
-                    status=StepStatus.FAILED,
-                    error=f"生成失败，返回码: {result.returncode}"
-                )
-            
-            # ============================================================
-            # 步骤 4: 收集输出图片
-            # ============================================================
-            output_images_dir = "output/batch_marble"
-            if os.path.exists(output_images_dir):
-                output_images = [f for f in os.listdir(output_images_dir) if f.endswith(".png")]
-                if output_images:
-                    output_images.sort(
-                        key=lambda x: os.path.getmtime(os.path.join(output_images_dir, x)),
-                        reverse=True
+            for idx, job in enumerate(jobs):
+                print(f"   [{idx+1}/{len(jobs)}] {job.get('name', 'unknown')}")
+                
+                try:
+                    # 加载图片
+                    init_image = Image.open(target_image).convert('RGB')
+                    w, h = init_image.size
+                    width = ((w + 31) // 64) * 64
+                    height = ((h + 31) // 64) * 64
+                    if w != width or h != height:
+                        init_image = init_image.resize((width, height), Image.Resampling.LANCZOS)
+                    
+                    generator = torch.Generator("cpu").manual_seed(42)
+                    
+                    result = pipe(
+                        prompt=job.get("prompt", ""),
+                        negative_prompt=job.get("negative", ""),
+                        image=init_image,
+                        strength=job.get("strength", strength_override),
+                        num_inference_steps=steps_override,
+                        guidance_scale=cfg_override,
+                        generator=generator,
                     )
-                    first_image_path = os.path.join(output_images_dir, output_images[0])
                     
-                    dest_path = os.path.join(output_dir, os.path.basename(first_image_path))
-                    shutil.copy2(first_image_path, dest_path)
+                    # 后处理为大理石效果
+                    temp_path = os.path.join(output_dir, f"temp_{idx}.png")
+                    result.images[0].save(temp_path)
                     
-                    print(f"\n📁 第一张输出: {dest_path}")
+                    from run_marble import post_process_to_marble
+                    output_path = os.path.join(output_dir, f"{idx+1:02d}_{job.get('name', 'marble')}.png")
+                    post_process_to_marble(temp_path, output_path, brightness_enhance=1.0)
                     
-                    return StepResult(
-                        status=StepStatus.SUCCESS,
-                        output_path=dest_path,
-                        output_image=Image.open(dest_path),
-                        metadata={
-                            "config_file": latest_config,
-                            "output_count": len(output_images),
-                            "output_dir": output_images_dir,
-                            "first_image": output_images[0] if output_images else None
-                        }
-                    )
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                    
+                    print(f"      ✅ 已保存: {os.path.basename(output_path)}")
+                    
+                except Exception as e:
+                    print(f"      ❌ 失败: {e}")
+                    continue
             
+            # 返回结果
             return StepResult(
                 status=StepStatus.SUCCESS,
                 output_path=output_dir,
-                metadata={"message": "生成完成", "output_dir": output_images_dir}
+                metadata={
+                    "config_file": latest_config,
+                    "output_count": len(jobs),
+                    "output_dir": output_dir,
+                    "success_count": len(jobs)
+                }
             )
-                
+                    
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -175,3 +208,4 @@ class MarbleStep(PipelineStep):
                 status=StepStatus.FAILED,
                 error=str(e)
             )
+        

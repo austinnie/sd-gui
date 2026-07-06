@@ -10,7 +10,7 @@ import torch
 from datetime import datetime
 from diffusers import StableDiffusionPipeline
 import gc
-
+from PIL import Image
 from diffusers import (
     StableDiffusionPipeline,
     StableDiffusionXLPipeline,
@@ -27,20 +27,20 @@ class GridRunner:
         self.model_type = None  # "sd" 或 "janus"
         self.is_running = False
         self.cancel = False
+        self._loaded = False  # ✅ 标记是否已加载
         
     def load_config(self, config_path):
         """加载配置文件"""
         with open(config_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     
+
     def load_model(self, model_path, model_type="sd"):
-        """
-        加载模型
+        """加载模型（如果 pipe 已注入则跳过）"""
+        if self._loaded and self.pipe is not None:
+            print("✅ 使用已注入的 Pipeline")
+            return self.pipe
         
-        参数:
-            model_path: 模型路径
-            model_type: "sd" 或 "janus"
-        """
         self.model_type = model_type
         
         if model_type == "janus":
@@ -50,6 +50,10 @@ class GridRunner:
     
     def _load_sd_model(self, model_path):
         """加载 SD 模型"""
+        """加载 SD 模型（仅在没有注入时使用）"""
+        if self.pipe is not None:
+            return self.pipe
+            
         if self.pipe is None:
             print(f"📦 加载 SD 模型: {model_path}")
             self.pipe = StableDiffusionPipeline.from_single_file(
