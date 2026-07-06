@@ -26,6 +26,9 @@ from config.app_config import app_config
 from utils.watermark_remover import WatermarkRemover
 from utils.image_post_processor import post_process_image
 
+import json
+from tkinter import simpledialog
+
 def log(msg):
     print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
 
@@ -262,6 +265,7 @@ class Txt2ImgTab(BaseTab):
         super().__init__(parent, app)
         self.params = self.app.params_panel
         self._init_vars()
+        self._load_templates()  # ✅ 加载模板
         self.setup_ui()
     
     def _init_vars(self):
@@ -295,11 +299,154 @@ class Txt2ImgTab(BaseTab):
         self.batch_total = 0
         self.batch_prompts = []
         self.batch_negs = []
+        
+        self.template_var = tk.StringVar(value="")
+        self.template_category_var = tk.StringVar(value="美女")
+        
+
+    def _load_templates(self):
+        """加载提示词模板"""
+        template_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            "templates", "prompt_templates.json"
+        )
+        
+        self.templates = {}
+        self.template_icons = {}  # ✅ 新增：存储图标
+        self.template_priority = {}  # ✅ 新增：存储优先级
+        
+        if os.path.exists(template_path):
+            try:
+                with open(template_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                
+                # ✅ 转换数据格式
+                for category, info in data.items():
+                    if isinstance(info, dict) and "templates" in info:
+                        # 新格式：{"美女": {"icon": "👩", "templates": [...]}}
+                        self.templates[category] = info.get("templates", [])
+                        self.template_icons[category] = info.get("icon", "📁")
+                        self.template_priority[category] = info.get("priority", 99)
+                    elif isinstance(info, list):
+                        # 旧格式：{"美女": [...]}
+                        self.templates[category] = info
+                        self.template_icons[category] = "📁"
+                        self.template_priority[category] = 99
+                    else:
+                        self.templates[category] = []
+                        self.template_icons[category] = "📁"
+                        self.template_priority[category] = 99
+                
+                print(f"✅ 加载了 {len(self.templates)} 个模板分类")
+            except Exception as e:
+                print(f"⚠️ 加载模板失败: {e}")
+                self._create_default_templates()
+        else:
+            print(f"⚠️ 模板文件不存在: {template_path}")
+            self._create_default_templates()
+            # 保存默认模板
+            try:
+                os.makedirs(os.path.dirname(template_path), exist_ok=True)
+                # 保存为新格式
+                save_data = {}
+                for category, templates in self.templates.items():
+                    save_data[category] = {
+                        "icon": self.template_icons.get(category, "📁"),
+                        "priority": self.template_priority.get(category, 99),
+                        "templates": templates
+                    }
+                with open(template_path, 'w', encoding='utf-8') as f:
+                    json.dump(save_data, f, ensure_ascii=False, indent=2)
+                print(f"✅ 已创建默认模板文件: {template_path}")
+            except Exception as e:
+                print(f"⚠️ 保存模板失败: {e}")
+            
+
+    def _create_default_templates(self):
+        """创建默认模板"""
+        self.templates = {
+            "美女": [
+                {"name": "清纯甜美", "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful young woman, sweet smile, pure and innocent, natural lighting, full body shot, detailed face, high quality", "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, watermark, text, signature"},
+                {"name": "性感御姐", "prompt": "masterpiece, best quality, photorealistic, 8k, a stunning mature woman, sexy and confident, elegant dress, seductive pose, dramatic lighting, full body shot, detailed face", "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, watermark, text, signature"},
+                {"name": "运动健康", "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful athletic woman, fit and toned body, sporty, gym background, full body shot, healthy glow", "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, watermark, text, signature"},
+                {"name": "纯欲风", "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful young woman, pure and sexy, innocent face with seductive eyes, flawless porcelain skin, slightly parted lips, soft natural makeup, disheveled hair, wearing sheer white lace lingerie, soft morning light, intimate atmosphere, cozy bedroom, natural beauty, alluring yet innocent, high quality, detailed face", "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, heavy makeup, artificial, plastic, overdone"},
+                {"name": "色气满满", "prompt": "masterpiece, best quality, photorealistic, 8k, a stunningly beautiful woman, extremely seductive, sultry gaze, full red lips, flawless hourglass figure, wearing sexy black lace lingerie, fishnet stockings, high heels, dramatic lighting, bedroom setting, intimate atmosphere, sensual pose, perfect body, high quality, detailed face, erotic yet artistic", "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar"},
+            ],
+            "帅哥": [
+                {"name": "阳光型男", "prompt": "masterpiece, best quality, photorealistic, 8k, a handsome young man, sunny smile, athletic build, casual clothes, natural lighting, full body shot", "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, watermark, text, signature"},
+                {"name": "成熟绅士", "prompt": "masterpiece, best quality, photorealistic, 8k, a distinguished gentleman, wearing suit, confident, dramatic lighting, half body shot", "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, watermark, text, signature"},
+                {"name": "肌肉猛男", "prompt": "masterpiece, best quality, photorealistic, 8k, a muscular man, ripped body, six-pack abs, gym lighting, intense look, full body shot", "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, watermark, text, signature"},
+            ],
+            "风景": [
+                {"name": "山水画", "prompt": "masterpiece, best quality, 8k, breathtaking landscape, majestic mountains, misty peaks, serene atmosphere, high quality", "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature"},
+                {"name": "海边日落", "prompt": "masterpiece, best quality, 8k, stunning beach sunset, golden sun, warm orange sky, tropical paradise, photorealistic", "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature"},
+                {"name": "森林秘境", "prompt": "masterpiece, best quality, 8k, magical forest, sunlight filtering through canopy, mysterious atmosphere, high quality", "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature"},
+            ],
+            "动物": [
+                {"name": "可爱猫咪", "prompt": "masterpiece, best quality, 8k, adorable cat, fluffy fur, big bright eyes, cute expression, soft lighting, close-up portrait", "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature"},
+                {"name": "威风狗狗", "prompt": "masterpiece, best quality, 8k, majestic dog, shiny coat, intelligent eyes, outdoor setting, natural lighting", "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature"},
+            ],
+            "植物": [
+                {"name": "玫瑰花海", "prompt": "masterpiece, best quality, 8k, vast rose garden, blooming red roses, morning dew, soft sunlight, romantic atmosphere", "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature"},
+                {"name": "雨后荷花", "prompt": "masterpiece, best quality, 8k, lotus flowers after rain, water droplets on pink petals, peaceful pond, soft misty atmosphere", "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature"},
+            ]
+        }
     
     def setup_ui(self):
         """设置 UI - 移除了重复的水印去除控件"""
         frame = self.frame
         row = 0
+        
+        # ===== 提示词模板选择（新增） =====
+        template_frame = ttk.Frame(frame)
+        template_frame.grid(row=row, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=5, padx=5)
+        
+        ttk.Label(template_frame, text="📋 提示词模板:").pack(side=tk.LEFT, padx=5)
+        
+        # 分类选择
+        categories = list(self.templates.keys()) if self.templates else ["美女", "帅哥", "风景"]
+        self.category_combo = ttk.Combobox(
+            template_frame,
+            textvariable=self.template_category_var,
+            values=categories,
+            width=10,
+            state="readonly"
+        )
+        self.category_combo.pack(side=tk.LEFT, padx=5)
+        self.category_combo.bind('<<ComboboxSelected>>', self._update_template_list)
+        
+        # 模板选择
+        self.template_combo = ttk.Combobox(
+            template_frame,
+            textvariable=self.template_var,
+            values=self._get_template_names(),
+            width=20,
+            state="readonly"
+        )
+        self.template_combo.pack(side=tk.LEFT, padx=5)
+        self.template_combo.bind('<<ComboboxSelected>>', self._apply_template)
+        
+        # 刷新按钮
+        ttk.Button(
+            template_frame,
+            text="🔄 刷新模板",
+            command=self._refresh_templates
+        ).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Label(
+            template_frame,
+            text="💡 选择模板后自动填充，可在此基础上修改",
+            foreground="gray",
+            font=("", 8)
+        ).pack(side=tk.LEFT, padx=15)
+
+        ttk.Button(
+            template_frame,
+            text="💾 保存模板",
+            command=self._save_custom_template
+        ).pack(side=tk.LEFT, padx=5)
+                
+        row += 1
         
         # ===== 提示词区域 =====
         ttk.Separator(frame, orient='horizontal').grid(row=row, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
@@ -342,6 +489,110 @@ class Txt2ImgTab(BaseTab):
         row += 1
     
     # ==================== 核心生成方法 ====================
+
+    def _get_template_names(self):
+        """获取当前分类下的模板名称列表"""
+        category = self.template_category_var.get()
+        templates = self.templates.get(category, [])
+        names = []
+        for t in templates:
+            if isinstance(t, dict):
+                names.append(t.get("name", "未命名"))
+            elif isinstance(t, str):
+                names.append(t)
+            else:
+                names.append(str(t))
+        return names
+    
+    def _update_template_list(self, event=None):
+        """更新模板下拉列表"""
+        self.template_combo['values'] = self._get_template_names()
+        if self.template_combo['values']:
+            self.template_combo.set(self.template_combo['values'][0])
+            self._apply_template()
+        else:
+            self.template_combo.set("")
+
+
+    def _apply_template(self, event=None):
+        """应用选中的模板"""
+        category = self.template_category_var.get()
+        template_name = self.template_var.get()
+        
+        if not template_name:
+            return
+        
+        templates = self.templates.get(category, [])
+        for t in templates:
+            # 兼容两种格式
+            if isinstance(t, dict):
+                if t.get("name") == template_name:
+                    prompt = t.get("prompt", "")
+                    negative = t.get("negative", self.default_negative)
+                    break
+            elif isinstance(t, str):
+                if t == template_name:
+                    prompt = t  # 字符串本身就是提示词
+                    negative = self.default_negative
+                    break
+        else:
+            return
+        
+        self.prompt_text.delete("1.0", tk.END)
+        self.prompt_text.insert("1.0", prompt)
+        self.neg_text.delete("1.0", tk.END)
+        self.neg_text.insert("1.0", negative)
+        self.update_status(f"✅ 已应用模板: {category} → {template_name}")
+    
+    def _refresh_templates(self):
+        """重新加载模板"""
+        self._load_templates()
+        categories = list(self.templates.keys())
+        self.category_combo['values'] = categories
+        if categories:
+            self.template_category_var.set(categories[0])
+            self._update_template_list()
+        self.update_status("✅ 模板已刷新")
+
+    def _save_custom_template(self):
+        """保存自定义模板"""
+        from tkinter import simpledialog
+        
+        category = self.template_category_var.get()
+        name = simpledialog.askstring("模板名称", "输入模板名称:", parent=self.frame)
+        if not name:
+            return
+        
+        prompt = self.prompt_text.get("1.0", tk.END).strip()
+        negative = self.neg_text.get("1.0", tk.END).strip()
+        
+        if not prompt:
+            messagebox.showwarning("提示", "提示词不能为空")
+            return
+        
+        # 添加到当前分类
+        if category not in self.templates:
+            self.templates[category] = []
+        
+        self.templates[category].append({
+            "name": name,
+            "prompt": prompt,
+            "negative": negative
+        })
+        
+        # 保存到文件
+        template_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            "templates", "prompt_templates.json"
+        )
+        try:
+            with open(template_path, 'w', encoding='utf-8') as f:
+                json.dump(self.templates, f, ensure_ascii=False, indent=2)
+            self._refresh_templates()
+            self.update_status(f"✅ 已保存模板: {name}")
+        except Exception as e:
+            messagebox.showerror("错误", f"保存模板失败: {e}")
+        
     
     def start_generate(self):
         """开始生成（单张/多张）"""

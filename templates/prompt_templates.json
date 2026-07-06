@@ -1,0 +1,327 @@
+{
+    "美女": {
+        "icon": "👩",
+        "priority": 1,
+        "templates": [
+            {
+                "name": "清纯甜美",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful young Asian woman, sweet smile, pure and innocent, flawless skin, long black hair, wearing white sundress, natural makeup, soft natural lighting, standing in a flower field, gentle breeze, full body shot, detailed face, high resolution",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, makeup heavy, seductive, mature"
+            },
+            {
+                "name": "纯欲风",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful young woman, pure and sexy, innocent face with seductive eyes, flawless porcelain skin, slightly parted lips, soft natural makeup, disheveled hair, wearing sheer white lace lingerie, soft morning light, intimate atmosphere, cozy bedroom, natural beauty, alluring yet innocent, high quality, detailed face",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, heavy makeup, artificial, plastic, overdone"
+            },
+            {
+                "name": "纯欲学院",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful college girl, pure and innocent with a hint of seduction, school uniform, white shirt slightly unbuttoned, pleated skirt, knee-high socks, messy hair, glasses, library background, soft window light, shy yet alluring expression, high quality, detailed face, natural beauty",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, heavy makeup, mature, old"
+            },
+            {
+                "name": "纯欲浴室",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful young woman, pure and seductive, wet hair, water droplets on skin, wearing a white sheer bathrobe, steam rising, soft bathroom lighting, intimate atmosphere, natural beauty, flawless skin, seductive gaze, high quality, detailed face, artistic nude",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, heavy makeup, explicit, pornographic"
+            },
+            {
+                "name": "纯欲睡衣",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful young woman, pure and alluring, wearing silk nightgown, disheveled hair, sleepy eyes, morning sunlight, cozy bedroom, soft bed sheets, natural beauty, intimate and cozy atmosphere, high quality, detailed face, sensual yet innocent",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, heavy makeup, artificial"
+            },
+            {
+                "name": "色气满满",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a stunningly beautiful woman, extremely seductive, sultry gaze, full red lips, flawless hourglass figure, wearing sexy black lace lingerie, fishnet stockings, high heels, dramatic lighting, bedroom setting, intimate atmosphere, sensual pose, perfect body, high quality, detailed face, erotic yet artistic",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar"
+            },
+            {
+                "name": "色气护士",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful seductive nurse, sexy nurse uniform, white outfit, fishnet stockings, stethoscope, naughty smile, playful eyes, medical setting, dramatic lighting, sensual pose, curvy body, high quality, detailed face, erotic roleplay",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, gore, blood, explicit"
+            },
+            {
+                "name": "色气女仆",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful seductive maid, sexy French maid outfit, black and white lace, fishnet stockings, apron, holding a feather duster, playful expression, luxurious bedroom, dramatic lighting, sensual pose, curvy body, high quality, detailed face, erotic roleplay",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, vulgar"
+            },
+            {
+                "name": "色气办公室",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful seductive office lady, sexy business attire, tight pencil skirt, white blouse unbuttoned, glasses, stockings, high heels, sitting on desk, naughty smile, modern office background, dramatic lighting, sensual pose, curvy body, high quality, detailed face",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, vulgar"
+            },
+            {
+                "name": "色气教师",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful seductive teacher, sexy schoolteacher outfit, glasses, tight pencil skirt, white blouse, holding a pointer, classroom background, naughty smile, sensual pose, curvy body, high quality, detailed face, erotic roleplay",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, vulgar, underage"
+            },
+            {
+                "name": "性感御姐",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a stunning mature woman, sexy and confident, sultry gaze, full red lips, long wavy hair, wearing elegant black dress, hourglass figure, perfect body, seductive pose, dramatic lighting, studio photography, high fashion, full body shot, detailed face",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, childish, innocent"
+            },
+            {
+                "name": "运动健康",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful athletic woman, fit and toned body, sporty, wearing yoga pants and sports bra, flat tummy, defined abs, muscular legs, sweaty skin, gym background, natural lighting, full body shot, confident smile, healthy glow",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, fat, overweight, unhealthy"
+            },
+            {
+                "name": "知性优雅",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, an elegant and intellectual woman, sophisticated, wearing professional business attire, glasses, confident posture, in a modern office with city view, soft window light, half body shot, intelligent expression, refined, classy, high quality",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, casual, sloppy"
+            },
+            {
+                "name": "复古旗袍",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Chinese woman, wearing elegant traditional qipao dress, vintage style, classic beauty, red lips, dark hair in updo, standing in traditional Chinese garden, soft golden lighting, full body shot, graceful pose, cultural, elegant",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, modern clothes, casual"
+            },
+            {
+                "name": "仙女风",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, an ethereal goddess, beautiful angelic woman, flowing white dress, long silky hair, glowing skin, surrounded by soft mist and flowers, magical atmosphere, dreamy lighting, fantasy, ethereal beauty, full body shot, perfect face, high quality",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, dark, scary"
+            },
+            {
+                "name": "比基尼海滩",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful woman in bikini, perfect body, toned abs, standing on a tropical beach, ocean waves, golden sunset, warm lighting, full body shot, sexy pose, summer vibe, high quality, detailed skin",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, winter, cold"
+            },
+            {
+                "name": "睡衣居家",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful woman in silk pajamas, cozy home atmosphere, morning sunlight, sitting on a comfortable bed, relaxed and natural, bed hair, natural beauty, warm lighting, intimate atmosphere, half body shot, high quality",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, formal, business"
+            },
+            {
+                "name": "兔女郎",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful woman in sexy bunny suit, black bodysuit, fishnet stockings, bunny ears, bow tie, high heels, playful pose, casino or party background, dramatic lighting, curvy body, high quality, detailed face, erotic cosplay",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, vulgar"
+            },
+            {
+                "name": "猫女郎",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful woman in sexy cat costume, black bodysuit, cat ears, tail, choker, high heels, playful pose, mysterious atmosphere, dramatic lighting, curvy body, high quality, detailed face, erotic cosplay",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, vulgar"
+            },
+            {
+                "name": "赛博朋克",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful cyberpunk woman, neon lights, futuristic city, cybernetic implants, colorful hair, reflective jacket, dark atmosphere, rain, holographic elements, high tech, edgy, full body shot, high quality",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, vintage, rustic"
+            },
+            {
+                "name": "哥特暗黑",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful gothic woman, dark makeup, black lace dress, corset, choker, pale skin, dramatic shadows, cemetery or cathedral background, mysterious atmosphere, elegant darkness, high quality, detailed face",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, bright, colorful"
+            },
+            {
+                "name": "古典油画",
+                "prompt": "masterpiece, best quality, oil painting style, renaissance, a beautiful woman in classical painting style, soft lighting, rich colors, velvet dress, pearl necklace, elegant pose, vintage atmosphere, artistic masterpiece, high quality, detailed",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, modern, photorealistic"
+            },
+            {
+                "name": "樱花和服",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Japanese woman, wearing elegant kimono, cherry blossoms falling, traditional Japanese garden, soft pink lighting, full body shot, graceful pose, serene atmosphere, high quality, detailed face",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, western clothes, modern"
+            },
+            {
+                "name": "韩系时尚",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Korean woman, trendy fashion, stylish outfit, flawless skin, perfect makeup, city street background, soft lighting, full body shot, confident pose, high quality, detailed face, K-pop style",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, unfashionable, outdated"
+            },
+            {
+                "name": "欧美辣妹",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a stunning Western woman, gorgeous, sexy, curvy body, full lips, bright eyes, wearing trendy outfit, urban background, confident attitude, full body shot, high quality, detailed face",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, Asian features"
+            },
+            {
+                "name": "复古港风",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful woman in classic Hong Kong retro style, 90s fashion, vintage makeup, red lips, oversized jacket, high-waisted jeans, city night background, neon signs, nostalgic atmosphere, high quality, detailed face",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, modern fashion"
+            },
+            {
+                "name": "森系少女",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful forest girl, nature lover, wearing floral dress, barefoot, surrounded by trees and flowers, dappled sunlight, peaceful and serene, natural beauty, full body shot, high quality, detailed face, ethereal",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, urban, city"
+            },
+            {
+                "name": "校园初恋",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful girl next door, campus beauty, first love feeling, wearing casual school uniform, backpack, shy smile, cherry blossom background, soft sunlight, youthful and fresh, full body shot, high quality, detailed face",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, mature, heavy makeup"
+            },
+            {
+                "name": "不良少女",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful bad girl, rebellious attitude, leather jacket, ripped jeans, dark makeup, piercing, city alley background, night atmosphere, edgy and cool, confident pose, high quality, detailed face",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, sweet, innocent"
+            }
+        ]
+    },
+    "帅哥": {
+        "icon": "👨",
+        "priority": 2,
+        "templates": [
+            {
+                "name": "阳光型男",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a handsome young man, sunny smile, bright eyes, clean-cut, athletic build, wearing casual white t-shirt and jeans, standing in a park, natural sunlight, full body shot, friendly expression, high quality",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, beard, unshaven, dark"
+            },
+            {
+                "name": "成熟绅士",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a distinguished mature gentleman, sophisticated, wearing a tailored suit, confident posture, salt and pepper hair, piercing eyes, in a luxury setting, dramatic lighting, half body shot, elegant, refined",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, casual, young"
+            },
+            {
+                "name": "肌肉猛男",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a muscular man, ripped body, huge biceps, six-pack abs, defined chest, gym lighting, sweating, intense look, full body shot, powerful physique, bodybuilding, high quality",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, fat, skinny, weak"
+            },
+            {
+                "name": "韩系欧巴",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a handsome Korean man, flawless skin, stylish haircut, wearing fashionable Korean clothing, city street background, soft lighting, full body shot, cool expression, trendy, high quality",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, unfashionable"
+            },
+            {
+                "name": "日系盐系",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a handsome Japanese man, clean and fresh look, natural style, casual clothes, soft lighting, urban background, gentle smile, high quality, detailed face",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, heavy makeup, flashy"
+            },
+            {
+                "name": "欧美硬汉",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a rugged Western man, strong jaw, stubble, intense blue eyes, muscular build, wearing leather jacket, urban night background, dramatic lighting, masculine, high quality, detailed face",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, clean-shaven, soft"
+            },
+            {
+                "name": "古风侠客",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a handsome Chinese swordsman, wearing traditional Hanfu, long hair tied up, holding a sword, standing on a mountain peak, misty background, heroic aura, cinematic lighting, full body shot, high quality",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, modern clothes"
+            },
+            {
+                "name": "职场精英",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a handsome professional man, wearing tailored suit, tie, confident posture, modern office background, city view, professional atmosphere, half body shot, successful, high quality",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, casual, messy"
+            },
+            {
+                "name": "运动型男",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a handsome athletic man, sporty, wearing jersey, sweating, action pose, basketball court or gym background, energetic, dynamic lighting, full body shot, high quality",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, lazy, unmotivated"
+            },
+            {
+                "name": "文艺青年",
+                "prompt": "masterpiece, best quality, photorealistic, 8k, a handsome artistic man, intellectual, wearing vintage glasses, sweater, holding a book or guitar, cozy cafe or library background, soft lighting, thoughtful expression, high quality",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, jock, uneducated"
+            }
+        ]
+    },
+    "风景": {
+        "icon": "🌄",
+        "priority": 3,
+        "templates": [
+            {
+                "name": "山水画",
+                "prompt": "masterpiece, best quality, 8k, breathtaking landscape, majestic mountains, misty peaks, flowing river, ancient pine trees, traditional Chinese painting style, ink wash, artistic composition, serene atmosphere, high quality, detailed",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, modern buildings, pollution"
+            },
+            {
+                "name": "海边日落",
+                "prompt": "masterpiece, best quality, 8k, stunning beach sunset, golden sun sinking into the ocean, warm orange and pink sky, gentle waves, palm trees silhouette, tropical paradise, romantic atmosphere, high quality, photorealistic, detailed",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, cloudy, rainy, dark"
+            },
+            {
+                "name": "森林秘境",
+                "prompt": "masterpiece, best quality, 8k, magical forest, sunlight filtering through dense canopy, green moss, ancient trees, wild flowers, mysterious atmosphere, ethereal lighting, fantasy forest, high quality, detailed, nature photography",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, deforested, barren"
+            },
+            {
+                "name": "城市夜景",
+                "prompt": "masterpiece, best quality, 8k, beautiful city night view, skyscrapers with bright lights, neon signs, bustling streets, starry sky, long exposure photography, vibrant nightlife, high quality, detailed, urban atmosphere",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, daytime, dull"
+            },
+            {
+                "name": "樱花大道",
+                "prompt": "masterpiece, best quality, 8k, beautiful cherry blossom avenue, pink petals falling like snow, sunlight filtering through blossoms, Japanese scenery, spring atmosphere, romantic, high quality, photorealistic, detailed, dreamy",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, autumn, winter"
+            },
+            {
+                "name": "极光之夜",
+                "prompt": "masterpiece, best quality, 8k, stunning aurora borealis, colorful northern lights dancing in the sky, starry night, snow-covered landscape, magical atmosphere, high quality, photorealistic, detailed, breathtaking",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, cloudy, daytime"
+            },
+            {
+                "name": "雪山之巅",
+                "prompt": "masterpiece, best quality, 8k, majestic snow-capped mountains, pristine white peaks, clear blue sky, alpine scenery, dramatic clouds, high altitude atmosphere, breathtaking view, high quality, photorealistic, detailed",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, pollution, urban"
+            },
+            {
+                "name": "田园风光",
+                "prompt": "masterpiece, best quality, 8k, beautiful countryside, rolling green hills, golden wheat fields, charming farmhouse, wildflowers, peaceful rural landscape, warm sunlight, high quality, photorealistic, detailed, serene",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, urban, industrial"
+            }
+        ]
+    },
+    "动物": {
+        "icon": "🐱",
+        "priority": 4,
+        "templates": [
+            {
+                "name": "可爱猫咪",
+                "prompt": "masterpiece, best quality, 8k, adorable cat, fluffy fur, big bright eyes, cute expression, soft lighting, close-up portrait, high quality, detailed, pet photography, warm atmosphere",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, scary, angry"
+            },
+            {
+                "name": "威风狗狗",
+                "prompt": "masterpiece, best quality, 8k, majestic dog, handsome breed, shiny coat, intelligent eyes, loyal expression, outdoor setting, natural lighting, high quality, detailed, pet photography, energetic",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, sick, sad"
+            },
+            {
+                "name": "优雅白马",
+                "prompt": "masterpiece, best quality, 8k, beautiful white horse, flowing mane, graceful posture, running in a meadow, golden sunset, majestic, ethereal, high quality, detailed, animal photography, freedom",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, ugly, sick"
+            },
+            {
+                "name": "蝴蝶花卉",
+                "prompt": "masterpiece, best quality, 8k, colorful butterflies on blooming flowers, vibrant wings, macro photography, morning dew, garden setting, high quality, detailed, nature photography, delicate",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, dead, wilted"
+            },
+            {
+                "name": "森林狐狸",
+                "prompt": "masterpiece, best quality, 8k, beautiful red fox, clever eyes, thick fur, standing in a forest, autumn leaves, natural lighting, wildlife photography, high quality, detailed, wild animal",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, captive, zoo"
+            },
+            {
+                "name": "雪地狼",
+                "prompt": "masterpiece, best quality, 8k, majestic wolf, thick white or grey fur, piercing yellow eyes, standing in snowy forest, winter atmosphere, powerful presence, wildlife photography, high quality, detailed",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, domestic, dog"
+            }
+        ]
+    },
+    "植物": {
+        "icon": "🌺",
+        "priority": 5,
+        "templates": [
+            {
+                "name": "玫瑰花海",
+                "prompt": "masterpiece, best quality, 8k, vast rose garden, blooming red roses, morning dew on petals, soft sunlight, romantic atmosphere, high quality, detailed, nature photography, beautiful flowers",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, dead, wilted"
+            },
+            {
+                "name": "雨后荷花",
+                "prompt": "masterpiece, best quality, 8k, lotus flowers after rain, water droplets on pink petals, peaceful pond, green lily pads, soft misty atmosphere, Chinese painting style, high quality, detailed, serene",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, polluted water"
+            },
+            {
+                "name": "日本枫叶",
+                "prompt": "masterpiece, best quality, 8k, beautiful autumn leaves, vibrant red and orange maple leaves, sunlight filtering through, Japanese garden, peaceful atmosphere, high quality, detailed, nature photography, fall season",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, spring, summer"
+            },
+            {
+                "name": "梦幻薰衣草",
+                "prompt": "masterpiece, best quality, 8k, endless lavender fields, purple flowers stretching to the horizon, soft lighting, Provence atmosphere, romantic, high quality, photorealistic, detailed, dreamy landscape",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, winter, bare"
+            },
+            {
+                "name": "樱花满开",
+                "prompt": "masterpiece, best quality, 8k, cherry blossoms in full bloom, pink flowers covering branches, soft petals falling, spring atmosphere, Japanese scenery, beautiful nature, high quality, photorealistic, detailed",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, autumn, winter"
+            },
+            {
+                "name": "竹林幽径",
+                "prompt": "masterpiece, best quality, 8k, serene bamboo forest, tall green bamboo stalks, sunlight filtering through leaves, peaceful path, traditional Asian atmosphere, high quality, detailed, nature photography, tranquil",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, urban, noisy"
+            }
+        ]
+    }
+}
