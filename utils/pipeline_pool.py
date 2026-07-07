@@ -122,6 +122,7 @@ class PipelinePool:
                 self._total_created += 1
                 
                 # ✅ 添加内存信息
+                import psutil
                 mem_gb = psutil.Process().memory_info().rss / 1024 / 1024 / 1024
                 print(f"✅ Pipeline 创建完成 (任务: {task_id})")  # ← 加这行
                 
