@@ -403,7 +403,8 @@ class PipelineTab(BaseTab):
     def _run_pipeline_thread(self, image_path, pipeline_config, output_dir):
         """在后台线程运行流水线（使用独立 pipeline）"""
         from utils.pipeline_pool import pipeline_pool
-        
+        # ✅ 生成 task_id
+        task_id = f"txt2img_{datetime.now().strftime('%H%M%S')}"        
         try:
             # ===== 获取独立的 pipeline =====
             model_name = self.app.model_var.get()
@@ -423,7 +424,7 @@ class PipelineTab(BaseTab):
                 model_name=os.path.basename(model_path),
                 lora_path=lora_path,
                 lora_weight=lora_weight,
-                task_id=f"pipeline_{datetime.now().strftime('%H%M%S')}"  # ✅ 添加 task_id
+                task_id=task_id  # ✅ 添加 task_id
             )
             
             self._append_log(f"📦 获取 Pipeline: {os.path.basename(model_path)}")
@@ -470,15 +471,20 @@ class PipelineTab(BaseTab):
             self.app.root.after(0, lambda: self._show_results(results, output_dir))
             
         except Exception as e:
+           # ✅ 标记错误
+            self.app.progress_bar.error_task(task_id, str(e))
+            
             # 确保释放 pipeline
             if 'model_path' in locals() and model_path:
                 try:
-                    pipeline_pool.release_pipeline(model_path, lora_path if 'lora_path' in locals() else None)
+                    pipeline_pool.release_pipeline(model_path, lora_path, task_id)  # ✅ 传入 task_id
                 except:
                     pass
             
             error_msg = str(e)
             self.app.root.after(0, lambda: self._on_error(error_msg))
+            
+
         
     def _update_progress(self, current, total, msg):
         """更新进度"""

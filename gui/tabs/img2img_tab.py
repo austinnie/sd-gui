@@ -438,7 +438,10 @@ class Img2ImgTab(BaseTab):
         """在后台线程中生成图生图"""
         
         log("开始图生图...")
-
+        
+        # ✅ 生成 task_id
+        task_id = f"img2img_{datetime.now().strftime('%H%M%S')}"
+        
         from utils.pipeline_pool import pipeline_pool
         from utils.scheduler_fix import fix_euler_scheduler_for_img2img
     
@@ -503,7 +506,7 @@ class Img2ImgTab(BaseTab):
                 model_name=model_name,
                 lora_path=lora_path,
                 lora_weight=lora_weight,
-                task_id=f"img2img_{datetime.now().strftime('%H%M%S')}"  # ✅ 不同的 ID
+                task_id=task_id
             )
         
             
@@ -791,9 +794,9 @@ class Img2ImgTab(BaseTab):
             else:
                 self.app.root.after(0, lambda err=error_msg: self._on_generation_error(err))
         finally:
-            # ✅ 释放 pipeline
+            # ✅ 释放 pipeline，传入 task_id
             if 'model_path' in locals() and 'lora_path' in locals():
-                pipeline_pool.release_pipeline(model_path, lora_path)
+                pipeline_pool.release_pipeline(model_path, lora_path, task_id)
 
     def _save_mask(self, mask_layer, window):
         """保存遮罩并关闭窗口"""

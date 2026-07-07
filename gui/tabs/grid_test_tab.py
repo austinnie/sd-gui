@@ -425,6 +425,10 @@ class GridTestTab(BaseTab):
     
     def _run_in_thread(self, config_path):
         """在后台线程运行测试（使用独立 pipeline）"""
+
+        # ✅ 生成 task_id
+        task_id = f"txt2img_{datetime.now().strftime('%H%M%S')}" 
+        
         from utils.pipeline_pool import pipeline_pool
         from PIL import Image
         import os
@@ -482,7 +486,7 @@ class GridTestTab(BaseTab):
                     model_name=os.path.basename(model_path),
                     lora_path=lora_path,
                     lora_weight=lora_weight,
-                    task_id=f"gridtest_{datetime.now().strftime('%H%M%S')}"
+                    task_id=task_id
                 )
                 
                 self.runner.pipe = pipe
@@ -514,7 +518,7 @@ class GridTestTab(BaseTab):
                             update_log(f"⚠️ 后期处理失败: {e}")
             
             if model_type != "janus" and model_path:
-                pipeline_pool.release_pipeline(model_path, lora_path)
+                pipeline_pool.release_pipeline(model_path, lora_path, task_id)
                 update_log("🗑️ Pipeline 已释放")
             
             success = sum(1 for r in results if r.get('success', False))
@@ -524,11 +528,15 @@ class GridTestTab(BaseTab):
             self.app.root.after(0, self._on_finish)
             
         except Exception as e:
+            # ✅ 标记错误
+            self.app.progress_bar.error_task(task_id, str(e))
+            
             if model_type != "janus" and model_path:
                 try:
-                    pipeline_pool.release_pipeline(model_path, lora_path)
+                    pipeline_pool.release_pipeline(model_path, lora_path, task_id)  # ✅ 传入 task_id
                 except:
                     pass
+            
             update_log(f"❌ 错误: {e}")
             import traceback
             traceback.print_exc()

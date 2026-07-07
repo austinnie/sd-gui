@@ -660,7 +660,9 @@ class Txt2ImgTab(BaseTab):
         max_allowed = app_config.generation.max_images
         num_images = max(1, min(max_allowed, num_images))
         
-
+        # ✅ 生成 task_id
+        task_id = f"txt2img_{datetime.now().strftime('%H%M%S')}"
+        
         # ===== 获取独立的 pipeline 实例 =====
         model_name = self.app.model_var.get()
         model_path = self.app._get_model_path(model_name)
@@ -678,7 +680,7 @@ class Txt2ImgTab(BaseTab):
             model_name=model_name,
             lora_path=lora_path,
             lora_weight=lora_weight,
-            task_id=f"txt2img_{datetime.now().strftime('%H%M%S')}"  # ✅ 不同的 ID
+            task_id=task_id
         )
 
         # ✅ 定义进度回调（带 source）
@@ -705,8 +707,9 @@ class Txt2ImgTab(BaseTab):
         except Exception as e:
             self.app.root.after(0, lambda err=e: self._on_generation_error(err))
         finally:
-            # ✅ 释放 pipeline
-            pipeline_pool.release_pipeline(model_path, lora_path)
+            # ✅ 释放 pipeline，传入 task_id
+            if 'model_path' in locals() and 'lora_path' in locals():
+                pipeline_pool.release_pipeline(model_path, lora_path, task_id)
         
     def _generate_single_image(self, prompt, negative, steps=None, cfg=None, seed=None,
                                 height=None, width=None, index=1, total=1, callback=None):
