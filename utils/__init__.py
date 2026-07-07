@@ -49,6 +49,8 @@ from .scheduler_factory import (
 
 from .pipeline_pool import PipelinePool, pipeline_pool  # ✅ 新
 
+from .vae_utils import load_vae
+
 __all__ = [
     # watermark_remover
     'WatermarkRemover',
@@ -94,4 +96,6 @@ __all__ = [
     
     'PipelinePool',
     'pipeline_pool',
+    
+    'load_vae', 
 ]

@@ -571,6 +571,28 @@ class SDApp:
             command=self._clear_lora
         )
         self.clear_lora_btn.pack(side=tk.LEFT, padx=5)
+
+        # ===== 【新增】VAE 选择 =====
+        vae_frame = ttk.Frame(main_frame)
+        vae_frame.pack(fill=tk.X, pady=2, padx=5)
+
+        ttk.Label(vae_frame, text="🎨 VAE 模型:").pack(side=tk.LEFT, padx=5)
+
+        self.vae_var = tk.StringVar(value="")
+        self.vae_combo = ttk.Combobox(vae_frame, textvariable=self.vae_var, width=40)
+        self.vae_combo.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
+
+        ttk.Button(
+            vae_frame,
+            text="📦 加载 VAE",
+            command=self._load_vae
+        ).pack(side=tk.LEFT, padx=5)
+
+        ttk.Button(
+            vae_frame,
+            text="✖ 清除",
+            command=self._clear_vae
+        ).pack(side=tk.LEFT, padx=5)
         
         # ===== 状态信息 =====
         opt_info = self._get_optimization_info()
@@ -620,6 +642,11 @@ class SDApp:
         if self.lora_files:
             self.lora_var.set("")  # 默认不选择
 
+        # ✅ 扫描 VAE
+        self.vae_files, self.vae_paths = self._scan_vaes()
+        self.vae_combo['values'] = self.vae_files
+        if self.vae_files:
+            self.vae_var.set("")  # 默认不选择
     
         self._update_model_ui()
     
@@ -767,6 +794,10 @@ class SDApp:
             
             # ✅ 更新 LoRA 状态
             self._update_lora_status()
+
+            # ✅ VAE 加载状态（如果之前选过 VAE，自动加载）
+            if hasattr(self, 'vae_var') and self.vae_var.get():
+                self._load_vae()            
         else:
             self.update_status("❌ SD 模型加载失败")
             messagebox.showerror("错误", "SD 模型加载失败，请查看控制台输出")
@@ -920,6 +951,82 @@ class SDApp:
             self.update_status(f"🔗 LoRA: {lora_name} (权重: {weight:.1f})")
         else:
             self.update_status("🔗 未加载 LoRA")
+
+    def _scan_vaes(self):
+        """扫描所有 VAE 文件"""
+        vae_files = []
+        vae_paths = {}
+        
+        # 常见 VAE 存放位置
+        vae_dirs = [
+            "./models/vae",
+            "../models/vae",
+        ]
+        
+        for search_dir in vae_dirs:
+            if not os.path.exists(search_dir):
+                continue
+            for item in os.listdir(search_dir):
+                if item.endswith('.safetensors'):
+                    file_path = os.path.join(search_dir, item)
+                    size_mb = os.path.getsize(file_path) // (1024 * 1024)
+                    display_name = f"{item} ({size_mb}MB)"
+                    vae_files.append(display_name)
+                    vae_paths[display_name] = file_path
+        
+        # 去重（如果多个目录有同名文件，保留第一个）
+        seen = set()
+        unique_files = []
+        unique_paths = {}
+        for f, p in zip(vae_files, vae_paths.values()):
+            if f not in seen:
+                seen.add(f)
+                unique_files.append(f)
+                unique_paths[f] = p
+        
+        return unique_files, unique_paths
+
+    def _load_vae(self):
+        """加载 VAE"""
+        vae_display = self.vae_var.get()
+        if not vae_display:
+            messagebox.showwarning("提示", "请先选择 VAE 模型")
+            return
+        
+        if vae_display not in self.vae_paths:
+            messagebox.showwarning("提示", "找不到 VAE 文件")
+            return
+        
+        if not self.model_manager.is_sd_loaded:
+            messagebox.showwarning("提示", "请先加载主模型")
+            return
+        
+        vae_path = self.vae_paths[vae_display]
+        
+        try:
+            from utils.vae_utils import load_vae
+            
+            self.update_status(f"🎨 加载 VAE...")
+            vae = load_vae(vae_path)
+            self.model_manager._sd_pipe.vae = vae
+            self.update_status(f"✅ VAE 加载成功: {vae_display}")
+        except Exception as e:
+            self.update_status(f"❌ VAE 加载失败: {e}")
+            messagebox.showerror("错误", f"VAE 加载失败:\n{str(e)}")
+
+    def _clear_vae(self):
+        """清除 VAE（恢复默认）"""
+        if not self.model_manager.is_sd_loaded:
+            return
+        
+        self.vae_var.set("")
+        self.update_status("🔄 清除 VAE...")
+        
+        # 重新加载主模型（不带 VAE）
+        model_name = self.model_var.get()
+        model_path = self._get_model_path(model_name)
+        if model_name and model_path:
+            self._load_sd_model()
         
     def _get_optimization_info(self) -> str:
         mem = app_config.memory
@@ -1148,6 +1255,8 @@ class SDApp:
             "utils.scheduler_fix",        # ✅ 新增 
 
             "utils.pipeline_pool",  # ✅ 新增
+            
+            "utils.vae_utils", 
         ]
         
         reloaded = []
