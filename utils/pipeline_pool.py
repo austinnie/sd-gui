@@ -17,7 +17,7 @@ from diffusers import (
     StableDiffusionXLPipeline,
     EulerDiscreteScheduler,
 )
-
+import psutil  # 顶部添加导入
 
 class PipelinePool:
     """Pipeline 池 - 管理多个 pipeline 实例，每个任务独立"""
@@ -121,6 +121,10 @@ class PipelinePool:
                 }
                 self._total_created += 1
                 
+                # ✅ 添加内存信息
+                mem_gb = psutil.Process().memory_info().rss / 1024 / 1024 / 1024
+                print(f"✅ Pipeline 创建完成 (任务: {task_id})")  # ← 加这行
+                
                 return pipe, True
                 
             except Exception as e:
@@ -132,18 +136,30 @@ class PipelinePool:
     def release_pipeline(self, model_path: str, lora_path: str = None, task_id: str = None):
         """释放 pipeline 实例（引用计数 -1）"""
         key = self._get_key(model_path, lora_path, task_id)  # ✅ 传入 task_id
-        
+        print(f"🔧 release_pipeline: task_id={task_id}, key={key}")
         with self._lock:
             if key not in self._pipelines:
+                print(f"⚠️ Pipeline 不存在: {key}")
+                # 列出所有现有的 key
+                print(f"   现有 keys: {list(self._pipelines.keys())}")            
                 return
             
             self._pipelines[key]["ref_count"] -= 1
+            print(f"📊 Pipeline 引用计数: {self._pipelines[key]['ref_count']}")
             
             if self._pipelines[key]["ref_count"] <= 0:
                 data = self._pipelines.pop(key)
                 self._release_pipe_internal(data)
                 print(f"🗑️ 释放 Pipeline: {os.path.basename(model_path)} (任务: {task_id})")
+
+                # ✅ 推荐：先回收，再打印
                 gc.collect()
+                # ✅ 添加内存信息
+                import psutil
+                mem_gb = psutil.Process().memory_info().rss / 1024 / 1024 / 1024
+                print(f"   💾 释放后内存: {mem_gb:.1f} GB")
+            
+
     
     def _release_pipe_internal(self, data: dict):
         """内部释放 pipeline"""
