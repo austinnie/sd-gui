@@ -60,7 +60,7 @@ class ParamsPanel:
         self.watermark_post_process_var = tk.BooleanVar(value=True)
 
         # ===== 调度器选择 =====
-        self.scheduler_var = tk.StringVar(value="euler")
+        self.scheduler_var = tk.StringVar(value="dpm")
         
         # ===== 预设尺寸 (名称, 宽度, 高度, 描述显示) =====
         self.preset_sizes = [
@@ -181,7 +181,7 @@ class ParamsPanel:
             state="readonly"
         )
         scheduler_combo.pack(side=tk.LEFT, padx=5)
-        scheduler_combo.set("euler")  # 默认
+        scheduler_combo.set("dpm")  # 默认
         scheduler_combo.bind('<<ComboboxSelected>>', on_scheduler_change)
         
         # ===== 第二模块：预设尺寸 =====
