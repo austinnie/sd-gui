@@ -484,6 +484,15 @@ class Txt2ImgTab(BaseTab):
         btn_frame.grid(row=row, column=0, columnspan=3, pady=10)
         self.generate_btn = ttk.Button(btn_frame, text="🚀 文生图", command=self.start_generate)
         self.generate_btn.pack(side=tk.LEFT, padx=10)
+
+        # ✅ 新增：批量运行所有模板按钮
+        self.batch_templates_btn = ttk.Button(
+            btn_frame, 
+            text="📋 批量运行所有模板", 
+            command=self._batch_run_all_templates
+        )
+        self.batch_templates_btn.pack(side=tk.LEFT, padx=5)
+        
         self.cancel_btn = ttk.Button(btn_frame, text="⏹️ 取消", command=self.cancel_generation_cmd, state=tk.DISABLED)
         self.cancel_btn.pack(side=tk.LEFT, padx=10)
         ttk.Button(btn_frame, text="📁 打开输出文件夹", command=self.app.open_output_folder).pack(side=tk.LEFT, padx=10)
@@ -1144,12 +1153,14 @@ class Txt2ImgTab(BaseTab):
         self.update_status(f"❌ 生成出错: {error}")
         messagebox.showerror("错误", f"生成失败:\n{error}")
     
+
     def cancel_generation_cmd(self):
         """取消生成（按钮回调）"""
         self.cancel_generation = True
         self.is_generating = False
         self.update_status("⏹️ 正在取消...")
         self.cancel_btn.config(state=tk.DISABLED)
+        self._append_batch_log("⏹️ 用户取消，正在停止...")
     
     # ==================== 批量生成 ====================
     
@@ -1239,6 +1250,235 @@ class Txt2ImgTab(BaseTab):
         """外部调用生成"""
         self.start_generate()
 
+    # gui/tabs/txt2img_tab.py
+    # 在 Txt2ImgTab 类中添加以下方法
+
+    def _batch_run_all_templates(self):
+        """批量运行所有提示词模板"""
+        # 收集所有分类和模板
+        all_templates = []
+        for category, templates in self.templates.items():
+            for t in templates:
+                if isinstance(t, dict):
+                    all_templates.append({
+                        "category": category,
+                        "name": t.get("name", "未命名"),
+                        "prompt": t.get("prompt", ""),
+                        "negative": t.get("negative", self.default_negative)
+                    })
+                elif isinstance(t, str):
+                    all_templates.append({
+                        "category": category,
+                        "name": t[:30] + "..." if len(t) > 30 else t,
+                        "prompt": t,
+                        "negative": self.default_negative
+                    })
+        
+        if not all_templates:
+            messagebox.showwarning("提示", "没有可用的模板")
+            return
+        
+        # 确认
+        if not messagebox.askyesno("批量运行所有模板",
+            f"将依次运行所有 {len(all_templates)} 个模板\n\n"
+            f"涵盖分类: {', '.join(set(t['category'] for t in all_templates))}\n"
+            f"预计生成图片数: {len(all_templates) * self.params.num_images_var.get()}\n\n"
+            f"确定开始吗？"
+        ):
+            return
+        
+        self.update_status(f"🚀 开始批量运行所有模板，共 {len(all_templates)} 个...")
+        self.generate_btn.config(state=tk.DISABLED)
+        
+        # 在后台线程中运行
+        threading.Thread(
+            target=self._run_batch_templates,
+            args=(all_templates,),
+            daemon=True
+        ).start()
+    
+    # gui/tabs/txt2img_tab.py
+    # 修改 _run_batch_templates 方法，使用正确的 ProgressBar API
+
+    def _run_batch_templates(self, templates, source="模板"):
+        """运行批量模板（支持自定义来源）"""
+        total = len(templates)
+        
+        # 使用简单的进度更新方式（不使用 add_task）
+        success_count = 0
+        
+        # 保存当前选中的模型
+        model_name = self.app.model_var.get()
+        model_path = self.app._get_model_path(model_name)
+        
+        if not model_path:
+            self._append_batch_log("❌ 未找到模型文件")
+            self.app.root.after(0, lambda: self._on_batch_templates_error("未找到模型文件"))
+            return
+        
+        # 更新进度条最大值为总任务数
+        self.app.root.after(0, lambda: self.app.progress_bar.progress_bar.config(maximum=total))
+        
+        try:
+            for idx, template in enumerate(templates):
+                if self.cancel_generation:
+                    self._append_batch_log(f"⏹️ 已取消，已处理 {idx}/{total}")
+                    break
+                
+                category = template.get("category", "未知")
+                name = template.get("name", f"模板_{idx+1}")
+                prompt = template.get("prompt", "")
+                negative = template.get("negative", self.default_negative)
+                
+                if not prompt:
+                    self._append_batch_log(f"⚠️ [{idx+1}/{total}] {category}/{name} - 提示词为空，跳过")
+                    # 更新进度
+                    self.app.root.after(0, lambda v=idx+1: self.app.progress_bar.progress_bar.config(value=v))
+                    continue
+                
+                self._append_batch_log(f"🎨 [{idx+1}/{total}] {category}/{name}")
+                
+                # 更新进度
+                self.app.root.after(0, lambda v=idx+1, msg=f"{category}/{name} ({idx+1}/{total})": 
+                    self.app.progress_bar.update((idx+1) / total, msg))
+                
+                # 获取参数
+                params = self.params.get_params()
+                
+                # 智能尺寸调整
+                smart_w, smart_h, size_msg = get_smart_size(
+                    params["width"], params["height"], prompt
+                )
+                
+                # 智能参数调整
+                smart_steps, smart_cfg, _, param_msg = get_smart_params(
+                    prompt, params["steps"], params["cfg"], None
+                )
+                
+                # 种子
+                seed = params["seed"]
+                if seed == -1:
+                    seed = random.randint(1, 2**32 - 1)
+                seed = seed + idx
+                
+                # 生成图片
+                try:
+                    from utils.pipeline_pool import pipeline_pool
+                    
+                    pipe, is_new = pipeline_pool.get_pipeline(
+                        model_path=model_path,
+                        model_name=model_name,
+                        lora_path=None,  # 批量模板不使用 LoRA，避免干扰
+                        lora_weight=1.0,
+                        task_id=f"batch_template_{idx}"
+                    )
+                    
+                    if pipe is None:
+                        self._append_batch_log(f"❌ [{idx+1}/{total}] 模型未加载")
+                        continue
+                    
+                    # 生成
+                    generator = torch.Generator("cpu").manual_seed(seed)
+                    
+                    result = pipe(
+                        prompt=prompt,
+                        negative_prompt=negative,
+                        num_inference_steps=smart_steps,
+                        guidance_scale=smart_cfg,
+                        height=smart_h,
+                        width=smart_w,
+                        num_images_per_prompt=1,
+                        generator=generator,
+                    )
+                    
+                    image = result.images[0]
+                    
+                    # 保存图片
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    safe_name = "".join(c for c in name if c.isalnum() or c in " _-")[:30]
+                    safe_category = "".join(c for c in category if c.isalnum() or c in " _-")[:20]
+                    filename = f"{timestamp}_模板_{safe_category}_{safe_name}.png"
+                    
+                    from config.app_config import app_config
+                    output_dir = app_config.paths.output_dir
+                    os.makedirs(output_dir, exist_ok=True)
+                    filepath = os.path.join(output_dir, filename)
+                    image.save(filepath)
+                    
+                    # 图片后期处理
+                    from utils.image_post_processor import post_process_image
+                    final_path = post_process_image(
+                        filepath,
+                        self.params,
+                        prompt=prompt,
+                        log_prefix="[批量模板]"
+                    )
+                    if final_path != filepath:
+                        try:
+                            os.remove(filepath)
+                        except:
+                            pass
+                        filepath = final_path
+                    
+                    # 添加到预览
+                    self.app.root.after(0, lambda fp=filepath, img=image: self.app.add_to_preview(fp, img))
+                    
+                    success_count += 1
+                    self._append_batch_log(f"✅ [{idx+1}/{total}] 已保存: {os.path.basename(filepath)}")
+                    
+                    # 清理
+                    pipeline_pool.release_pipeline(model_path, None, f"batch_template_{idx}")
+                    del result
+                    del generator
+                    gc.collect()
+                    
+                except Exception as e:
+                    self._append_batch_log(f"❌ [{idx+1}/{total}] 生成失败: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    continue
+                
+                # 任务间间隔
+                time.sleep(0.3)
+            
+            # 完成
+            self.app.root.after(0, lambda: self._on_batch_templates_complete(success_count, total))
+            
+        except Exception as e:
+            self.app.root.after(0, lambda err=str(e): self._on_batch_templates_error(err))
+            
+    def _on_batch_templates_complete(self, success_count, total):
+        """批量模板完成"""
+        self.is_generating = False
+        self.generate_btn.config(state=tk.NORMAL)
+        self.batch_templates_btn.config(state=tk.NORMAL)
+        self.cancel_btn.config(state=tk.DISABLED)
+        self.update_progress(1.0, f"✅ 批量模板完成！成功: {success_count}/{total}")
+        self.update_status(f"✅ 批量模板完成！成功: {success_count}/{total}")
+        self._append_batch_log(f"\n📊 完成: 成功 {success_count}/{total}")
+        
+        # 重置进度条
+        self.app.progress_bar.progress_bar.config(value=0, maximum=100)
+        force_memory_cleanup()
+    
+    def _on_batch_templates_error(self, error):
+        """批量模板出错"""
+        self.is_generating = False
+        self.generate_btn.config(state=tk.NORMAL)
+        self.cancel_btn.config(state=tk.DISABLED)
+        self.update_status(f"❌ 批量模板出错: {error}")
+    
+    def _append_batch_log(self, msg):
+        """添加批量日志到结果文本框"""
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        def update():
+            try:
+                if hasattr(self, 'result_text'):
+                    self.result_text.insert(tk.END, f"[{timestamp}] {msg}\n")
+                    self.result_text.see(tk.END)
+            except:
+                pass
+        self.app.root.after(0, update)
 
 # ========== 辅助函数 ==========
 def safe_del(obj):
