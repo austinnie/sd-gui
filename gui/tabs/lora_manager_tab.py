@@ -938,7 +938,14 @@ class LoraManagerTab(BaseTab):
                 self._append_test_log("⏹️ 测试已取消")
             else:
                 self._append_test_log(f"✅ 测试完成！共处理 {processed} 个任务")
-            
+
+            # ===== 收集图片（可选） =====
+            if messagebox.askyesno("收集图片", 
+                "测试完成！是否将生成的预览图收集到 all_images 目录？\n\n"
+                "这将在 LoRA 分析中使用。"):
+                self._append_test_log("📦 正在收集图片...")
+                self._collect_preview_images()
+        
         except Exception as e:
             self._append_test_log(f"❌ 测试失败: {e}")
             import traceback
@@ -1073,7 +1080,72 @@ class LoraManagerTab(BaseTab):
         self.test_cancel_btn.config(state=tk.DISABLED)
         self.test_progress_bar.config(value=0)
         self.test_status_var.set("就绪")
-    
+
+    def _collect_preview_images(self):
+        """收集预览图到 all_images 目录"""
+        source_dir = self.output_previews_dir_var.get()
+        target_dir = "output/all_images"
+        
+        if not os.path.exists(source_dir):
+            self._append_test_log("❌ 源目录不存在")
+            return
+        
+        try:
+            #from PIL import Image
+            import shutil
+            from pathlib import Path
+            
+            os.makedirs(target_dir, exist_ok=True)
+            used_names = set()
+            copied = 0
+            
+            for root, dirs, files in os.walk(source_dir):
+                for file in files:
+                    ext = Path(file).suffix.lower()
+                    if ext in {'.jpg', '.jpeg', '.png', '.webp', '.bmp'}:
+                        source_path = Path(root) / file
+                        
+                        # 生成唯一文件名
+                        rel_path = Path(root).relative_to(source_dir)
+                        folder_name = '_'.join(rel_path.parts) + '_' if rel_path != Path('.') else ''
+                        original_name = Path(file).stem
+                        new_filename = f"{folder_name}{original_name}.jpg"
+                        
+                        # 处理重名
+                        counter = 1
+                        final_filename = new_filename
+                        while final_filename in used_names:
+                            final_filename = f"{folder_name}{original_name}_{counter}.jpg"
+                            counter += 1
+                        
+                        used_names.add(final_filename)
+                        target_path = Path(target_dir) / final_filename
+                        
+                        # 转换并保存
+                        try:
+                            img = Image.open(source_path)
+                            if img.mode in ('RGBA', 'LA', 'P'):
+                                background = Image.new('RGB', img.size, (255, 255, 255))
+                                if img.mode == 'P':
+                                    img = img.convert('RGBA')
+                                if img.mode == 'RGBA':
+                                    background.paste(img, mask=img.split()[-1])
+                                else:
+                                    background.paste(img)
+                                img = background
+                            elif img.mode != 'RGB':
+                                img = img.convert('RGB')
+                            img.save(target_path, 'JPEG', quality=90, optimize=True)
+                            copied += 1
+                        except Exception as e:
+                            self._append_test_log(f"   ⚠️ 转换失败: {file} - {e}")
+            
+            self._append_test_log(f"✅ 图片收集完成！共 {copied} 张图片")
+            self._append_test_log(f"📁 保存到: {target_dir}")
+            
+        except Exception as e:
+            self._append_test_log(f"❌ 图片收集失败: {e}")
+        
     # ==================== 分析功能（从之前的代码迁移） ====================
     
     def _start_scan(self):
@@ -1102,7 +1174,7 @@ class LoraManagerTab(BaseTab):
         """后台运行扫描"""
         try:
             import open_clip
-            from PIL import Image
+            #from PIL import Image
             
             image_dir = self.image_dir_var.get()
             top_k = self.top_k_var.get()
