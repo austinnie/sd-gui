@@ -68,6 +68,23 @@ class LoraManagerTab(BaseTab):
         self.test_model_type_var = tk.StringVar(value="both")  # sd15, sdxl, both
         self.test_re_run_var = tk.BooleanVar(value=False)
         
+        # ===== 测试模式（多选） =====
+        self.test_mode_basic_var = tk.BooleanVar(value=True)   # v1: 基础 SD1.5 + SDXL
+        self.test_mode_multi_model_var = tk.BooleanVar(value=False)  # v2: 多模型
+        self.test_mode_multi_weight_var = tk.BooleanVar(value=False) # v3: 多权重
+        self.test_mode_multi_prompt_var = tk.BooleanVar(value=False) # v3: 多提示词
+        self.test_mode_combine_var = tk.BooleanVar(value=False)      # v3: LoRA 叠加
+        
+        # ===== v2/v3 高级参数 =====
+        self.test_model_scope_var = tk.StringVar(value="default")
+        self.custom_models_var = tk.StringVar(value="")
+        self.test_weights_var = tk.StringVar(value="0.5,0.8,1.0,1.2")
+        self.test_prompts_var = tk.StringVar(value="portrait")
+        self.test_group_var = tk.StringVar(value="")
+        self.test_recent_var = tk.IntVar(value=0)
+        self.test_combine_var = tk.StringVar(value="")
+        self.test_max_loras_var = tk.IntVar(value=0)
+        
         # ===== 状态 =====
         self.is_scanning = False
         self.is_testing = False
@@ -99,7 +116,7 @@ class LoraManagerTab(BaseTab):
         self._setup_analyze_tab()
     
     # ==================== 子标签页1: 批量测试 ====================
-    
+
     def _setup_test_tab(self):
         """设置批量测试子标签页"""
         frame = self.test_frame
@@ -133,12 +150,11 @@ class LoraManagerTab(BaseTab):
         
         row += 1
         
-        # ===== 测试参数 =====
-        param_frame = ttk.LabelFrame(frame, text="⚙️ 测试参数", padding=5)
+        # ===== 基础参数 =====
+        param_frame = ttk.LabelFrame(frame, text="⚙️ 基础参数", padding=5)
         param_frame.grid(row=row, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=5, padx=5)
         row += 1
         
-        # 第一行：步数
         param_row1 = ttk.Frame(param_frame)
         param_row1.pack(fill=tk.X, pady=2)
         
@@ -152,13 +168,9 @@ class LoraManagerTab(BaseTab):
         ttk.Combobox(param_row1, textvariable=self.test_filter_var, 
                      values=["all", "small", "medium", "large"], width=8, state="readonly").pack(side=tk.LEFT, padx=5)
         
-        ttk.Label(param_row1, text="模型类型:").pack(side=tk.LEFT, padx=15)
-        ttk.Combobox(param_row1, textvariable=self.test_model_type_var,
-                     values=["sd15", "sdxl", "both"], width=6, state="readonly").pack(side=tk.LEFT, padx=5)
-        
         ttk.Checkbutton(param_row1, text="强制重跑", variable=self.test_re_run_var).pack(side=tk.LEFT, padx=15)
         
-        # 第二行：提示词模板
+        # ===== 提示词模板 =====
         param_row2 = ttk.Frame(param_frame)
         param_row2.pack(fill=tk.X, pady=2)
         
@@ -173,12 +185,87 @@ class LoraManagerTab(BaseTab):
         
         row += 1
         
+        # ===== 测试模式 (核心：用户选择要测试的维度) =====
+        mode_frame = ttk.LabelFrame(frame, text="🔧 测试模式 (选择要测试的维度)", padding=5)
+        mode_frame.grid(row=row, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=5, padx=5)
+        row += 1
+        
+        # 第一行：基础模式
+        mode_row1 = ttk.Frame(mode_frame)
+        mode_row1.pack(fill=tk.X, pady=2)
+        
+        ttk.Checkbutton(mode_row1, text="☑ 基础测试 (SD1.5 + SDXL)", 
+                        variable=self.test_mode_basic_var).pack(side=tk.LEFT, padx=5)
+        ttk.Label(mode_row1, text="v1", foreground="gray", font=("", 8)).pack(side=tk.LEFT)
+        
+        ttk.Checkbutton(mode_row1, text="☑ 多模型测试 (扫描所有模型)", 
+                        variable=self.test_mode_multi_model_var).pack(side=tk.LEFT, padx=15)
+        ttk.Label(mode_row1, text="v2", foreground="gray", font=("", 8)).pack(side=tk.LEFT)
+        
+        # 第二行：v3 高级模式
+        mode_row2 = ttk.Frame(mode_frame)
+        mode_row2.pack(fill=tk.X, pady=2)
+        
+        ttk.Checkbutton(mode_row2, text="☑ 多权重测试", 
+                        variable=self.test_mode_multi_weight_var).pack(side=tk.LEFT, padx=5)
+        ttk.Entry(mode_row2, textvariable=self.test_weights_var, width=15).pack(side=tk.LEFT, padx=5)
+        ttk.Label(mode_row2, text="v3", foreground="gray", font=("", 8)).pack(side=tk.LEFT)
+        
+        ttk.Checkbutton(mode_row2, text="☑ 多提示词风格", 
+                        variable=self.test_mode_multi_prompt_var).pack(side=tk.LEFT, padx=15)
+        ttk.Combobox(mode_row2, textvariable=self.test_prompts_var,
+                     values=["portrait", "full_body", "close_up", "cinematic", "anime"],
+                     width=12, state="readonly").pack(side=tk.LEFT, padx=5)
+        ttk.Label(mode_row2, text="v3", foreground="gray", font=("", 8)).pack(side=tk.LEFT)
+        
+        # 第三行：LoRA 叠加
+        mode_row3 = ttk.Frame(mode_frame)
+        mode_row3.pack(fill=tk.X, pady=2)
+        
+        ttk.Checkbutton(mode_row3, text="☑ LoRA 叠加测试", 
+                        variable=self.test_mode_combine_var).pack(side=tk.LEFT, padx=5)
+        ttk.Entry(mode_row3, textvariable=self.test_combine_var, width=25).pack(side=tk.LEFT, padx=5)
+        ttk.Label(mode_row3, text="(逗号分隔)", foreground="gray", font=("", 8)).pack(side=tk.LEFT)
+        ttk.Label(mode_row3, text="v3", foreground="gray", font=("", 8)).pack(side=tk.LEFT, padx=5)
+        
+        row += 1
+        
+        # ===== 高级筛选 (v2/v3) =====
+        filter_frame = ttk.LabelFrame(frame, text="📊 高级筛选", padding=5)
+        filter_frame.grid(row=row, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=5, padx=5)
+        row += 1
+        
+        filter_row1 = ttk.Frame(filter_frame)
+        filter_row1.pack(fill=tk.X, pady=2)
+        
+        ttk.Label(filter_row1, text="模型范围:").pack(side=tk.LEFT, padx=5)
+        ttk.Combobox(filter_row1, textvariable=self.test_model_scope_var,
+                     values=["default", "all", "sd15", "sdxl"], width=8, state="readonly").pack(side=tk.LEFT, padx=5)
+        
+        ttk.Label(filter_row1, text="自定义模型:").pack(side=tk.LEFT, padx=15)
+        ttk.Entry(filter_row1, textvariable=self.custom_models_var, width=20).pack(side=tk.LEFT, padx=5)
+        ttk.Label(filter_row1, text="(逗号分隔)", foreground="gray", font=("", 8)).pack(side=tk.LEFT)
+        
+        filter_row2 = ttk.Frame(filter_frame)
+        filter_row2.pack(fill=tk.X, pady=2)
+        
+        ttk.Label(filter_row2, text="关键词分组:").pack(side=tk.LEFT, padx=5)
+        ttk.Entry(filter_row2, textvariable=self.test_group_var, width=15).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Label(filter_row2, text="最近 N 个:").pack(side=tk.LEFT, padx=15)
+        ttk.Spinbox(filter_row2, from_=0, to=100, textvariable=self.test_recent_var, width=5).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Label(filter_row2, text="最多测试:").pack(side=tk.LEFT, padx=15)
+        ttk.Spinbox(filter_row2, from_=0, to=100, textvariable=self.test_max_loras_var, width=5).pack(side=tk.LEFT, padx=5)
+        
+        row += 1
+        
         # ===== 操作按钮 =====
         btn_frame = ttk.Frame(frame)
         btn_frame.grid(row=row, column=0, columnspan=4, pady=10)
         row += 1
         
-        self.test_btn = ttk.Button(btn_frame, text="🚀 开始批量测试", command=self._start_batch_test)
+        self.test_btn = ttk.Button(btn_frame, text="🚀 开始测试", command=self._start_batch_test)
         self.test_btn.pack(side=tk.LEFT, padx=5)
         
         self.test_cancel_btn = ttk.Button(btn_frame, text="⏹️ 取消", command=self._cancel_operation, state=tk.DISABLED)
@@ -186,7 +273,7 @@ class LoraManagerTab(BaseTab):
         
         ttk.Button(btn_frame, text="📁 打开输出", command=self._open_previews_output).pack(side=tk.LEFT, padx=5)
         
-        # ===== 进度 =====
+        # ===== 状态和日志 =====
         status_frame = ttk.Frame(frame)
         status_frame.grid(row=row, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=5, padx=5)
         row += 1
@@ -198,7 +285,6 @@ class LoraManagerTab(BaseTab):
         self.test_progress_bar = ttk.Progressbar(status_frame, length=300, mode='determinate')
         self.test_progress_bar.pack(side=tk.RIGHT, padx=5)
         
-        # ===== 日志 =====
         log_frame = ttk.LabelFrame(frame, text="📝 测试日志", padding=5)
         log_frame.grid(row=row, column=0, columnspan=4, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5, padx=5)
         row += 1
@@ -209,7 +295,8 @@ class LoraManagerTab(BaseTab):
         # 设置行权重
         frame.rowconfigure(row, weight=1)
         frame.columnconfigure(1, weight=1)
-    
+
+
     # ==================== 子标签页2: 分析管理 ====================
     
     def _setup_analyze_tab(self):
@@ -479,9 +566,19 @@ class LoraManagerTab(BaseTab):
     
     # ==================== 批量测试功能 ====================
     
+
     def _start_batch_test(self):
         """开始批量测试"""
         if self.is_testing:
+            return
+        
+        # 检查是否至少选择了一种测试模式
+        if not (self.test_mode_basic_var.get() or 
+                self.test_mode_multi_model_var.get() or
+                self.test_mode_multi_weight_var.get() or
+                self.test_mode_multi_prompt_var.get() or
+                self.test_mode_combine_var.get()):
+            messagebox.showwarning("提示", "请至少选择一种测试模式")
             return
         
         test_dir = self.test_lora_dir_var.get()
@@ -489,32 +586,42 @@ class LoraManagerTab(BaseTab):
             messagebox.showwarning("提示", f"LoRA 目录不存在: {test_dir}")
             return
         
+        # 获取 LoRA 列表并应用筛选
         lora_files = self._get_filtered_lora_list()
+        
+        # 应用额外筛选 (v3)
+        lora_files = self._apply_advanced_filters(lora_files)
+        
         if not lora_files:
-            messagebox.showwarning("提示", "没有找到 LoRA 文件")
+            messagebox.showwarning("提示", "没有找到符合条件的 LoRA 文件")
             return
         
-        model_type = self.test_model_type_var.get()
-        if model_type in ["sd15", "both"]:
-            sd15_model = self.sd15_model_path_var.get()
-            if not os.path.exists(sd15_model):
-                messagebox.showwarning("提示", f"SD 1.5 模型不存在: {sd15_model}")
-                return
+        # 检查模型是否存在
+        if self.test_mode_basic_var.get() or self.test_mode_multi_model_var.get():
+            # 检查基础模型
+            if self.test_mode_basic_var.get():
+                sd15_model = self.sd15_model_path_var.get()
+                sdxl_model = self.sdxl_model_path_var.get()
+                if not os.path.exists(sd15_model):
+                    messagebox.showwarning("提示", f"SD 1.5 模型不存在: {sd15_model}")
+                    return
+                if not os.path.exists(sdxl_model):
+                    messagebox.showwarning("提示", f"SDXL 模型不存在: {sdxl_model}")
+                    return
+            
+            # 检查多模型
+            if self.test_mode_multi_model_var.get():
+                models = self._get_model_list()
+                if not models:
+                    messagebox.showwarning("提示", "没有找到任何模型")
+                    return
         
-        if model_type in ["sdxl", "both"]:
-            sdxl_model = self.sdxl_model_path_var.get()
-            if not os.path.exists(sdxl_model):
-                messagebox.showwarning("提示", f"SDXL 模型不存在: {sdxl_model}")
-                return
-        
-        total = len(lora_files)
-        if model_type == "both":
-            total *= 2
+        # 计算预计任务数
+        estimated_tasks = self._estimate_tasks(lora_files)
         
         if not messagebox.askyesno("确认测试",
             f"将测试 {len(lora_files)} 个 LoRA\n"
-            f"模型类型: {model_type}\n"
-            f"预计生成 {total} 张预览图\n"
+            f"预计任务数: {estimated_tasks}\n"
             f"输出目录: {self.output_previews_dir_var.get()}\n\n"
             f"确定继续吗？"
         ):
@@ -528,7 +635,201 @@ class LoraManagerTab(BaseTab):
         self._clear_test_log()
         self._append_test_log(f"🚀 开始批量测试，共 {len(lora_files)} 个 LoRA")
         
+        # 打印模式信息
+        modes = []
+        if self.test_mode_basic_var.get():
+            modes.append("基础(v1)")
+        if self.test_mode_multi_model_var.get():
+            modes.append("多模型(v2)")
+        if self.test_mode_multi_weight_var.get():
+            modes.append("多权重(v3)")
+        if self.test_mode_multi_prompt_var.get():
+            modes.append("多提示词(v3)")
+        if self.test_mode_combine_var.get():
+            modes.append("叠加(v3)")
+        self._append_test_log(f"📋 测试模式: {', '.join(modes)}")
+        self._append_test_log(f"📊 预计任务数: {estimated_tasks}")
+        
         threading.Thread(target=self._run_batch_test, args=(lora_files,), daemon=True).start()
+
+
+    def _apply_advanced_filters(self, lora_files):
+        """应用高级筛选 (v3)"""
+        if not lora_files:
+            return lora_files
+        
+        # 关键词分组
+        group_keyword = self.test_group_var.get().strip()
+        if group_keyword:
+            lora_files = [f for f in lora_files if group_keyword.lower() in f["name"].lower()]
+        
+        # 最近修改
+        recent_n = self.test_recent_var.get()
+        if recent_n > 0:
+            lora_files.sort(key=lambda x: x.get("mtime", 0), reverse=True)
+            lora_files = lora_files[:recent_n]
+        
+        # 最多测试
+        max_loras = self.test_max_loras_var.get()
+        if max_loras > 0:
+            lora_files = lora_files[:max_loras]
+        
+        return lora_files
+
+
+    def _get_filtered_lora_list(self):
+        """获取筛选后的 LoRA 列表"""
+        test_dir = self.test_lora_dir_var.get()
+        if not os.path.exists(test_dir):
+            return []
+        
+        files = []
+        for f in os.listdir(test_dir):
+            if f.endswith('.safetensors'):
+                path = os.path.join(test_dir, f)
+                size_mb = os.path.getsize(path) / (1024 * 1024)
+                mtime = os.path.getmtime(path)
+                files.append({
+                    "name": f, 
+                    "path": path, 
+                    "size_mb": size_mb,
+                    "mtime": mtime
+                })
+        
+        files.sort(key=lambda x: x["size_mb"])
+        
+        filter_type = self.test_filter_var.get()
+        if filter_type == "small":
+            files = [f for f in files if f['size_mb'] < 50]
+        elif filter_type == "medium":
+            files = [f for f in files if 50 <= f['size_mb'] < 200]
+        elif filter_type == "large":
+            files = [f for f in files if f['size_mb'] >= 200]
+        
+        return files
+
+
+    def _estimate_tasks(self, lora_files):
+        """估算任务数"""
+        base_count = len(lora_files)
+        tasks = 0
+        
+        # 基础测试 (v1): SD1.5 + SDXL
+        if self.test_mode_basic_var.get():
+            tasks += base_count * 2
+        
+        # 多模型测试 (v2)
+        if self.test_mode_multi_model_var.get():
+            models = self._get_model_list()
+            tasks += base_count * len(models)
+        
+        # 多权重测试 (v3)
+        if self.test_mode_multi_weight_var.get():
+            weights = self._get_weights_list()
+            # 如果同时启用了基础测试，权重是在基础测试之上叠加的
+            if self.test_mode_basic_var.get():
+                tasks += base_count * 2 * len(weights)
+            else:
+                tasks += base_count * len(weights)
+        
+        # 多提示词测试 (v3)
+        if self.test_mode_multi_prompt_var.get():
+            prompts = self._get_prompt_styles()
+            if self.test_mode_basic_var.get():
+                tasks += base_count * 2 * len(prompts)
+            else:
+                tasks += base_count * len(prompts)
+        
+        # LoRA 叠加测试 (v3)
+        if self.test_mode_combine_var.get():
+            combine_list = self._get_combine_list()
+            if combine_list:
+                tasks += base_count * len(combine_list)
+        
+        return tasks
+
+
+    def _get_model_list(self):
+        """获取模型列表 (v2)"""
+        models = []
+        scope = self.test_model_scope_var.get()
+        
+        # 扫描 SD 1.5 模型
+        sd15_dir = os.path.dirname(self.sd15_model_path_var.get())
+        if os.path.exists(sd15_dir):
+            for f in os.listdir(sd15_dir):
+                if f.endswith(('.safetensors', '.ckpt')):
+                    models.append({
+                        "name": f,
+                        "path": os.path.join(sd15_dir, f),
+                        "type": "sd15"
+                    })
+        
+        # 扫描 SDXL 模型
+        sdxl_dir = os.path.dirname(self.sdxl_model_path_var.get())
+        if os.path.exists(sdxl_dir):
+            for f in os.listdir(sdxl_dir):
+                if f.endswith(('.safetensors', '.ckpt')):
+                    models.append({
+                        "name": f,
+                        "path": os.path.join(sdxl_dir, f),
+                        "type": "sdxl"
+                    })
+        
+        # 根据范围筛选
+        if scope == "sd15":
+            models = [m for m in models if m["type"] == "sd15"]
+        elif scope == "sdxl":
+            models = [m for m in models if m["type"] == "sdxl"]
+        elif scope == "default":
+            # 使用默认模型
+            default_names = [
+                "aiiiiiii01_v10.safetensors",
+                "realisticmix_iiV12Version12.safetensors",
+                "anycharactermixBaked_v20BakedVae.safetensors",
+                "asianrealisticSdlife_v40.safetensors",
+                "t3_sdVer3.safetensors",
+                "perfectionAsianILXL_v10.safetensors",
+                "xlAsianRealisticMixNhiPNhChU_v10.safetensors"
+            ]
+            models = [m for m in models if m["name"] in default_names]
+        
+        # 自定义模型
+        custom = self.custom_models_var.get().strip()
+        if custom:
+            custom_names = [n.strip() for n in custom.split(",")]
+            custom_models = [m for m in models if any(n in m["name"] for n in custom_names)]
+            if custom_models:
+                models = custom_models
+        
+        return models
+
+
+    def _get_weights_list(self):
+        """获取权重列表 (v3)"""
+        weights_str = self.test_weights_var.get().strip()
+        if not weights_str:
+            return [1.0]
+        try:
+            return [float(w.strip()) for w in weights_str.split(",") if w.strip()]
+        except:
+            return [1.0]
+
+
+    def _get_prompt_styles(self):
+        """获取提示词风格列表 (v3)"""
+        styles_str = self.test_prompts_var.get().strip()
+        if not styles_str:
+            return ["portrait"]
+        return [s.strip() for s in styles_str.split(",") if s.strip()]
+
+
+    def _get_combine_list(self):
+        """获取 LoRA 叠加列表 (v3)"""
+        combine_str = self.test_combine_var.get().strip()
+        if not combine_str:
+            return []
+        return [s.strip() for s in combine_str.split(",") if s.strip()]
     
     def _run_batch_test(self, lora_files):
         """后台运行批量测试"""
