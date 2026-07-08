@@ -25,6 +25,7 @@ class GridTestTab(BaseTab):
     
     def _init_vars(self):
         self.config_path_var = tk.StringVar(value="")
+        self.config_dropdown_var = tk.StringVar(value="")  # ✅ 新增：下拉框变量
         self.status_var = tk.StringVar(value="就绪")
         self.progress_var = tk.DoubleVar(value=0.0)
         self.progress_text_var = tk.StringVar(value="等待开始...")
@@ -112,10 +113,24 @@ class GridTestTab(BaseTab):
         # ===== 配置文件选择 =====
         config_frame = ttk.Frame(frame)
         config_frame.grid(row=row, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=5, padx=5)
-        
+
         ttk.Label(config_frame, text="配置文件:").pack(side=tk.LEFT, padx=5)
-        self.config_entry = ttk.Entry(config_frame, textvariable=self.config_path_var, width=50)
-        self.config_entry.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
+
+        # ✅ 改为下拉框 + 输入框组合
+        self.config_combo = ttk.Combobox(
+            config_frame, 
+            textvariable=self.config_path_var, 
+            width=40,
+            state="normal"  # 允许手动输入
+        )
+        self.config_combo.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
+
+        # ✅ 绑定选择事件
+        self.config_combo.bind('<<ComboboxSelected>>', self._on_config_selected)
+
+        # ✅ 刷新下拉列表（确保这行存在）
+        self._refresh_config_dropdown()
+
         ttk.Button(config_frame, text="浏览", command=self._select_config).pack(side=tk.LEFT, padx=5)
         ttk.Button(config_frame, text="📁 打开配置目录", command=self._open_config_dir).pack(side=tk.LEFT, padx=5)
         row += 1
@@ -168,6 +183,42 @@ class GridTestTab(BaseTab):
         
         # 初始化状态显示
         self._update_model_status()
+        
+        # ===== 配置生成器 =====
+        generator_frame = ttk.LabelFrame(self.frame, text="🔧 配置生成器", padding=5)
+        generator_frame.grid(row=row, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=5, padx=5)
+        row += 1
+        
+        # 模型选择
+        gen_row1 = ttk.Frame(generator_frame)
+        gen_row1.pack(fill=tk.X, pady=2)
+        
+        ttk.Label(gen_row1, text="模型类型:").pack(side=tk.LEFT, padx=5)
+        self.gen_model_types = tk.StringVar(value="all")
+        ttk.Combobox(gen_row1, textvariable=self.gen_model_types,
+                     values=["all", "sd15", "sdxl", "lightning", "janus"],
+                     width=10, state="readonly").pack(side=tk.LEFT, padx=5)
+        
+        ttk.Label(gen_row1, text="配置类型:").pack(side=tk.LEFT, padx=15)
+        self.gen_config_type = tk.StringVar(value="full")
+        ttk.Combobox(gen_row1, textvariable=self.gen_config_type,
+                     values=["full", "quick", "multi_prompt", "combined"],
+                     width=12, state="readonly").pack(side=tk.LEFT, padx=5)
+        
+        # 生成按钮
+        gen_row2 = ttk.Frame(generator_frame)
+        gen_row2.pack(fill=tk.X, pady=2)
+        
+        ttk.Button(gen_row2, text="📝 生成配置", 
+                   command=self._generate_grid_configs).pack(side=tk.LEFT, padx=5)
+        ttk.Button(gen_row2, text="📁 打开配置目录", 
+                   command=self._open_config_dir).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Label(gen_row2, text="💡 生成后可在上方选择配置文件运行测试", 
+                  foreground="gray", font=("", 8)).pack(side=tk.LEFT, padx=15)
+        
+        row += 1
+        
     
     def _update_model_status(self):
         """更新模型状态显示"""
@@ -311,7 +362,387 @@ class GridTestTab(BaseTab):
             self.update_status(f"❌ 切换到 {model_type} 失败")
             self._append_log(f"❌ 模型切换失败: {model_type}")
             messagebox.showerror("错误", f"{model_type} 模型加载失败")
+            
+            
+    def _generate_grid_configs(self):
+        """生成网格测试配置文件"""
+        import threading
+        
+        if self.is_running:
+            messagebox.showwarning("提示", "测试正在运行中，请等待完成")
+            return
+        
+        self._append_log("📝 开始生成配置文件...")
+        self._append_log(f"   模型类型: {self.gen_model_types.get()}")
+        self._append_log(f"   配置类型: {self.gen_config_type.get()}")
+        
+        threading.Thread(target=self._run_generate_configs, daemon=True).start()
     
+
+    def _run_generate_configs(self):
+        """后台生成配置（自动扫描模型）"""
+        try:
+            import os
+            import json
+            from itertools import product
+            from config.app_config import app_config
+            
+            # ========== 动态获取项目配置路径 ==========
+            model_base_paths = app_config.paths.get_resolved_model_paths()
+            sd15_folder = model_base_paths[0] if len(model_base_paths) > 0 else "../models/sd-v1-5"
+            sdxl_folder = model_base_paths[1] if len(model_base_paths) > 1 else "../models/sdxl"
+            
+            # ========== 自动扫描模型 ==========
+            def scan_models(folder):
+                if not os.path.exists(folder):
+                    return []
+                return [f for f in os.listdir(folder) if f.endswith(('.safetensors', '.ckpt'))]
+            
+            SD15_MODELS = scan_models(sd15_folder)
+            SDXL_MODELS = scan_models(sdxl_folder)
+            
+            # Lightning 模型（从 SDXL 目录中筛选）
+            LIGHTNING_MODELS = [m for m in SDXL_MODELS if 'lightning' in m.lower()]
+            
+            if not SD15_MODELS and not SDXL_MODELS:
+                self.app.root.after(0, lambda: self._append_log("❌ 未找到任何模型文件"))
+                return
+            
+            self.app.root.after(0, lambda: self._append_log(f"📦 找到 SD 1.5: {len(SD15_MODELS)} 个, SDXL: {len(SDXL_MODELS)} 个"))
+            
+            JANUS_MODELS = ["1B", "7B"]
+            
+            # ========== 预设尺寸 ==========
+            PRESET_SIZES = {
+                "标全(512x768)": {"width": 512, "height": 768},
+                "标全_横(768x512)": {"width": 768, "height": 512},
+                "细全(512x1024)": {"width": 512, "height": 1024},
+                "高全(640x960)": {"width": 640, "height": 960},
+                "极全(640x1024)": {"width": 640, "height": 1024},
+                "超长(576x1024)": {"width": 576, "height": 1024},
+                "方图(768x768)": {"width": 768, "height": 768},
+                "横图(896x512)": {"width": 896, "height": 512},
+                "SDXL方图(1024x1024)": {"width": 1024, "height": 1024},
+                "SDXL竖图(896x1152)": {"width": 896, "height": 1152},
+                "SDXL竖图(832x1216)": {"width": 832, "height": 1216},
+                "SDXL竖图(768x1344)": {"width": 768, "height": 1344},
+                "SDXL横图(1152x896)": {"width": 1152, "height": 896},
+                "SDXL横图(1216x832)": {"width": 1216, "height": 832},
+                "SDXL宽屏(1344x768)": {"width": 1344, "height": 768},
+                "SDXL超宽(1536x640)": {"width": 1536, "height": 640},
+            }
+            
+            QUALITY_PROMPTS = {
+                "sd15": "masterpiece, best quality, highly detailed, sharp focus",
+                "sdxl": "masterpiece, best quality, highly detailed, sharp focus",
+                "janus": "masterpiece, best quality, highly detailed",
+            }
+            
+            NEGATIVE_PROMPT = "worst quality, low quality, ugly, deformed, blurry, bad anatomy, watermark, text, signature"
+            
+            STEPS_SD15 = [20, 25, 30]
+            STEPS_SDXL = [30, 35, 40]
+            STEPS_LIGHTNING = [1, 4, 8, 10]
+            CFG_VALUES = [7.0, 7.5, 8.0]
+            
+            SIZES_SD15 = ["标全(512x768)", "标全_横(768x512)", "高全(640x960)", "方图(768x768)", "横图(896x512)"]
+            SIZES_SDXL = ["SDXL方图(1024x1024)", "SDXL竖图(896x1152)", "SDXL竖图(832x1216)", "SDXL横图(1152x896)", "SDXL宽屏(1344x768)"]
+            SIZES_LIGHTNING = ["SDXL方图(1024x1024)", "SDXL竖图(896x1152)"]
+            HIRES_VALUES = [False, True]
+            JANUS_TEMPS = [0.4, 0.6, 0.8, 1.0, 1.2]
+            JANUS_TOKENS = [1024, 2048, 4096]
+            
+            output_dir = "grid_configs"
+            os.makedirs(output_dir, exist_ok=True)
+            
+            config_type = self.gen_config_type.get()
+            model_type_filter = self.gen_model_types.get()
+            
+            # ===== 生成 SD 配置 =====
+            def generate_sd_grid_configs():
+                all_models = []
+                for m in SD15_MODELS:
+                    all_models.append({"name": m, "type": "sd15", "folder": sd15_folder})
+                for m in SDXL_MODELS:
+                    all_models.append({"name": m, "type": "sdxl", "folder": sdxl_folder})
+                for m in LIGHTNING_MODELS:
+                    all_models.append({"name": m, "type": "lightning", "folder": sdxl_folder})
+                
+                if not all_models:
+                    return 0
+                
+                configs = []
+                for model_info in all_models:
+                    model_name = model_info["name"]
+                    model_type = model_info["type"]
+                    model_folder = model_info["folder"]
+                    
+                    if model_type_filter not in ["all", model_type]:
+                        continue
+                    
+                    if model_type == "lightning":
+                        steps_list = STEPS_LIGHTNING
+                        size_list = SIZES_LIGHTNING
+                        quality_tag = QUALITY_PROMPTS["sdxl"]
+                    elif model_type == "sdxl":
+                        steps_list = STEPS_SDXL
+                        size_list = SIZES_SDXL
+                        quality_tag = QUALITY_PROMPTS["sdxl"]
+                    else:
+                        steps_list = STEPS_SD15
+                        size_list = SIZES_SD15
+                        quality_tag = QUALITY_PROMPTS["sd15"]
+                    
+                    prompt = f"{quality_tag}, a beautiful Asian woman, wearing elegant dress, full body shot, detailed face, natural lighting"
+                    
+                    grid_combos = []
+                    for steps, cfg, size_name, hires in product(steps_list, CFG_VALUES, size_list, HIRES_VALUES):
+                        size = PRESET_SIZES[size_name]
+                        combo = {
+                            "name": f"s{steps}_c{cfg}_{size_name}_h{str(hires)[0]}",
+                            "params": {
+                                "steps": steps, "cfg": cfg,
+                                "width": size["width"], "height": size["height"],
+                                "seed": 42, "hires": hires
+                            }
+                        }
+                        grid_combos.append(combo)
+                    
+                    model_short = model_name.replace('.safetensors', '').replace('.ckpt', '')[:30]
+                    full_config = {
+                        "name": f"{model_type.upper()}_{model_short}_全参数测试",
+                        "description": f"{model_type.upper()}: {model_name} | 共 {len(grid_combos)} 种组合",
+                        "model_type": "sd",
+                        "model": f"{model_folder}/{model_name}",
+                        "prompt": prompt,
+                        "negative": NEGATIVE_PROMPT,
+                        "output_dir": f"./output/grid_tests/{model_type}_{model_short}",
+                        "grid": grid_combos
+                    }
+                    configs.append(full_config)
+                
+                for config in configs:
+                    filename = f"{config['name']}.json"
+                    safe_filename = "".join(c for c in filename if c.isalnum() or c in "._-")
+                    filepath = os.path.join(output_dir, safe_filename)
+                    with open(filepath, 'w', encoding='utf-8') as f:
+                        json.dump(config, f, indent=2, ensure_ascii=False)
+                
+                return len(configs)
+            
+            # ===== 生成 Janus 配置 =====
+            def generate_janus_grid_configs():
+                if model_type_filter not in ["all", "janus"]:
+                    return 0
+                configs = []
+                for model_name in JANUS_MODELS:
+                    for temp, max_tokens in product(JANUS_TEMPS, JANUS_TOKENS):
+                        config = {
+                            "name": f"Janus_{model_name}_t{temp}_tk{max_tokens}",
+                            "description": f"Janus-Pro-{model_name} | 温度{temp} Token{max_tokens}",
+                            "model_type": "janus",
+                            "prompt": f"{QUALITY_PROMPTS['janus']}, a beautiful Asian woman, wearing elegant dress, full body shot, detailed face",
+                            "negative": NEGATIVE_PROMPT,
+                            "output_dir": f"./output/janus_grid_tests/{model_name}",
+                            "grid": [{
+                                "name": f"t{temp}_tk{max_tokens}",
+                                "params": {
+                                    "temperature": temp,
+                                    "max_tokens": max_tokens,
+                                    "seed": 42
+                                }
+                            }]
+                        }
+                        configs.append(config)
+                
+                for config in configs:
+                    filename = f"{config['name']}.json"
+                    safe_filename = "".join(c for c in filename if c.isalnum() or c in "._-")
+                    filepath = os.path.join(output_dir, safe_filename)
+                    with open(filepath, 'w', encoding='utf-8') as f:
+                        json.dump(config, f, indent=2, ensure_ascii=False)
+                
+                return len(configs)
+            
+            # ===== 生成快速测试配置 =====
+            def generate_quick_test_config():
+                # 使用第一个可用的模型
+                first_sd15 = SD15_MODELS[0] if SD15_MODELS else None
+                first_sdxl = SDXL_MODELS[0] if SDXL_MODELS else None
+                
+                quick_params = []
+                if first_sd15:
+                    quick_params.extend([
+                        {"model": "sd15", "steps": 20, "cfg": 7.5, "size": "标全(512x768)", "hires": False, "model_path": f"{sd15_folder}/{first_sd15}"},
+                        {"model": "sd15", "steps": 25, "cfg": 7.5, "size": "高全(640x960)", "hires": False, "model_path": f"{sd15_folder}/{first_sd15}"},
+                        {"model": "sd15", "steps": 30, "cfg": 8.0, "size": "方图(768x768)", "hires": False, "model_path": f"{sd15_folder}/{first_sd15}"},
+                        {"model": "sd15", "steps": 25, "cfg": 7.5, "size": "横图(896x512)", "hires": False, "model_path": f"{sd15_folder}/{first_sd15}"},
+                        {"model": "sd15", "steps": 25, "cfg": 7.5, "size": "标全(512x768)", "hires": True, "model_path": f"{sd15_folder}/{first_sd15}"},
+                    ])
+                if first_sdxl:
+                    quick_params.extend([
+                        {"model": "sdxl", "steps": 30, "cfg": 7.5, "size": "SDXL方图(1024x1024)", "hires": False, "model_path": f"{sdxl_folder}/{first_sdxl}"},
+                        {"model": "sdxl", "steps": 35, "cfg": 8.0, "size": "SDXL竖图(896x1152)", "hires": False, "model_path": f"{sdxl_folder}/{first_sdxl}"},
+                        {"model": "sdxl", "steps": 30, "cfg": 7.5, "size": "SDXL横图(1152x896)", "hires": False, "model_path": f"{sdxl_folder}/{first_sdxl}"},
+                        {"model": "sdxl", "steps": 35, "cfg": 7.5, "size": "SDXL方图(1024x1024)", "hires": True, "model_path": f"{sdxl_folder}/{first_sdxl}"},
+                    ])
+                
+                if not quick_params:
+                    return 0
+                
+                grid = []
+                for params in quick_params:
+                    size = PRESET_SIZES[params["size"]]
+                    grid.append({
+                        "name": f"{params['model']}_s{params['steps']}_c{params['cfg']}_{params['size']}_h{str(params['hires'])[0]}",
+                        "params": {
+                            "steps": params["steps"], "cfg": params["cfg"],
+                            "width": size["width"], "height": size["height"],
+                            "seed": 42, "hires": params["hires"]
+                        }
+                    })
+                
+                # 使用第一个可用的模型作为默认
+                default_model = f"{sd15_folder}/{first_sd15}" if first_sd15 else (f"{sdxl_folder}/{first_sdxl}" if first_sdxl else "")
+                
+                config = {
+                    "name": "快速测试_9组合",
+                    "description": "快速验证 SD1.5 和 SDXL 的关键参数组合",
+                    "model_type": "sd",
+                    "model": default_model,
+                    "prompt": f"{QUALITY_PROMPTS['sd15']}, a beautiful Asian woman, wearing elegant dress, full body shot, detailed face, natural lighting",
+                    "negative": NEGATIVE_PROMPT,
+                    "output_dir": "./output/grid_tests/quick_test",
+                    "grid": grid
+                }
+                
+                filepath = os.path.join(output_dir, "quick_test_config.json")
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    json.dump(config, f, indent=2, ensure_ascii=False)
+                
+                return 1
+            
+            # ===== 生成多提示词配置 =====
+            def generate_multi_prompt_config():
+                first_sd15 = SD15_MODELS[0] if SD15_MODELS else None
+                if not first_sd15:
+                    return 0
+                
+                prompts = [
+                    "a beautiful Asian woman, wearing elegant dress, full body shot, detailed face, natural lighting",
+                    "a beautiful Japanese woman in kimono, traditional garden, full body, soft sunlight",
+                    "a beautiful Korean woman in hanbok, palace background, full body, elegant pose",
+                    "a beautiful Chinese woman in qipao, modern city background, full body, fashion photography",
+                    "a beautiful woman in casual clothes, street photography, full body, urban setting",
+                ]
+                
+                grid = []
+                for i, prompt in enumerate(prompts):
+                    grid.append({
+                        "name": f"prompt_{i+1}",
+                        "params": {
+                            "steps": 25, "cfg": 7.5,
+                            "width": 512, "height": 768,
+                            "seed": 42 + i, "hires": False,
+                            "prompt": f"{QUALITY_PROMPTS['sd15']}, {prompt}"
+                        }
+                    })
+                
+                config = {
+                    "name": "多提示词对比测试",
+                    "description": "同一参数下测试5种不同提示词",
+                    "model_type": "sd",
+                    "model": f"{sd15_folder}/{first_sd15}",
+                    "negative": NEGATIVE_PROMPT,
+                    "output_dir": "./output/grid_tests/prompt_comparison",
+                    "grid": grid
+                }
+                
+                filepath = os.path.join(output_dir, "multi_prompt_config.json")
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    json.dump(config, f, indent=2, ensure_ascii=False)
+                
+                return 1
+            
+            # ===== 生成组合配置 =====
+            def generate_combined_grid_config():
+                first_sd15 = SD15_MODELS[0] if SD15_MODELS else None
+                if not first_sd15:
+                    return 0
+                
+                grid = []
+                for steps, cfg, size_name, hires in product(STEPS_SD15, CFG_VALUES, list(PRESET_SIZES.keys()), HIRES_VALUES):
+                    size = PRESET_SIZES[size_name]
+                    if size["width"] > 1024 or size["height"] > 1024:
+                        continue
+                    grid.append({
+                        "name": f"SD15_s{steps}_c{cfg}_{size_name}_h{str(hires)[0]}",
+                        "params": {"steps": steps, "cfg": cfg, "width": size["width"], "height": size["height"], "seed": 42, "hires": hires}
+                    })
+                
+                for steps, cfg, size_name, hires in product(STEPS_SDXL, CFG_VALUES, SIZES_SDXL, HIRES_VALUES):
+                    size = PRESET_SIZES[size_name]
+                    grid.append({
+                        "name": f"SDXL_s{steps}_c{cfg}_{size_name}_h{str(hires)[0]}",
+                        "params": {"steps": steps, "cfg": cfg, "width": size["width"], "height": size["height"], "seed": 42, "hires": hires}
+                    })
+                
+                config = {
+                    "name": "综合参数网格测试_全部组合",
+                    "description": f"包含 SD1.5 和 SDXL 的所有参数组合，共 {len(grid)} 种",
+                    "model_type": "sd",
+                    "model": f"{sd15_folder}/{first_sd15}",
+                    "prompt": f"{QUALITY_PROMPTS['sd15']}, a beautiful Asian woman, wearing elegant dress, full body shot, detailed face, natural lighting",
+                    "negative": NEGATIVE_PROMPT,
+                    "output_dir": "./output/grid_tests/combined_all",
+                    "grid": grid
+                }
+                
+                filepath = os.path.join(output_dir, "combined_grid_config.json")
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    json.dump(config, f, indent=2, ensure_ascii=False)
+                
+                return 1
+            
+            # ===== 执行生成 =====
+            total_generated = 0
+            
+            if config_type == "full":
+                total_generated += generate_sd_grid_configs()
+                total_generated += generate_janus_grid_configs()
+            elif config_type == "quick":
+                total_generated += generate_quick_test_config()
+            elif config_type == "multi_prompt":
+                total_generated += generate_multi_prompt_config()
+            elif config_type == "combined":
+                total_generated += generate_combined_grid_config()
+            
+            if total_generated == 0:
+                self.app.root.after(0, lambda: self._append_log("⚠️ 没有生成任何配置文件，请检查模型目录"))
+            else:
+                self.app.root.after(0, lambda: self._append_log(f"✅ 配置文件生成完成！共生成 {total_generated} 个配置文件"))
+                self.app.root.after(0, lambda: self._refresh_config_list())
+            
+        except Exception as e:
+            self.app.root.after(0, lambda: self._append_log(f"❌ 生成失败: {e}"))
+            import traceback
+            traceback.print_exc()
+        
+
+    def _refresh_config_list(self):
+        """刷新配置文件列表（生成配置后调用）"""
+        self._refresh_config_dropdown()  # ✅ 复用下拉刷新
+        
+        # 自动选择第一个配置文件并预览
+        config_dir = "grid_configs"
+        if os.path.exists(config_dir):
+            configs = [f for f in os.listdir(config_dir) if f.endswith('.json')]
+            if configs:
+                first_config = os.path.join(config_dir, configs[0])
+                self.config_path_var.set(first_config)
+                self._preview_config(first_config)
+                self._append_log(f"📋 已加载配置文件: {configs[0]}")
+                
     def _open_config_dir(self):
         """打开配置目录"""
         config_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "grid_configs")
@@ -319,7 +750,45 @@ class GridTestTab(BaseTab):
             os.startfile(config_dir)
         else:
             messagebox.showinfo("提示", f"配置目录不存在:\n{config_dir}\n请先运行 generate_grid_configs.py 生成配置")
-    
+
+    def _refresh_config_dropdown(self):
+        """刷新配置文件下拉列表"""
+        config_dir = "grid_configs"
+        configs = []
+        if os.path.exists(config_dir):
+            configs = [f for f in os.listdir(config_dir) if f.endswith('.json')]
+            configs.sort()  # 按名称排序
+        
+        self.config_combo['values'] = configs
+        
+        # 如果当前路径在列表中，自动选中
+        current = self.config_path_var.get()
+        if current:
+            # 提取文件名
+            current_name = os.path.basename(current)
+            if current_name in configs:
+                self.config_combo.set(current_name)
+            else:
+                self.config_combo.set("")
+        elif configs:
+            # 默认选择第一个
+            first_config = os.path.join(config_dir, configs[0])
+            self.config_path_var.set(first_config)
+            self.config_combo.set(configs[0])
+            self._preview_config(first_config)
+            
+            
+    def _on_config_selected(self, event):
+        """下拉框选择事件"""
+        selected = self.config_combo.get()
+        if selected:
+            config_dir = "grid_configs"
+            config_path = os.path.join(config_dir, selected)
+            if os.path.exists(config_path):
+                self.config_path_var.set(config_path)
+                self._preview_config(config_path)
+                self._append_log(f"📋 已选择配置文件: {selected}")
+            
     def _select_config(self):
         """选择配置文件"""
         config_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "grid_configs")
@@ -334,6 +803,7 @@ class GridTestTab(BaseTab):
         if file:
             self.config_path_var.set(file)
             self._preview_config(file)
+            self._refresh_config_dropdown()  # ✅ 新增：刷新下拉列表
     
     def _preview_config(self, filepath):
         """预览配置文件"""
