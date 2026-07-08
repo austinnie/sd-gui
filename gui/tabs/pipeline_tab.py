@@ -36,6 +36,14 @@ class PipelineTab(BaseTab):
         self.progress_var = tk.DoubleVar(value=0.0)
         self.progress_text_var = tk.StringVar(value="等待开始...")
         self.config_path_var = tk.StringVar(value="pipelines_config.json")
+        # 【新增】批量处理变量
+        self.batch_dir_var = tk.StringVar(value="output/good")
+        self.batch_status_var = tk.StringVar(value="就绪")
+        self.batch_use_inpaint_var = tk.BooleanVar(value=False)
+        self.batch_skip_existing_var = tk.BooleanVar(value=True)
+        
+        self.is_running = False
+        self.cancel_flag = False        
     
     def _init_steps(self):
         """注册所有步骤"""
@@ -151,7 +159,7 @@ class PipelineTab(BaseTab):
         self.info_text.pack(fill=tk.BOTH, expand=True)
         row += 1
         
-        # ===== 图片选择 =====
+        # ===== 图片选择（单张模式） =====
         image_frame = ttk.LabelFrame(frame, text="📷 输入图片", padding=5)
         image_frame.grid(row=row, column=0, columnspan=3, sticky=(tk.W, tk.E), padx=5, pady=5)
         
@@ -221,6 +229,45 @@ class PipelineTab(BaseTab):
             state="readonly"
         ).pack(side=tk.LEFT, padx=5)
         row += 1
+
+        # ===== 【新增】批量处理模式 =====
+        batch_frame = ttk.LabelFrame(frame, text="📁 批量处理模式 (处理目录下所有图片)", padding=5)
+        batch_frame.grid(row=row, column=0, columnspan=3, sticky=(tk.W, tk.E), padx=5, pady=5)
+        row += 1
+        
+        # 目录选择
+        batch_row1 = ttk.Frame(batch_frame)
+        batch_row1.pack(fill=tk.X, pady=2)
+        
+        ttk.Label(batch_row1, text="图片目录:").pack(side=tk.LEFT, padx=5)
+        self.batch_dir_var = tk.StringVar(value="output/good")
+        ttk.Entry(batch_row1, textvariable=self.batch_dir_var, width=40).pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
+        ttk.Button(batch_row1, text="浏览", command=self._select_batch_dir).pack(side=tk.LEFT, padx=5)
+        
+        # 批量选项
+        batch_row2 = ttk.Frame(batch_frame)
+        batch_row2.pack(fill=tk.X, pady=2)
+        
+        self.batch_use_inpaint_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(batch_row2, text="启用局部重绘 (去除衣物)", variable=self.batch_use_inpaint_var).pack(side=tk.LEFT, padx=5)
+        
+        self.batch_skip_existing_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(batch_row2, text="跳过已存在的图片", variable=self.batch_skip_existing_var).pack(side=tk.LEFT, padx=15)
+        
+        ttk.Label(batch_row2, text=f"图片数: 0", foreground="gray").pack(side=tk.RIGHT, padx=5)
+        
+        # 批量按钮
+        batch_row3 = ttk.Frame(batch_frame)
+        batch_row3.pack(fill=tk.X, pady=5)
+        
+        self.batch_run_btn = ttk.Button(batch_row3, text="📦 批量处理目录", command=self._run_batch_pipeline)
+        self.batch_run_btn.pack(side=tk.LEFT, padx=5)
+        
+        self.batch_cancel_btn = ttk.Button(batch_row3, text="⏹️ 取消", command=self._cancel_batch, state=tk.DISABLED)
+        self.batch_cancel_btn.pack(side=tk.LEFT, padx=5)
+        
+        self.batch_status_var = tk.StringVar(value="就绪")
+        ttk.Label(batch_row3, textvariable=self.batch_status_var, foreground="blue").pack(side=tk.LEFT, padx=15)
         
         # ===== 控制按钮 =====
         btn_frame2 = ttk.Frame(frame)
@@ -596,3 +643,217 @@ class PipelineTab(BaseTab):
     
     def get_frame(self):
         return self.frame
+        
+# gui/tabs/pipeline_tab.py
+
+    def _select_batch_dir(self):
+        """选择批量处理目录"""
+        dir_path = filedialog.askdirectory(title="选择图片目录")
+        if dir_path:
+            self.batch_dir_var.set(dir_path)
+            self._update_batch_count()
+    
+    def _update_batch_count(self):
+        """更新批量图片数量"""
+        dir_path = self.batch_dir_var.get()
+        if os.path.exists(dir_path):
+            images = self._get_batch_images(dir_path)
+            count = len(images)
+            # 更新标签
+            for child in self.batch_frame.winfo_children():
+                for subchild in child.winfo_children():
+                    if isinstance(subchild, ttk.Label) and "图片数:" in str(subchild.cget("text")):
+                        subchild.config(text=f"图片数: {count}")
+                        break
+    
+    def _get_batch_images(self, directory):
+        """获取目录下所有支持的图片"""
+        extensions = {'.jpg', '.jpeg', '.png', '.webp', '.bmp', '.gif'}
+        images = []
+        for f in os.listdir(directory):
+            if Path(f).suffix.lower() in extensions:
+                images.append(os.path.join(directory, f))
+        return sorted(images)
+    
+    def _cancel_batch(self):
+        """取消批量处理"""
+        self.cancel_flag = True
+        self.batch_cancel_btn.config(state=tk.DISABLED)
+        self.batch_status_var.set("⏹️ 正在取消...")
+    
+    def _run_batch_pipeline(self):
+        """运行批量流水线处理"""
+        if self.is_running:
+            messagebox.showwarning("提示", "流水线正在运行中")
+            return
+        
+        dir_path = self.batch_dir_var.get()
+        if not os.path.exists(dir_path):
+            messagebox.showwarning("提示", f"目录不存在: {dir_path}")
+            return
+        
+        images = self._get_batch_images(dir_path)
+        if not images:
+            messagebox.showwarning("提示", "目录中没有图片文件")
+            return
+        
+        # 检查模型
+        if self.app.pipeline is None:
+            messagebox.showwarning("提示", "请先加载模型")
+            return
+        
+        # 确认
+        if not messagebox.askyesno("确认批量处理",
+            f"将处理 {len(images)} 张图片\n"
+            f"目录: {dir_path}\n"
+            f"流水线: {self.pipeline_var.get()}\n\n"
+            f"确定继续吗？"
+        ):
+            return
+        
+        self.is_running = True
+        self.cancel_flag = False
+        self.batch_run_btn.config(state=tk.DISABLED)
+        self.batch_cancel_btn.config(state=tk.NORMAL)
+        self.batch_status_var.set(f"🚀 开始批量处理...")
+        
+        threading.Thread(
+            target=self._run_batch_pipeline_thread,
+            args=(images, dir_path),
+            daemon=True
+        ).start()
+    
+    def _run_batch_pipeline_thread(self, images, dir_path):
+        """后台线程运行批量处理"""
+        # 生成任务 ID
+        task_id = f"批量流水线_{datetime.now().strftime('%H%M%S')}"
+        self.app.progress_bar.add_task(task_id, "批量流水线")
+        
+        try:
+            total = len(images)
+            success_count = 0
+            
+            for idx, image_path in enumerate(images):
+                if self.cancel_flag:
+                    self._append_log("⏹️ 批量处理已取消")
+                    break
+                
+                # 检查是否跳过已存在的图片
+                if self.batch_skip_existing_var.get():
+                    # 检查输出目录是否已有对应图片
+                    base_name = os.path.splitext(os.path.basename(image_path))[0]
+                    output_dir = f"./output/pipeline_batch_{base_name}"
+                    if os.path.exists(output_dir):
+                        existing = [f for f in os.listdir(output_dir) if f.endswith('.png')]
+                        if existing:
+                            self._append_log(f"⏭️ [{idx+1}/{total}] 跳过 {os.path.basename(image_path)} (已存在)")
+                            self.app.progress_bar.update_task(
+                                task_id,
+                                (idx + 1) / total,
+                                f"跳过 {os.path.basename(image_path)}"
+                            )
+                            success_count += 1
+                            continue
+                
+                self._append_log(f"🎨 [{idx+1}/{total}] 处理: {os.path.basename(image_path)}")
+                self.app.progress_bar.update_task(
+                    task_id,
+                    (idx) / total,
+                    f"处理 {os.path.basename(image_path)} ({idx+1}/{total})"
+                )
+                
+                # 创建临时输出目录
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                base_name = os.path.splitext(os.path.basename(image_path))[0]
+                output_dir = f"./output/pipeline_batch_{base_name}_{timestamp}"
+                os.makedirs(output_dir, exist_ok=True)
+                
+                # 获取流水线配置
+                pipeline_name = self.pipeline_var.get()
+                pipelines = self.pipelines_config.get("pipelines", {})
+                pipeline_config = pipelines.get(pipeline_name, {})
+                
+                if not pipeline_config:
+                    self._append_log(f"❌ 流水线配置无效: {pipeline_name}")
+                    continue
+                
+                # 覆盖参数
+                override_strength = self.strength_var.get()
+                override_steps = self.steps_var.get()
+                override_cfg = self.cfg_var.get()
+                override_scenes = self.scenes_var.get()
+                
+                for step in pipeline_config.get("steps", []):
+                    config = step.get("config", {})
+                    if "strength" in config:
+                        config["strength"] = override_strength
+                    if "steps" in config:
+                        config["steps"] = override_steps
+                    if "cfg" in config:
+                        config["cfg"] = override_cfg
+                    if "scenes" in config:
+                        config["scenes"] = override_scenes
+                
+                # 加载图片
+                image = Image.open(image_path).convert('RGB')
+                
+                # 创建上下文
+                context = StepContext(
+                    input_image=image,
+                    input_path=image_path,
+                    output_dir=output_dir,
+                    global_config={
+                        "pipe": self.app.pipeline,
+                        "model_path": None,
+                        "batch_mode": True
+                    }
+                )
+                
+                # 运行流水线
+                pipeline = PipelineRegistry.create_pipeline_from_config(pipeline_config)
+                
+                # 进度回调
+                def batch_progress(current, total_steps, msg):
+                    progress = (idx + current / total_steps) / total
+                    self.app.root.after(0, lambda: self.app.progress_bar.update_task(
+                        task_id,
+                        progress,
+                        f"{os.path.basename(image_path)} ({idx+1}/{total}) - {msg}"
+                    ))
+                
+                pipeline.set_progress_callback(batch_progress)
+                results = pipeline.run(context)
+                
+                # 检查结果
+                step_success = any(r.success for r in results.values())
+                if step_success:
+                    success_count += 1
+                    self._append_log(f"✅ [{idx+1}/{total}] 完成: {os.path.basename(image_path)}")
+                else:
+                    self._append_log(f"❌ [{idx+1}/{total}] 失败: {os.path.basename(image_path)}")
+                
+                gc.collect()
+            
+            # 完成
+            self.app.progress_bar.finish_task(task_id)
+            self.app.root.after(0, lambda: self._on_batch_complete(success_count, total))
+            
+        except Exception as e:
+            self.app.progress_bar.error_task(task_id, str(e))
+            self.app.root.after(0, lambda: self._on_batch_error(str(e)))
+    
+    def _on_batch_complete(self, success_count, total):
+        """批量处理完成"""
+        self.is_running = False
+        self.batch_run_btn.config(state=tk.NORMAL)
+        self.batch_cancel_btn.config(state=tk.DISABLED)
+        self.batch_status_var.set(f"✅ 批量处理完成! 成功: {success_count}/{total}")
+        self.update_status(f"✅ 批量处理完成! 成功: {success_count}/{total}")
+    
+    def _on_batch_error(self, error):
+        """批量处理错误"""
+        self.is_running = False
+        self.batch_run_btn.config(state=tk.NORMAL)
+        self.batch_cancel_btn.config(state=tk.DISABLED)
+        self.batch_status_var.set(f"❌ 错误: {error}")
+        self.update_status(f"❌ 批量处理错误: {error}")        
