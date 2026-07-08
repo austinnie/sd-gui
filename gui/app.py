@@ -39,6 +39,7 @@ from gui.components.nsfw_panel import NSFWPanel
 
 from gui.tabs.pipeline_tab import PipelineTab
 from utils.scheduler_factory import get_scheduler, get_scheduler_description 
+from gui.tabs.lora_manager_tab import LoraManagerTab
 
 class ModelType(Enum):
     """模型类型枚举"""
@@ -1134,6 +1135,7 @@ class SDApp:
         from gui.tabs.scene_tab import SceneTab
         from gui.tabs.janus_tab import JanusTab
         from gui.tabs.grid_test_tab import GridTestTab
+        from gui.tabs.lora_manager_tab import LoraManagerTab  # ✅ 新增
         
         self.txt2img_tab = Txt2ImgTab(self.notebook, self)
         self.notebook.add(self.txt2img_tab.get_frame(), text="📝 文生图")
@@ -1159,7 +1161,11 @@ class SDApp:
         # ✅ 流水线标签页
         self.pipeline_tab = PipelineTab(self.notebook, self)
         self.notebook.add(self.pipeline_tab.get_frame(), text="🔧 流水线")        
-        
+
+        # ✅ 新增 LoRA 管理标签页
+        self.lora_manager_tab = LoraManagerTab(self.notebook, self)
+        self.notebook.add(self.lora_manager_tab.get_frame(), text="🔧 LoRA 管理")
+    
     def _reload_modules(self):
         """热重载模块"""
         from config.app_config import AppConfig
@@ -1220,7 +1226,8 @@ class SDApp:
             "gui.tabs.janus_tab",
             "gui.tabs.grid_test_tab",
             "gui.tabs.pipeline_tab",  
-
+            "gui.tabs.lora_manager_tab",  # ✅ 新增
+            
             # ===== GUI 管理 =====
             "gui.scene_manager", 
             
@@ -1431,6 +1438,7 @@ class SDApp:
         from gui.tabs.janus_tab import JanusTab
         from gui.tabs.grid_test_tab import GridTestTab
         from gui.tabs.pipeline_tab import PipelineTab  # ✅ 添加这行
+        from gui.tabs.lora_manager_tab import LoraManagerTab  # ✅ 新增
         
         for tab in self.notebook.tabs():
             self.notebook.forget(tab)
@@ -1460,6 +1468,9 @@ class SDApp:
         self.pipeline_tab = PipelineTab(self.notebook, self)
         self.notebook.add(self.pipeline_tab.get_frame(), text="🔧 流水线")        
 
+        # ✅ 新增 LoRA 管理标签页
+        self.lora_manager_tab = LoraManagerTab(self.notebook, self)
+        self.notebook.add(self.lora_manager_tab.get_frame(), text="🔧 LoRA 管理")
         
     
     def run(self):

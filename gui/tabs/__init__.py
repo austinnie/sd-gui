@@ -13,6 +13,7 @@ from .scene_tab import SceneTab
 from .janus_tab import JanusTab
 from .grid_test_tab import GridTestTab
 from .pipeline_tab import PipelineTab
+from .lora_manager_tab import LoraManagerTab  # ✅ 新增
 
 __all__ = [
     'BaseTab',
@@ -24,4 +25,5 @@ __all__ = [
     'JanusTab',
     'GridTestTab',
     'PipelineTab'
+    'LoraManagerTab',  # ✅ 新增
 ]
