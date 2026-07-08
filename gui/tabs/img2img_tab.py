@@ -128,22 +128,99 @@ class Img2ImgTab(BaseTab):
         
         self.use_inpaint_var = tk.BooleanVar(value=False)  # 是否使用局部重绘
         self.mask_image = None  # 存放用户涂抹的遮罩
-    
+        
+        # ✅ 新增：图片选择模式
+        self.image_mode_var = tk.StringVar(value="single")  # single, multiple, directory
+        self.selected_images = []
+        self.batch_prompts = []    
     
     def setup_ui(self):
         frame = self.frame
         row = 0
         
-        # 图片选择
-        ttk.Label(frame, text="选择图片:").grid(row=row, column=0, sticky=tk.W, pady=5, padx=5)
-        self.path_label = ttk.Label(frame, textvariable=self.img_paths_var, 
-                                    foreground="gray", background="white", relief="sunken")
-        self.path_label.grid(row=row, column=1, sticky=(tk.W, tk.E), pady=5, padx=5)
+        # ===== 图片选择模式 =====
+        mode_frame = ttk.Frame(frame)
+        mode_frame.grid(row=row, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=5, padx=5)
         
-        img_btn_frame = ttk.Frame(frame)
-        img_btn_frame.grid(row=row, column=2, sticky=tk.W)
-        ttk.Button(img_btn_frame, text="选择图片", command=self._select_images).pack(side=tk.LEFT, padx=2)
-        ttk.Button(img_btn_frame, text="清空", command=self._clear_images).pack(side=tk.LEFT, padx=2)
+        ttk.Label(mode_frame, text="选择模式:").pack(side=tk.LEFT, padx=5)
+        
+        self.mode_single_btn = ttk.Radiobutton(
+            mode_frame, text="📷 单张", variable=self.image_mode_var, 
+            value="single", command=self._on_mode_changed
+        )
+        self.mode_single_btn.pack(side=tk.LEFT, padx=5)
+        
+        self.mode_multiple_btn = ttk.Radiobutton(
+            mode_frame, text="📚 多张", variable=self.image_mode_var, 
+            value="multiple", command=self._on_mode_changed
+        )
+        self.mode_multiple_btn.pack(side=tk.LEFT, padx=5)
+        
+        self.mode_directory_btn = ttk.Radiobutton(
+            mode_frame, text="📁 目录", variable=self.image_mode_var, 
+            value="directory", command=self._on_mode_changed
+        )
+        self.mode_directory_btn.pack(side=tk.LEFT, padx=5)
+        
+        # 图片数量显示
+        self.image_count_label = ttk.Label(mode_frame, text="", foreground="blue")
+        self.image_count_label.pack(side=tk.RIGHT, padx=10)
+        
+        row += 1
+        
+        # ===== 图片选择区域 =====
+        self.image_select_frame = ttk.Frame(frame)
+        self.image_select_frame.grid(row=row, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=5, padx=5)
+        
+        # 单张模式 - 路径显示
+        self.single_path_frame = ttk.Frame(self.image_select_frame)
+        ttk.Label(self.single_path_frame, text="图片:").pack(side=tk.LEFT, padx=5)
+        self.path_label = ttk.Label(
+            self.single_path_frame,
+            textvariable=self.img_paths_var,
+            foreground="gray",
+            background="white",
+            relief="sunken"
+        )
+        self.path_label.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        ttk.Button(self.single_path_frame, text="选择图片", command=self._select_single_image).pack(side=tk.LEFT, padx=2)
+        ttk.Button(self.single_path_frame, text="清空", command=self._clear_images).pack(side=tk.LEFT, padx=2)
+        self.single_path_frame.pack(fill=tk.X)
+        
+        # 多张模式 - 显示已选文件数
+        self.multiple_path_frame = ttk.Frame(self.image_select_frame)
+        self.multiple_path_frame.pack(fill=tk.X)
+        self.multiple_path_frame.pack_forget()  # 默认隐藏
+        
+        ttk.Label(self.multiple_path_frame, text="已选:").pack(side=tk.LEFT, padx=5)
+        self.multiple_count_label = ttk.Label(
+            self.multiple_path_frame,
+            text="未选择",
+            foreground="gray",
+            background="white",
+            relief="sunken"
+        )
+        self.multiple_count_label.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        ttk.Button(self.multiple_path_frame, text="选择多张", command=self._select_multiple_images).pack(side=tk.LEFT, padx=2)
+        ttk.Button(self.multiple_path_frame, text="清空", command=self._clear_images).pack(side=tk.LEFT, padx=2)
+        
+        # 目录模式 - 显示目录路径
+        self.directory_path_frame = ttk.Frame(self.image_select_frame)
+        self.directory_path_frame.pack(fill=tk.X)
+        self.directory_path_frame.pack_forget()  # 默认隐藏
+        
+        ttk.Label(self.directory_path_frame, text="目录:").pack(side=tk.LEFT, padx=5)
+        self.directory_path_label = ttk.Label(
+            self.directory_path_frame,
+            textvariable=self.img_paths_var,
+            foreground="gray",
+            background="white",
+            relief="sunken"
+        )
+        self.directory_path_label.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        ttk.Button(self.directory_path_frame, text="选择目录", command=self._select_directory).pack(side=tk.LEFT, padx=2)
+        ttk.Button(self.directory_path_frame, text="清空", command=self._clear_images).pack(side=tk.LEFT, padx=2)
+        
         row += 1
 
         # ===== 【新增】图片预览行 =====
@@ -237,47 +314,102 @@ class Img2ImgTab(BaseTab):
             text="🎯 强度测试",
             command=self._run_strength_test
         ).pack(side=tk.LEFT, padx=5)       
-    
-    def _select_images(self):
-        """选择图片"""
-        files = filedialog.askopenfilenames(
+        
+    def _on_mode_changed(self):
+        """切换图片选择模式"""
+        mode = self.image_mode_var.get()
+        
+        # 隐藏所有模式面板
+        self.single_path_frame.pack_forget()
+        self.multiple_path_frame.pack_forget()
+        self.directory_path_frame.pack_forget()
+        
+        if mode == "single":
+            self.single_path_frame.pack(fill=tk.X)
+            self.image_select_frame.config(text="📷 单张图片")
+        elif mode == "multiple":
+            self.multiple_path_frame.pack(fill=tk.X)
+            self.image_select_frame.config(text="📚 多张图片")
+        elif mode == "directory":
+            self.directory_path_frame.pack(fill=tk.X)
+            self.image_select_frame.config(text="📁 图片目录")
+        
+        self._update_image_count()
+
+    def _select_single_image(self):
+        """选择单张图片"""
+        file = filedialog.askopenfilename(
             title="选择图片",
-            filetypes=[("图片文件", "*.png *.jpg *.jpeg *.bmp *.gif"), ("所有文件", "*.*")]
+            filetypes=[("图片文件", "*.png *.jpg *.jpeg *.bmp *.gif *.webp"), ("所有文件", "*.*")]
+        )
+        if file:
+            self.selected_images = [file]
+            self.img_paths_var.set(os.path.basename(file))
+            self._update_image_count()
+            self._show_preview(file)
+
+    def _select_multiple_images(self):
+        """选择多张图片"""
+        files = filedialog.askopenfilenames(
+            title="选择多张图片",
+            filetypes=[("图片文件", "*.png *.jpg *.jpeg *.bmp *.gif *.webp"), ("所有文件", "*.*")]
         )
         if files:
             self.selected_images = list(files)
-            self.img_paths_var.set(f"已选择 {len(files)} 张图片")
-            
-        # ===== 【新增】显示预览 =====
-        self._show_preview(files[0])  # 显示第一张的预览            
+            self.multiple_count_label.config(text=f"已选择 {len(files)} 张图片")
+            self._update_image_count()
+            # 显示第一张预览
+            if files:
+                self._show_preview(files[0])
+
+    def _select_directory(self):
+        """选择包含图片的目录"""
+        dir_path = filedialog.askdirectory(title="选择图片目录")
+        if dir_path:
+            # 扫描目录下所有图片
+            extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.webp'}
+            images = []
+            for f in os.listdir(dir_path):
+                if Path(f).suffix.lower() in extensions:
+                    images.append(os.path.join(dir_path, f))
+            if images:
+                self.selected_images = sorted(images)
+                self.img_paths_var.set(f"{dir_path} ({len(images)} 张图片)")
+                self._update_image_count()
+                self._show_preview(images[0])
+            else:
+                messagebox.showwarning("提示", "目录中没有找到图片文件")
+                self.selected_images = []
+                self.img_paths_var.set("")
+
+    def _update_image_count(self):
+        """更新图片数量显示"""
+        count = len(self.selected_images)
+        if count == 0:
+            self.image_count_label.config(text="")
+        else:
+            self.image_count_label.config(text=f"🖼️ {count} 张图片")
+
+    def _clear_images(self):
+        """清空图片"""
+        self.selected_images = []
+        self.img_paths_var.set("")
+        self.multiple_count_label.config(text="未选择")
+        self._update_image_count()
+        self.preview_label.config(image='')
+        self.preview_label.image = None
 
     def _show_preview(self, filepath):
         """显示图片预览"""
         try:
             from PIL import Image, ImageTk
-            
-            # 打开并缩放图片
             img = Image.open(filepath)
             img.thumbnail((300, 300), Image.Resampling.LANCZOS)
             photo = ImageTk.PhotoImage(img)
-            
-            # ✅ 直接使用已创建的 preview_label
-            if hasattr(self, 'preview_label'):
-                self.preview_label.config(image=photo)
-                self.preview_label.image = photo
-            
+            self.preview_label.config(image=photo)
+            self.preview_label.image = photo
         except Exception as e:
             print(f"⚠️ 预览失败: {e}")
-            
-    def _clear_images(self):
-        """清空图片"""
-        self.selected_images = []
-        self.img_paths_var.set("")
-
-        # ===== 【新增】清除预览 =====
-        if hasattr(self, 'preview_label'):
-            self.preview_label.config(image='')
-            self.preview_label.image = None
             
     
     def _on_size_change(self, event):
@@ -300,8 +432,9 @@ class Img2ImgTab(BaseTab):
         
     # ==================== 核心生成方法 ====================
     
+
     def start_generate(self):
-        """开始生成"""
+        """开始生成（支持单张/多张/目录）"""
         if not self.selected_images:
             messagebox.showwarning("提示", "请先选择图片")
             return
@@ -316,14 +449,12 @@ class Img2ImgTab(BaseTab):
         prompt = self.prompt_text.get("1.0", tk.END).strip()
         negative = self.neg_text.get("1.0", tk.END).strip()
 
-        # === [优化] 如果 Prompt 为空，使用默认中性提示词 ===
+        # 如果 Prompt 为空，使用默认中性提示词
         if not prompt:
             prompt = "a high-quality photograph, detailed, sharp focus, natural lighting"
             self.update_status("ℹ️ 未检测到提示词，已使用默认中性提示词。")
-        # === [优化] 结束 ===
-    
+        
         # 获取参数
-        # ✅ 从共享参数面板获取参数
         params = self.params.get_params()
         steps = params["steps"]
         cfg = params["cfg"]
@@ -334,7 +465,10 @@ class Img2ImgTab(BaseTab):
         strength = self.strength_var.get()
         num_images_per = self.per_image_var.get()
         
-        self.update_status("🎨 开始图生图...")
+        # 计算总任务数
+        total_tasks = len(self.selected_images) * num_images_per
+        
+        self.update_status(f"🎨 开始图生图... (共 {total_tasks} 张)")
         self.generate_btn.config(state=tk.DISABLED)
         self.cancel_btn.config(state=tk.NORMAL)
         
