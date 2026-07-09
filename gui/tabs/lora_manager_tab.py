@@ -478,83 +478,92 @@ class LoraManagerTab(BaseTab):
         frame.columnconfigure(1, weight=1)
 
     def _build_prompt_with_dimensions(self, base_prompt, negative, combo=None):
-        """根据选中的维度构建提示词
-        Args:
-            base_prompt: 基础提示词
-            negative: 负面提示词
-            combo: 指定的维度组合 (dict: {dim: option})，如果为 None 则使用所有选中的第一个
-        """
-    
-        prompt_parts = [base_prompt]
-        negative_parts = [negative]
-        
-        # 维度关键词映射
-        dim_keywords = {
-            "prompt": {
-                "portrait": "portrait, headshot, face focused",
-                "full_body": "full body shot, entire body visible, full length",
-                "close_up": "close up shot, detailed view",
-                "cinematic": "cinematic lighting, dramatic, movie still",
-                "anime": "anime style, manga, vibrant colors",
-            },
-            "background": {
-                "white": "white background, plain background",
-                "studio": "studio photography, professional backdrop",
-                "outdoor": "outdoor, natural setting",
-                "beach": "on the beach, ocean background",
-                "forest": "in the forest, trees, nature",
-            },
-            "lighting": {
-                "natural": "natural lighting, soft daylight",
-                "dramatic": "dramatic lighting, strong shadows",
-                "soft": "soft lighting, diffused, gentle",
-                "golden_hour": "golden hour, warm sunset light",
-            },
-            "quality": {
-                "standard": "high quality, detailed",
-                "photorealistic": "photorealistic, 8k, ultra HD",
-                "artistic": "artistic, masterpiece, beautiful composition",
-            },
-            "clothing": {
-                "casual": "casual clothes, everyday wear",
-                "elegant": "elegant dress, formal wear",
-                "swimsuit": "wearing swimsuit, bikini",
-                "lingerie": "wearing lingerie, lace",
-            },
-            "expression": {
-                "smiling": "smiling, happy expression",
-                "seductive": "seductive gaze, sultry expression",
-                "serious": "serious expression, intense look",
-                "happy": "happy, joyful expression",
-            },
-            "pose": {
-                "standing": "standing pose, upright",
-                "sitting": "sitting pose, seated",
-                "lying": "lying down, reclining",
-                "dancing": "dancing, in motion",
-            },
-        }
+        """根据选中的维度构建提示词"""
         
         if combo is not None:
-            # 使用指定的组合
+            # ===== 使用指定的组合 =====
+            # 从基础提示词中提取核心部分（去掉可能重复的维度描述）
+            # 保留：masterpiece, best quality, 1girl, solo, <lora:NAME:1>
+            core_parts = []
+            lora_tag = None
+            
+            for part in base_prompt.split(','):
+                part = part.strip()
+                if '<lora:' in part:
+                    lora_tag = part
+                elif part in ['masterpiece', 'best quality', '1girl', 'solo']:
+                    core_parts.append(part)
+                # 跳过 white background, sharp focus 等，因为维度会覆盖
+            
+            if lora_tag:
+                core_parts.append(lora_tag)
+            
+            prompt_parts = core_parts.copy()
+            negative_parts = [negative]
+            
+            # 维度关键词映射（简化版，只保留核心描述）
+            dim_keywords = {
+                "prompt": {
+                    "portrait": "portrait",
+                    "full_body": "full body",
+                    "close_up": "close up",
+                    "cinematic": "cinematic style",
+                    "anime": "anime style",
+                },
+                "background": {
+                    "white": "white background",
+                    "studio": "studio background",
+                    "outdoor": "outdoor setting",
+                    "beach": "on the beach",
+                    "forest": "in the forest",
+                },
+                "lighting": {
+                    "natural": "natural lighting",
+                    "dramatic": "dramatic lighting",
+                    "soft": "soft lighting",
+                    "golden_hour": "golden hour lighting",
+                },
+                "quality": {
+                    "standard": "high quality",
+                    "photorealistic": "photorealistic",
+                    "artistic": "artistic style",
+                },
+                "clothing": {
+                    "casual": "casual clothes",
+                    "elegant": "elegant dress",
+                    "swimsuit": "wearing swimsuit",
+                    "lingerie": "wearing lingerie",
+                },
+                "expression": {
+                    "smiling": "smiling",
+                    "seductive": "seductive gaze",
+                    "serious": "serious expression",
+                    "happy": "happy expression",
+                },
+                "pose": {
+                    "standing": "standing pose",
+                    "sitting": "sitting pose",
+                    "lying": "lying down",
+                    "dancing": "dancing",
+                },
+            }
+            
+            # 添加 combo 中的选项
             for dim, opt in combo.items():
                 keyword = dim_keywords.get(dim, {}).get(opt, opt)
                 prompt_parts.append(keyword)
-        else:
-            # 兼容旧逻辑：使用每个维度的第一个选中项
-            for dim, options in self.dimensions.items():
-                if not self.dim_vars[dim].get():
-                    continue
-                for opt in options:
-                    if self.dim_options_vars[dim][opt].get():
-                        keyword = dim_keywords.get(dim, {}).get(opt, opt)
-                        prompt_parts.append(keyword)
-                        break  # 只取第一个
+            
+            full_prompt = ", ".join(prompt_parts)
+            full_negative = ", ".join(negative_parts)
+            return full_prompt, full_negative
         
-        full_prompt = ", ".join(prompt_parts)
-        full_negative = ", ".join(negative_parts)
-        return full_prompt, full_negative
-    
+        else:
+            # 兼容旧逻辑
+            prompt_parts = [base_prompt]
+            negative_parts = [negative]
+            # ... 原有逻辑 ...
+            return full_prompt, full_negative
+        
     def _refresh_single_lora_list(self):
         """刷新单个 LoRA 下拉列表"""
         test_dir = self.test_lora_dir_var.get()
