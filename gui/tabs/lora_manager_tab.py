@@ -477,7 +477,7 @@ class LoraManagerTab(BaseTab):
         frame.rowconfigure(row, weight=1)
         frame.columnconfigure(1, weight=1)
 
-    def _build_prompt_with_dimensions(self, base_prompt, negative):
+    def _build_prompt_with_dimensions(self, base_prompt, negative, combo=None):
         """根据选中的维度构建提示词
         Args:
             base_prompt: 基础提示词
