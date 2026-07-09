@@ -93,7 +93,11 @@ class LoraManagerTab(BaseTab):
         self.test_recent_var = tk.IntVar(value=0)
         self.test_combine_var = tk.StringVar(value="")
         self.test_max_loras_var = tk.IntVar(value=0)
-        
+
+        # ===== 测试范围（新增） =====
+        self.test_scope_var = tk.StringVar(value="all")  # all, single, keyword
+        self.test_single_lora_var = tk.StringVar(value="")  # 选中的单个 LoRA
+    
         # ===== 状态 =====
         self.is_scanning = False
         self.is_testing = False
@@ -321,6 +325,56 @@ class LoraManagerTab(BaseTab):
         ttk.Spinbox(filter_row2, from_=0, to=100, textvariable=self.test_max_loras_var, width=5).pack(side=tk.LEFT, padx=5)
         
         row += 1
+
+
+        # ===== 测试范围（新增） =====
+        scope_frame = ttk.LabelFrame(frame, text="🎯 测试范围", padding=5)
+        scope_frame.grid(row=row, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=5, padx=5)
+        row += 1
+
+        scope_row1 = ttk.Frame(scope_frame)
+        scope_row1.pack(fill=tk.X, pady=2)
+
+        ttk.Radiobutton(
+            scope_row1,
+            text="📦 全部 LoRA",
+            variable=self.test_scope_var,
+            value="all",
+            command=self._on_scope_changed
+        ).pack(side=tk.LEFT, padx=5)
+
+        ttk.Radiobutton(
+            scope_row1,
+            text="📌 单个 LoRA",
+            variable=self.test_scope_var,
+            value="single",
+            command=self._on_scope_changed
+        ).pack(side=tk.LEFT, padx=15)
+
+        scope_row2 = ttk.Frame(scope_frame)
+        scope_row2.pack(fill=tk.X, pady=2)
+
+        # 单个 LoRA 下拉选择
+        ttk.Label(scope_row2, text="选择 LoRA:").pack(side=tk.LEFT, padx=5)
+        self.single_lora_combo = ttk.Combobox(
+            scope_row2,
+            textvariable=self.test_single_lora_var,
+            width=40,
+            state="readonly"
+        )
+        self.single_lora_combo.pack(side=tk.LEFT, padx=5)
+        self._refresh_single_lora_list()
+
+        # 状态提示
+        self.scope_status_label = ttk.Label(
+            scope_row2,
+            text="💡 将测试所有 LoRA",
+            foreground="gray",
+            font=("", 8)
+        )
+        self.scope_status_label.pack(side=tk.LEFT, padx=15)
+
+        row += 1
         
         # ===== 操作按钮 =====
         btn_frame = ttk.Frame(frame)
@@ -358,7 +412,28 @@ class LoraManagerTab(BaseTab):
         frame.rowconfigure(row, weight=1)
         frame.columnconfigure(1, weight=1)
 
+    def _refresh_single_lora_list(self):
+        """刷新单个 LoRA 下拉列表"""
+        test_dir = self.test_lora_dir_var.get()
+        if os.path.exists(test_dir):
+            files = [f for f in os.listdir(test_dir) if f.endswith('.safetensors')]
+            files.sort()
+            self.single_lora_combo['values'] = files
+            if files and not self.test_single_lora_var.get():
+                self.test_single_lora_var.set(files[0])
 
+    def _on_scope_changed(self):
+        """测试范围切换"""
+        scope = self.test_scope_var.get()
+        
+        if scope == "all":
+            self.single_lora_combo.config(state=tk.DISABLED)
+            self.scope_status_label.config(text="💡 将测试所有 LoRA")
+        elif scope == "single":
+            self.single_lora_combo.config(state="readonly")
+            self.scope_status_label.config(text="💡 将只测试选中的 LoRA")
+            self._refresh_single_lora_list()
+        
     # ==================== 子标签页2: 分析管理 ====================
     
     def _setup_analyze_tab(self):
@@ -554,9 +629,9 @@ class LoraManagerTab(BaseTab):
                 pass
         else:
             messagebox.showinfo("提示", f"输出目录不存在: {output_dir}")
-    
+        
     def _get_filtered_lora_list(self):
-        """根据筛选条件获取 LoRA 列表"""
+        """获取筛选后的 LoRA 列表（支持全部/单个）"""
         test_dir = self.test_lora_dir_var.get()
         if not os.path.exists(test_dir):
             return []
@@ -566,10 +641,17 @@ class LoraManagerTab(BaseTab):
             if f.endswith('.safetensors'):
                 path = os.path.join(test_dir, f)
                 size_mb = os.path.getsize(path) / (1024 * 1024)
-                files.append({"name": f, "path": path, "size_mb": size_mb})
+                mtime = os.path.getmtime(path)
+                files.append({
+                    "name": f,
+                    "path": path,
+                    "size_mb": size_mb,
+                    "mtime": mtime
+                })
         
         files.sort(key=lambda x: x["size_mb"])
         
+        # ===== 应用大小筛选 =====
         filter_type = self.test_filter_var.get()
         if filter_type == "small":
             files = [f for f in files if f['size_mb'] < 50]
@@ -577,6 +659,13 @@ class LoraManagerTab(BaseTab):
             files = [f for f in files if 50 <= f['size_mb'] < 200]
         elif filter_type == "large":
             files = [f for f in files if f['size_mb'] >= 200]
+        
+        # ===== 应用范围筛选（新增） =====
+        scope = self.test_scope_var.get()
+        if scope == "single":
+            single_name = self.test_single_lora_var.get()
+            if single_name:
+                files = [f for f in files if f["name"] == single_name]
         
         return files
     
@@ -737,38 +826,6 @@ class LoraManagerTab(BaseTab):
             lora_files = lora_files[:max_loras]
         
         return lora_files
-
-
-    def _get_filtered_lora_list(self):
-        """获取筛选后的 LoRA 列表"""
-        test_dir = self.test_lora_dir_var.get()
-        if not os.path.exists(test_dir):
-            return []
-        
-        files = []
-        for f in os.listdir(test_dir):
-            if f.endswith('.safetensors'):
-                path = os.path.join(test_dir, f)
-                size_mb = os.path.getsize(path) / (1024 * 1024)
-                mtime = os.path.getmtime(path)
-                files.append({
-                    "name": f, 
-                    "path": path, 
-                    "size_mb": size_mb,
-                    "mtime": mtime
-                })
-        
-        files.sort(key=lambda x: x["size_mb"])
-        
-        filter_type = self.test_filter_var.get()
-        if filter_type == "small":
-            files = [f for f in files if f['size_mb'] < 50]
-        elif filter_type == "medium":
-            files = [f for f in files if 50 <= f['size_mb'] < 200]
-        elif filter_type == "large":
-            files = [f for f in files if f['size_mb'] >= 200]
-        
-        return files
 
 
     def _estimate_tasks(self, lora_files):

@@ -1201,6 +1201,14 @@ class SDApp:
             if hasattr(self.grid_test_tab, 'is_running') and self.grid_test_tab.is_running:
                 messagebox.showwarning("提示", "网格测试正在进行中，请等待完成后再重载")
                 return
+
+        if hasattr(self, 'lora_manager_tab') and self.lora_manager_tab:  # ✅ 新增
+            if hasattr(self.lora_manager_tab, 'is_testing') and self.lora_manager_tab.is_testing:
+                messagebox.showwarning("提示", "LoRA 测试正在进行中，请等待完成后再重载")
+                return
+            if hasattr(self.lora_manager_tab, 'is_scanning') and self.lora_manager_tab.is_scanning:
+                messagebox.showwarning("提示", "LoRA 扫描正在进行中，请等待完成后再重载")
+                return
         
         self.update_status("🔄 正在重载模块...")
         print("\n" + "=" * 60)
@@ -1227,6 +1235,7 @@ class SDApp:
             "gui.tabs.grid_test_tab",
             "gui.tabs.pipeline_tab",  
             "gui.tabs.lora_manager_tab",  # ✅ 新增
+            
             
             # ===== GUI 管理 =====
             "gui.scene_manager", 
