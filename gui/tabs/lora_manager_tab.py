@@ -355,6 +355,28 @@ class LoraManagerTab(BaseTab):
             "eye_color": "👁️ 瞳色",            
         }
 
+        # ===== 组合数状态显示（新增） =====
+        dim_status_frame = ttk.Frame(dim_frame)
+        dim_status_frame.pack(fill=tk.X, pady=2, padx=5)
+
+        self.dim_count_label = ttk.Label(
+            dim_status_frame,
+            text="📊 当前组合数: 1 (安全)",
+            foreground="green",
+            font=("", 9)
+        )
+        self.dim_count_label.pack(side=tk.LEFT)
+
+        # 警告标签（默认隐藏）
+        self.dim_warning_label = ttk.Label(
+            dim_status_frame,
+            text="⚠️ 组合数超过 1000，可能耗时很长！",
+            foreground="red",
+            font=("", 9, "bold")
+        )
+        # 默认隐藏，稍后显示
+
+        # 维度选项（原有代码）
         for dim, options in self.dimensions.items():
             dim_row = ttk.Frame(dim_frame)
             dim_row.pack(fill=tk.X, pady=2)  # pady 改为 2 增加间距
@@ -374,6 +396,10 @@ class LoraManagerTab(BaseTab):
                     text=opt,
                     variable=var
                 ).pack(side=tk.LEFT, padx=2)
+                
+                # ===== 【新增】绑定事件，实时更新组合数 =====
+                var.trace('w', lambda *args: self._update_dim_count())
+                self.dim_vars[dim].trace('w', lambda *args: self._update_dim_count())
                 
         
         # ===== 高级筛选 (v2/v3) =====
@@ -1000,7 +1026,36 @@ class LoraManagerTab(BaseTab):
         
         # ===== 计算预计任务数 =====
         estimated_tasks = self._estimate_tasks(lora_files)
+
+        # ===== 【新增】组合数检查和警告 =====
+        dim_count = getattr(self, '_current_dim_count', 1)
         
+        if dim_count > 10000:
+            # 超过 10000 组合，强制警告并要求确认
+            if not messagebox.askyesno("⚠️ 组合数过多警告",
+                f"当前维度组合数: {dim_count}\n"
+                f"预计生成任务数: {estimated_tasks}\n\n"
+                f"🔴 任务数过多，可能导致：\n"
+                f"  • 内存溢出\n"
+                f"  • 程序卡死\n"
+                f"  • 耗时数小时甚至数天\n\n"
+                f"建议：\n"
+                f"  • 减少选中的维度\n"
+                f"  • 每个维度只选 1-2 个选项\n\n"
+                f"确定要继续吗？"
+            ):
+                return
+        
+        elif dim_count > 1000:
+            # 超过 1000 组合，显示警告但允许继续
+            if not messagebox.askyesno("⚠️ 组合数较多",
+                f"当前维度组合数: {dim_count}\n"
+                f"预计生成任务数: {estimated_tasks}\n\n"
+                f"任务数较多，预计耗时较长。\n"
+                f"确定要继续吗？"
+            ):
+                return
+            
         # ===== 确认对话框 =====
         if not messagebox.askyesno("确认测试",
             f"将测试 {len(lora_files)} 个 LoRA\n"
@@ -1031,6 +1086,7 @@ class LoraManagerTab(BaseTab):
             modes.append("叠加(v3)")
         self._append_test_log(f"📋 测试模式: {', '.join(modes)}")
         self._append_test_log(f"📊 预计任务数: {estimated_tasks}")
+        self._append_test_log(f"📊 维度组合数: {dim_count}")
         
         threading.Thread(target=self._run_batch_test, args=(lora_files,), daemon=True).start()
 
@@ -1057,6 +1113,57 @@ class LoraManagerTab(BaseTab):
         
         return lora_files
 
+    def _update_dim_count(self):
+        """
+        实时更新维度组合数显示
+        超过阈值时显示警告
+        """
+        # 计算当前组合数
+        dim_count = 1
+        dim_details = []
+        
+        for dim, options in self.dimensions.items():
+            if not self.dim_vars[dim].get():
+                continue
+            count = sum(1 for opt in options if self.dim_options_vars[dim][opt].get())
+            if count > 0:
+                dim_count *= count
+                dim_details.append(f"{dim}:{count}")
+        
+        # 更新显示
+        if dim_count <= 1:
+            text = "📊 当前组合数: 1 (未选择任何维度)"
+            color = "green"
+        elif dim_count <= 100:
+            text = f"📊 当前组合数: {dim_count} (安全)"
+            color = "green"
+        elif dim_count <= 1000:
+            text = f"📊 当前组合数: {dim_count} ⚠️ 建议精简"
+            color = "orange"
+        elif dim_count <= 10000:
+            text = f"📊 当前组合数: {dim_count} ⚠️ 可能耗时较长"
+            color = "orange"
+        elif dim_count <= 100000:
+            text = f"📊 当前组合数: {dim_count} 🔴 预计耗时数小时"
+            color = "red"
+        else:
+            text = f"📊 当前组合数: {dim_count} 🔴 组合数过多！请减少选择"
+            color = "red"
+        
+        self.dim_count_label.config(text=text, foreground=color)
+        
+        # 显示/隐藏警告标签
+        if hasattr(self, 'dim_warning_label'):
+            if dim_count > 1000:
+                self.dim_warning_label.pack(side=tk.LEFT, padx=15)
+                # 闪烁效果（可选）
+            else:
+                self.dim_warning_label.pack_forget()
+        
+        # 保存当前组合数供后续使用
+        self._current_dim_count = dim_count
+        self._current_dim_details = dim_details
+    
     def _get_dimension_combinations(self):
         """获取所有维度的选项组合"""
         import itertools
@@ -1105,7 +1212,15 @@ class LoraManagerTab(BaseTab):
             count = sum(1 for opt in options if self.dim_options_vars[dim][opt].get())
             if count > 0:
                 dim_count *= count
-        
+                
+            # ===== 上限保护：如果超过 100 万，停止计算 =====
+            if dim_count > 1000000:
+                dim_count = 1000000  # 上限 100 万
+                break    
+                
+        # 保存到实例变量供 UI 显示
+        self._current_dim_count = dim_count
+    
         # 基础测试 (v1)
         if self.test_mode_basic_var.get():
             tasks += (base_count * len(sd15_sizes) + base_count * len(sdxl_sizes)) * dim_count
@@ -1126,7 +1241,11 @@ class LoraManagerTab(BaseTab):
             if self.test_mode_basic_var.get():
                 tasks += (base_count * len(sd15_sizes) * weight_count + 
                          base_count * len(sdxl_sizes) * weight_count) * dim_count
-        
+
+        # ===== 最终上限保护 =====
+        if tasks > 10000000:  # 1000 万任务上限
+            tasks = 10000000
+            
         return tasks
     
     
