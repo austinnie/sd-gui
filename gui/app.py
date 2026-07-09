@@ -455,6 +455,7 @@ class SDApp:
         self.scene_tab = None
         self.janus_tab = None
         self.grid_test_tab = None
+        self._current_lora_path = None  # 记录当前加载的 LoRA 路径
     
     def _setup_ui(self):
         main_canvas = tk.Canvas(self.root)
@@ -832,7 +833,7 @@ class SDApp:
 
 
     def _load_lora(self):
-        """加载选中的 LoRA（不重新加载主模型）"""
+        """加载选中的 LoRA"""
         lora_display = self.lora_var.get()
         if not lora_display:
             messagebox.showwarning("提示", "请先选择 LoRA 模型")
@@ -853,7 +854,6 @@ class SDApp:
         self.update_status(f"🔗 正在加载 LoRA: {lora_display}...")
         self.load_lora_btn.config(state=tk.DISABLED)
         
-        # ✅ 保存 self 到 app 变量
         app = self
         
         def load_thread():
@@ -863,15 +863,44 @@ class SDApp:
                     app.root.after(0, lambda: app._on_lora_load_error("Pipeline 未加载"))
                     return
                 
-                pipe.load_lora_weights(lora_path)
-                print(f"✅ LoRA 加载成功: {lora_display} (权重: {lora_weight})")
+                # ===== 【方案1】检查是否已加载相同的 LoRA =====
+                # 使用一个标记来跟踪当前加载的 LoRA
+                # 因为 diffusers 没有直接获取已加载 LoRA 名称的方法，
+                # 我们用一个成员变量来记录
+                if hasattr(app, '_current_lora_path') and app._current_lora_path == lora_path:
+                    app.root.after(0, lambda: app._on_lora_already_loaded(lora_display))
+                    return
                 
+                # 如果加载了不同的 LoRA，先卸载
+                if hasattr(app, '_current_lora_path') and app._current_lora_path is not None:
+                    try:
+                        pipe.unload_lora_weights()
+                        print(f"   🗑️ 已卸载旧的 LoRA")
+                    except Exception as e:
+                        print(f"   ⚠️ 卸载旧 LoRA 失败: {e}")
+                
+                # 加载新的 LoRA
+                pipe.load_lora_weights(lora_path)
+                app._current_lora_path = lora_path  # 记录当前加载的 LoRA
+                
+                print(f"✅ LoRA 加载成功: {lora_display} (权重: {lora_weight})")
                 app.root.after(0, lambda: app._on_lora_load_success(lora_display))
                 
             except Exception as e:
                 app.root.after(0, lambda err=e: app._on_lora_load_error(str(err)))
         
         threading.Thread(target=load_thread, daemon=True).start()
+
+    def _on_lora_already_loaded(self, lora_display):
+        """LoRA 已经加载时的提示"""
+        self.load_lora_btn.config(state=tk.NORMAL)
+        self.unload_lora_btn.config(state=tk.NORMAL)  # ✅ 已经有了
+        self.update_status(f"ℹ️ LoRA 已加载: {lora_display}")
+        messagebox.showinfo(
+            "提示", 
+            f"LoRA 已经加载:\n{lora_display}\n\n"
+            f"如需重新加载，请先点击「卸载 LoRA」"
+        )
     
     def _on_lora_load_success(self, lora_display):
         """LoRA 加载成功"""
@@ -899,11 +928,13 @@ class SDApp:
         self.lora_var.set("")
         self.lora_weight_var.set(1.0)
         
+        # ===== 清除记录的 LoRA 路径 =====
+        self._current_lora_path = None
+        
         model_name = self.model_var.get()
         if model_name and model_name in self.checkpoint_paths:
             model_path = self.checkpoint_paths[model_name]
             
-            # ✅ 保存 self 到 app 变量
             app = self
             
             def reload_thread():
@@ -919,7 +950,7 @@ class SDApp:
             threading.Thread(target=reload_thread, daemon=True).start()
         else:
             self.unload_lora_btn.config(state=tk.NORMAL)
-        
+            
     def _on_lora_unload_complete(self, success):
         """LoRA 卸载完成"""
         self.unload_lora_btn.config(state=tk.DISABLED)
@@ -935,15 +966,18 @@ class SDApp:
         """清除 LoRA 选择"""
         self.lora_var.set("")
         self.lora_weight_var.set(1.0)
+        
+        # ===== 清除记录的 LoRA 路径 =====
+        self._current_lora_path = None
+        
         self._update_lora_status()
         
         # 如果模型已加载，重新加载以移除 LoRA
         if self.model_manager.is_sd_loaded:
-            # 重新加载当前模型（不带 LoRA）
             model_name = self.model_var.get()
             if model_name and model_name in self.checkpoint_paths:
                 self._load_sd_model()
-
+            
     def _update_lora_status(self):
         """更新 LoRA 状态显示"""
         lora_name = self.lora_var.get()
