@@ -62,6 +62,15 @@ class LoraManagerTab(BaseTab):
         self.test_negative_sdxl_var = tk.StringVar(
             value="worst quality, low quality, deformed, blurry, bad anatomy, extra limbs, missing limbs, text"
         )
+
+        # ===== 尺寸配置 =====
+        self.test_size_sd15_var = tk.StringVar(value="512x768")   # SD 1.5 当前选中的尺寸
+        self.test_size_sdxl_var = tk.StringVar(value="1024x1024") # SDXL 当前选中的尺寸
+        
+        # ===== 多尺寸测试（新增） =====
+        self.test_multi_size_var = tk.BooleanVar(value=False)  # 是否启用多尺寸
+        self.test_sizes_sd15_var = tk.StringVar(value="512x768,640x960,576x1024")  # SD 1.5 尺寸列表
+        self.test_sizes_sdxl_var = tk.StringVar(value="1024x1024,896x1152,768x1344")  # SDXL 尺寸列表
         
         # 测试选项
         self.test_filter_var = tk.StringVar(value="all")  # all, small, medium, large
@@ -169,7 +178,60 @@ class LoraManagerTab(BaseTab):
                      values=["all", "small", "medium", "large"], width=8, state="readonly").pack(side=tk.LEFT, padx=5)
         
         ttk.Checkbutton(param_row1, text="强制重跑", variable=self.test_re_run_var).pack(side=tk.LEFT, padx=15)
-        
+
+        # ===== 尺寸配置（新增） =====
+        size_row = ttk.Frame(param_frame)
+        size_row.pack(fill=tk.X, pady=2)
+
+        ttk.Label(size_row, text="SD 1.5 尺寸:").pack(side=tk.LEFT, padx=5)
+        size_combo_sd15 = ttk.Combobox(
+            size_row,
+            textvariable=self.test_size_sd15_var,
+            values=["512x768", "512x1024", "576x1024", "640x960", "640x1024", "768x768", "768x1024"],
+            width=10,
+            state="readonly"
+        )
+        size_combo_sd15.pack(side=tk.LEFT, padx=5)
+
+        ttk.Label(size_row, text="SDXL 尺寸:").pack(side=tk.LEFT, padx=15)
+        size_combo_sdxl = ttk.Combobox(
+            size_row,
+            textvariable=self.test_size_sdxl_var,
+            values=["1024x1024", "896x1152", "832x1216", "768x1344", "1152x896", "1216x832"],
+            width=10,
+            state="readonly"
+        )
+        size_combo_sdxl.pack(side=tk.LEFT, padx=5)
+
+        # ===== 多尺寸测试模式（新增） =====
+        multi_size_frame = ttk.LabelFrame(param_frame, text="📐 多尺寸测试", padding=3)
+        multi_size_frame.pack(fill=tk.X, pady=3)
+
+        multi_row1 = ttk.Frame(multi_size_frame)
+        multi_row1.pack(fill=tk.X, pady=2)
+
+        ttk.Checkbutton(
+            multi_row1,
+            text="☑ 启用多尺寸测试",
+            variable=self.test_multi_size_var
+        ).pack(side=tk.LEFT, padx=5)
+
+        ttk.Label(multi_row1, text="💡 勾选后，每个 LoRA 会生成所有指定尺寸的图片", foreground="gray", font=("", 8)).pack(side=tk.LEFT, padx=15)
+
+        multi_row2 = ttk.Frame(multi_size_frame)
+        multi_row2.pack(fill=tk.X, pady=2)
+
+        ttk.Label(multi_row2, text="SD 1.5 尺寸列表:").pack(side=tk.LEFT, padx=5)
+        ttk.Entry(multi_row2, textvariable=self.test_sizes_sd15_var, width=30).pack(side=tk.LEFT, padx=5)
+        ttk.Label(multi_row2, text="(逗号分隔)", foreground="gray", font=("", 8)).pack(side=tk.LEFT)
+
+        multi_row3 = ttk.Frame(multi_size_frame)
+        multi_row3.pack(fill=tk.X, pady=2)
+
+        ttk.Label(multi_row3, text="SDXL 尺寸列表:").pack(side=tk.LEFT, padx=5)
+        ttk.Entry(multi_row3, textvariable=self.test_sizes_sdxl_var, width=30).pack(side=tk.LEFT, padx=5)
+        ttk.Label(multi_row3, text="(逗号分隔)", foreground="gray", font=("", 8)).pack(side=tk.LEFT)
+                
         # ===== 提示词模板 =====
         param_row2 = ttk.Frame(param_frame)
         param_row2.pack(fill=tk.X, pady=2)
@@ -710,44 +772,50 @@ class LoraManagerTab(BaseTab):
 
 
     def _estimate_tasks(self, lora_files):
-        """估算任务数"""
+        """估算任务数（考虑多尺寸）"""
         base_count = len(lora_files)
         tasks = 0
         
+        # 获取尺寸数量
+        if self.test_multi_size_var.get():
+            sd15_sizes = [s.strip() for s in self.test_sizes_sd15_var.get().split(',') if s.strip()]
+            sdxl_sizes = [s.strip() for s in self.test_sizes_sdxl_var.get().split(',') if s.strip()]
+        else:
+            sd15_sizes = [self.test_size_sd15_var.get()]
+            sdxl_sizes = [self.test_size_sdxl_var.get()]
+        
         # 基础测试 (v1): SD1.5 + SDXL
         if self.test_mode_basic_var.get():
-            tasks += base_count * 2
+            tasks += base_count * len(sd15_sizes) + base_count * len(sdxl_sizes)
         
         # 多模型测试 (v2)
         if self.test_mode_multi_model_var.get():
             models = self._get_model_list()
-            tasks += base_count * len(models)
+            # 每个模型使用对应类型的尺寸
+            for model in models:
+                if model["type"] == "sd15":
+                    tasks += base_count * len(sd15_sizes)
+                else:
+                    tasks += base_count * len(sdxl_sizes)
         
         # 多权重测试 (v3)
         if self.test_mode_multi_weight_var.get():
             weights = self._get_weights_list()
-            # 如果同时启用了基础测试，权重是在基础测试之上叠加的
+            weight_count = len(weights)
             if self.test_mode_basic_var.get():
-                tasks += base_count * 2 * len(weights)
-            else:
-                tasks += base_count * len(weights)
+                tasks += base_count * len(sd15_sizes) * weight_count
+                tasks += base_count * len(sdxl_sizes) * weight_count
+            # 其他模式类似...
         
         # 多提示词测试 (v3)
         if self.test_mode_multi_prompt_var.get():
             prompts = self._get_prompt_styles()
+            prompt_count = len(prompts)
             if self.test_mode_basic_var.get():
-                tasks += base_count * 2 * len(prompts)
-            else:
-                tasks += base_count * len(prompts)
-        
-        # LoRA 叠加测试 (v3)
-        if self.test_mode_combine_var.get():
-            combine_list = self._get_combine_list()
-            if combine_list:
-                tasks += base_count * len(combine_list)
+                tasks += base_count * len(sd15_sizes) * prompt_count
+                tasks += base_count * len(sdxl_sizes) * prompt_count
         
         return tasks
-
 
     def _get_model_list(self):
         """获取模型列表 (v2)"""
@@ -954,9 +1022,10 @@ class LoraManagerTab(BaseTab):
             self.is_testing = False
             self.app.root.after(0, self._reset_test_ui)
     
+
     def _test_single_lora(self, pipe, lora_info, output_dir, is_sdxl=False, 
-                          run_log=None, idx=0, total=1):
-        """测试单个 LoRA"""
+                              run_log=None, idx=0, total=1):
+        """测试单个 LoRA（支持多尺寸）"""
         lora_name = lora_info["name"]
         lora_code = lora_name.replace('.safetensors', '')
         
@@ -965,61 +1034,84 @@ class LoraManagerTab(BaseTab):
             prompt = self.test_prompt_sdxl_var.get().replace("NAME", lora_code)
             negative = self.test_negative_sdxl_var.get()
             steps = self.test_steps_sdxl_var.get()
-            size = (1024, 1024)
+            if self.test_multi_size_var.get():
+                size_str = self.test_sizes_sdxl_var.get()
+                sizes = [tuple(map(int, s.strip().split('x'))) for s in size_str.split(',') if s.strip()]
+            else:
+                size_str = self.test_size_sdxl_var.get()
+                sizes = [tuple(map(int, size_str.split('x')))]
         else:
             prompt = self.test_prompt_sd15_var.get().replace("NAME", lora_code)
             negative = self.test_negative_sd15_var.get()
             steps = self.test_steps_sd15_var.get()
-            size = (512, 768)
+            if self.test_multi_size_var.get():
+                size_str = self.test_sizes_sd15_var.get()
+                sizes = [tuple(map(int, s.strip().split('x'))) for s in size_str.split(',') if s.strip()]
+            else:
+                size_str = self.test_size_sd15_var.get()
+                sizes = [tuple(map(int, size_str.split('x')))]
         
         # 输出路径
         lora_dir = os.path.join(output_dir, lora_code)
         os.makedirs(lora_dir, exist_ok=True)
         
-        stage_key = "sdxl" if is_sdxl else "sd15"
-        out_path = os.path.join(lora_dir, f"{stage_key.upper()}.png")
+        stage_key_base = "sdxl" if is_sdxl else "sd15"
         
-        # 检查是否需要跳过
-        if not self.test_re_run_var.get():
-            if run_log.get(lora_name, {}).get(stage_key, False):
-                self._append_test_log(f"   [{idx+1}/{total}] ⏭️ 跳过 {lora_name} (已标记完成)")
-                return
-            if os.path.exists(out_path):
+        # ✅ 标记是否生成了任何尺寸
+        any_generated = False
+        
+        # 对每个尺寸生成图片
+        for size_idx, size in enumerate(sizes):
+            size_label = f"{size[0]}x{size[1]}"
+            if len(sizes) > 1:
+                out_path = os.path.join(lora_dir, f"{stage_key_base.upper()}_{size_label}.png")
+                stage_key = f"{stage_key_base}_{size_label}"
+            else:
+                out_path = os.path.join(lora_dir, f"{stage_key_base.upper()}.png")
+                stage_key = stage_key_base
+            
+            # 检查是否需要跳过（只跳过当前尺寸，不跳过整个 LoRA）
+            if not self.test_re_run_var.get():
+                if run_log.get(lora_name, {}).get(stage_key, False):
+                    continue
+                if os.path.exists(out_path):
+                    if lora_name not in run_log:
+                        run_log[lora_name] = {}
+                    run_log[lora_name][stage_key] = True
+                    self._save_run_log(os.path.join(self.output_previews_dir_var.get(), "run_log.json"), run_log)
+                    continue
+            
+            if not any_generated:
+                self._append_test_log(f"   [{idx+1}/{total}] 🚀 测试 {lora_name} ({lora_info['size_mb']:.1f}MB)")
+                any_generated = True
+            
+            try:
+                generator = torch.Generator("cpu").manual_seed(42 + size_idx)
+                result = pipe(
+                    prompt=prompt,
+                    negative_prompt=negative,
+                    num_inference_steps=steps,
+                    guidance_scale=7.5,
+                    height=size[1],
+                    width=size[0],
+                    generator=generator,
+                    num_images_per_prompt=1
+                )
+                result.images[0].save(out_path)
+                
                 if lora_name not in run_log:
                     run_log[lora_name] = {}
                 run_log[lora_name][stage_key] = True
                 self._save_run_log(os.path.join(self.output_previews_dir_var.get(), "run_log.json"), run_log)
-                self._append_test_log(f"   [{idx+1}/{total}] ⏭️ 跳过 {lora_name} (文件已存在)")
-                return
-        
-        self._append_test_log(f"   [{idx+1}/{total}] 🚀 测试 {lora_name} ({lora_info['size_mb']:.1f}MB)")
-        
-        try:
-            generator = torch.Generator("cpu").manual_seed(42)
-            result = pipe(
-                prompt=prompt,
-                negative_prompt=negative,
-                num_inference_steps=steps,
-                guidance_scale=7.5,
-                height=size[1],
-                width=size[0],
-                generator=generator,
-                num_images_per_prompt=1
-            )
-            result.images[0].save(out_path)
+                
+                self._append_test_log(f"   ✅ [{idx+1}/{total}] 已保存: {os.path.basename(out_path)} ({size_label})")
+                
+            except Exception as e:
+                self._append_test_log(f"   ❌ [{idx+1}/{total}] 生成失败 ({size_label}): {e}")
             
-            if lora_name not in run_log:
-                run_log[lora_name] = {}
-            run_log[lora_name][stage_key] = True
-            self._save_run_log(os.path.join(self.output_previews_dir_var.get(), "run_log.json"), run_log)
-            
-            self._append_test_log(f"   ✅ [{idx+1}/{total}] 已保存: {os.path.basename(out_path)}")
-            
-        except Exception as e:
-            self._append_test_log(f"   ❌ [{idx+1}/{total}] 生成失败: {e}")
+            gc.collect()
         
-        gc.collect()
-    
+
     def _generate_comparison_images(self, lora_files, output_dir):
         """生成对比图"""
         for lora_info in lora_files:
