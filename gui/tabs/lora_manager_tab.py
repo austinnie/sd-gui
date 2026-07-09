@@ -103,6 +103,15 @@ class LoraManagerTab(BaseTab):
             "clothing": ["casual", "elegant", "swimsuit", "lingerie"],
             "expression": ["smiling", "seductive", "serious", "happy"],
             "pose": ["standing", "sitting", "lying", "dancing"],
+            # ===== 新增维度 =====
+            "camera_angle": ["front", "side", "back", "top_down", "low_angle"],  # 相机角度
+            "time_of_day": ["morning", "noon", "evening", "night"],              # 时间段
+            "weather": ["clear", "cloudy", "rainy", "snowy", "foggy"],          # 天气
+            "mood": ["romantic", "mysterious", "energetic", "peaceful"],        # 氛围
+            "style": ["realistic", "painterly", "sketch", "3d_render"],         # 艺术风格
+            "clothing_detail": ["plain", "patterned", "lace", "leather"],       # 服装细节
+            "hair_style": ["long_flowing", "short", "curly", "straight", "ponytail"],  # 发型
+            "eye_color": ["brown", "blue", "green", "hazel", "dark"],           # 瞳色            
         }
         
         # 每个维度的启用开关和选中值
@@ -335,6 +344,15 @@ class LoraManagerTab(BaseTab):
             "clothing": "👗 服装",
             "expression": "😊 表情",
             "pose": "🧘 姿势",
+            # ===== 新增 =====
+            "camera_angle": "📷 相机角度",
+            "time_of_day": "🌅 时间段",
+            "weather": "🌤️ 天气",
+            "mood": "🎭 氛围",
+            "style": "🎨 艺术风格",
+            "clothing_detail": "🧵 服装细节",
+            "hair_style": "💇 发型",
+            "eye_color": "👁️ 瞳色",            
         }
 
         for dim, options in self.dimensions.items():
@@ -546,6 +564,61 @@ class LoraManagerTab(BaseTab):
                     "lying": "lying down",
                     "dancing": "dancing",
                 },
+
+                # ===== 新增 =====
+                "camera_angle": {
+                    "front": "front view, directly facing",
+                    "side": "side view, profile",
+                    "back": "back view, from behind",
+                    "top_down": "top down view, from above",
+                    "low_angle": "low angle, from below",
+                },
+                "time_of_day": {
+                    "morning": "morning light, dawn",
+                    "noon": "noon, bright daylight",
+                    "evening": "evening, sunset",
+                    "night": "night, dark, moonlight",
+                },
+                "weather": {
+                    "clear": "clear sky, sunny",
+                    "cloudy": "cloudy sky, overcast",
+                    "rainy": "rainy, wet, water drops",
+                    "snowy": "snow, snowflakes",
+                    "foggy": "foggy, misty, atmospheric",
+                },
+                "mood": {
+                    "romantic": "romantic, warm, intimate",
+                    "mysterious": "mysterious, enigmatic",
+                    "energetic": "energetic, dynamic",
+                    "peaceful": "peaceful, serene, calm",
+                },
+                "style": {
+                    "realistic": "photorealistic, highly detailed",
+                    "painterly": "painterly, brush strokes, oil painting",
+                    "sketch": "sketch, line art, pencil drawing",
+                    "3d_render": "3d render, cgi, digital art",
+                },
+                "clothing_detail": {
+                    "plain": "plain clothes, solid color",
+                    "patterned": "patterned, floral print",
+                    "lace": "lace, delicate, translucent",
+                    "leather": "leather, shiny, textured",
+                },
+                "hair_style": {
+                    "long_flowing": "long flowing hair",
+                    "short": "short hair, pixie cut",
+                    "curly": "curly hair, ringlets",
+                    "straight": "straight hair, sleek",
+                    "ponytail": "ponytail, tied back",
+                },
+                "eye_color": {
+                    "brown": "brown eyes",
+                    "blue": "blue eyes",
+                    "green": "green eyes",
+                    "hazel": "hazel eyes",
+                    "dark": "dark eyes, black",
+                },
+    
             }
             
             # 添加 combo 中的选项
