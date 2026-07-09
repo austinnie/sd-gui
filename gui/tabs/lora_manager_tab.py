@@ -81,7 +81,6 @@ class LoraManagerTab(BaseTab):
         self.test_mode_basic_var = tk.BooleanVar(value=True)   # v1: 基础 SD1.5 + SDXL
         self.test_mode_multi_model_var = tk.BooleanVar(value=False)  # v2: 多模型
         self.test_mode_multi_weight_var = tk.BooleanVar(value=False) # v3: 多权重
-        self.test_mode_multi_prompt_var = tk.BooleanVar(value=False) # v3: 多提示词
         self.test_mode_combine_var = tk.BooleanVar(value=False)      # v3: LoRA 叠加
         
         # ===== v2/v3 高级参数 =====
@@ -94,6 +93,25 @@ class LoraManagerTab(BaseTab):
         self.test_combine_var = tk.StringVar(value="")
         self.test_max_loras_var = tk.IntVar(value=0)
 
+
+        # ===== 多维度风格（新增） =====
+        self.dimensions = {
+            "prompt": ["portrait", "full_body", "close_up", "cinematic", "anime"],
+            "background": ["white", "studio", "outdoor", "beach", "forest"],
+            "lighting": ["natural", "dramatic", "soft", "golden_hour"],
+            "quality": ["standard", "photorealistic", "artistic"],
+            "clothing": ["casual", "elegant", "swimsuit", "lingerie"],
+            "expression": ["smiling", "seductive", "serious", "happy"],
+            "pose": ["standing", "sitting", "lying", "dancing"],
+        }
+        
+        # 每个维度的启用开关和选中值
+        self.dim_vars = {}  # {dimension: BooleanVar}
+        self.dim_options_vars = {}  # {dimension: {option: BooleanVar}}
+        
+        # 默认启用的维度
+        self._init_dimension_vars()        
+    
         # ===== 测试范围（新增） =====
         self.test_scope_var = tk.StringVar(value="all")  # all, single, keyword
         self.test_single_lora_var = tk.StringVar(value="")  # 选中的单个 LoRA
@@ -109,7 +127,18 @@ class LoraManagerTab(BaseTab):
         self.top_loras = []
         self.lora_files = []
         self.test_run_log = {}
-    
+
+    def _init_dimension_vars(self):
+        """初始化维度变量"""
+        for dim, options in self.dimensions.items():
+            # 维度启用开关
+            self.dim_vars[dim] = tk.BooleanVar(value=(dim == "prompt"))
+            
+            # 每个选项的开关（默认选中第一个）
+            self.dim_options_vars[dim] = {}
+            for opt in options:
+                self.dim_options_vars[dim][opt] = tk.BooleanVar(value=(opt == options[0]))
+            
     def setup_ui(self):
         """设置 UI"""
         frame = self.frame
@@ -255,6 +284,9 @@ class LoraManagerTab(BaseTab):
         mode_frame = ttk.LabelFrame(frame, text="🔧 测试模式 (选择要测试的维度)", padding=5)
         mode_frame.grid(row=row, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=5, padx=5)
         row += 1
+
+
+                
         
         # 第一行：基础模式
         mode_row1 = ttk.Frame(mode_frame)
@@ -271,19 +303,12 @@ class LoraManagerTab(BaseTab):
         # 第二行：v3 高级模式
         mode_row2 = ttk.Frame(mode_frame)
         mode_row2.pack(fill=tk.X, pady=2)
-        
+
         ttk.Checkbutton(mode_row2, text="☑ 多权重测试", 
                         variable=self.test_mode_multi_weight_var).pack(side=tk.LEFT, padx=5)
         ttk.Entry(mode_row2, textvariable=self.test_weights_var, width=15).pack(side=tk.LEFT, padx=5)
         ttk.Label(mode_row2, text="v3", foreground="gray", font=("", 8)).pack(side=tk.LEFT)
-        
-        ttk.Checkbutton(mode_row2, text="☑ 多提示词风格", 
-                        variable=self.test_mode_multi_prompt_var).pack(side=tk.LEFT, padx=15)
-        ttk.Combobox(mode_row2, textvariable=self.test_prompts_var,
-                     values=["portrait", "full_body", "close_up", "cinematic", "anime"],
-                     width=12, state="readonly").pack(side=tk.LEFT, padx=5)
-        ttk.Label(mode_row2, text="v3", foreground="gray", font=("", 8)).pack(side=tk.LEFT)
-        
+
         # 第三行：LoRA 叠加
         mode_row3 = ttk.Frame(mode_frame)
         mode_row3.pack(fill=tk.X, pady=2)
@@ -295,6 +320,43 @@ class LoraManagerTab(BaseTab):
         ttk.Label(mode_row3, text="v3", foreground="gray", font=("", 8)).pack(side=tk.LEFT, padx=5)
         
         row += 1
+
+        # ===== 多维度风格（新增） =====
+        dim_frame = ttk.LabelFrame(frame, text="🎨 多维度风格 (选择要测试的维度)", padding=5)
+        dim_frame.grid(row=row, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=5, padx=5)
+        row += 1
+
+        # 维度映射（中文显示）
+        dim_labels = {
+            "prompt": "📝 构图风格",
+            "background": "🏠 背景",
+            "lighting": "💡 光照",
+            "quality": "🎯 画质",
+            "clothing": "👗 服装",
+            "expression": "😊 表情",
+            "pose": "🧘 姿势",
+        }
+
+        for dim, options in self.dimensions.items():
+            dim_row = ttk.Frame(dim_frame)
+            dim_row.pack(fill=tk.X, pady=2)  # pady 改为 2 增加间距
+            
+            cb = ttk.Checkbutton(
+                dim_row,
+                text=dim_labels.get(dim, dim),
+                variable=self.dim_vars[dim]
+            )
+            cb.pack(side=tk.LEFT, padx=5)
+            
+            # 选项使用更紧凑的布局
+            for opt in options:
+                var = self.dim_options_vars[dim][opt]
+                ttk.Checkbutton(
+                    dim_row,
+                    text=opt,
+                    variable=var
+                ).pack(side=tk.LEFT, padx=2)
+                
         
         # ===== 高级筛选 (v2/v3) =====
         filter_frame = ttk.LabelFrame(frame, text="📊 高级筛选", padding=5)
@@ -404,6 +466,9 @@ class LoraManagerTab(BaseTab):
         log_frame = ttk.LabelFrame(frame, text="📝 测试日志", padding=5)
         log_frame.grid(row=row, column=0, columnspan=4, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5, padx=5)
         row += 1
+
+        self._refresh_single_lora_list()
+        self._on_scope_changed()  # 初始化状态
         
         self.test_log_text = tk.Text(log_frame, height=10, width=70, wrap=tk.WORD, state=tk.DISABLED)
         self.test_log_text.pack(fill=tk.BOTH, expand=True)
@@ -412,6 +477,84 @@ class LoraManagerTab(BaseTab):
         frame.rowconfigure(row, weight=1)
         frame.columnconfigure(1, weight=1)
 
+    def _build_prompt_with_dimensions(self, base_prompt, negative):
+        """根据选中的维度构建提示词
+        Args:
+            base_prompt: 基础提示词
+            negative: 负面提示词
+            combo: 指定的维度组合 (dict: {dim: option})，如果为 None 则使用所有选中的第一个
+        """
+    
+        prompt_parts = [base_prompt]
+        negative_parts = [negative]
+        
+        # 维度关键词映射
+        dim_keywords = {
+            "prompt": {
+                "portrait": "portrait, headshot, face focused",
+                "full_body": "full body shot, entire body visible, full length",
+                "close_up": "close up shot, detailed view",
+                "cinematic": "cinematic lighting, dramatic, movie still",
+                "anime": "anime style, manga, vibrant colors",
+            },
+            "background": {
+                "white": "white background, plain background",
+                "studio": "studio photography, professional backdrop",
+                "outdoor": "outdoor, natural setting",
+                "beach": "on the beach, ocean background",
+                "forest": "in the forest, trees, nature",
+            },
+            "lighting": {
+                "natural": "natural lighting, soft daylight",
+                "dramatic": "dramatic lighting, strong shadows",
+                "soft": "soft lighting, diffused, gentle",
+                "golden_hour": "golden hour, warm sunset light",
+            },
+            "quality": {
+                "standard": "high quality, detailed",
+                "photorealistic": "photorealistic, 8k, ultra HD",
+                "artistic": "artistic, masterpiece, beautiful composition",
+            },
+            "clothing": {
+                "casual": "casual clothes, everyday wear",
+                "elegant": "elegant dress, formal wear",
+                "swimsuit": "wearing swimsuit, bikini",
+                "lingerie": "wearing lingerie, lace",
+            },
+            "expression": {
+                "smiling": "smiling, happy expression",
+                "seductive": "seductive gaze, sultry expression",
+                "serious": "serious expression, intense look",
+                "happy": "happy, joyful expression",
+            },
+            "pose": {
+                "standing": "standing pose, upright",
+                "sitting": "sitting pose, seated",
+                "lying": "lying down, reclining",
+                "dancing": "dancing, in motion",
+            },
+        }
+        
+        if combo is not None:
+            # 使用指定的组合
+            for dim, opt in combo.items():
+                keyword = dim_keywords.get(dim, {}).get(opt, opt)
+                prompt_parts.append(keyword)
+        else:
+            # 兼容旧逻辑：使用每个维度的第一个选中项
+            for dim, options in self.dimensions.items():
+                if not self.dim_vars[dim].get():
+                    continue
+                for opt in options:
+                    if self.dim_options_vars[dim][opt].get():
+                        keyword = dim_keywords.get(dim, {}).get(opt, opt)
+                        prompt_parts.append(keyword)
+                        break  # 只取第一个
+        
+        full_prompt = ", ".join(prompt_parts)
+        full_negative = ", ".join(negative_parts)
+        return full_prompt, full_negative
+    
     def _refresh_single_lora_list(self):
         """刷新单个 LoRA 下拉列表"""
         test_dir = self.test_lora_dir_var.get()
@@ -421,6 +564,9 @@ class LoraManagerTab(BaseTab):
             self.single_lora_combo['values'] = files
             if files and not self.test_single_lora_var.get():
                 self.test_single_lora_var.set(files[0])
+                # 如果当前是 single 模式，更新状态标签
+                if self.test_scope_var.get() == "single":
+                    self.scope_status_label.config(text=f"💡 将只测试: {files[0]}")
 
     def _on_scope_changed(self):
         """测试范围切换"""
@@ -431,9 +577,13 @@ class LoraManagerTab(BaseTab):
             self.scope_status_label.config(text="💡 将测试所有 LoRA")
         elif scope == "single":
             self.single_lora_combo.config(state="readonly")
-            self.scope_status_label.config(text="💡 将只测试选中的 LoRA")
+            selected = self.test_single_lora_var.get()
+            if selected:
+                self.scope_status_label.config(text=f"💡 将只测试: {selected}")
+            else:
+                self.scope_status_label.config(text="💡 请选择一个 LoRA")
             self._refresh_single_lora_list()
-        
+            
     # ==================== 子标签页2: 分析管理 ====================
     
     def _setup_analyze_tab(self):
@@ -606,6 +756,9 @@ class LoraManagerTab(BaseTab):
         dir_path = filedialog.askdirectory(title="选择目录")
         if dir_path:
             var.set(dir_path)
+            # 如果是 test_lora_dir_var，刷新列表
+            if var == self.test_lora_dir_var:
+                self._refresh_single_lora_list()
     
     def _browse_file(self, var):
         file_path = filedialog.askopenfilename(
@@ -727,29 +880,26 @@ class LoraManagerTab(BaseTab):
         if not (self.test_mode_basic_var.get() or 
                 self.test_mode_multi_model_var.get() or
                 self.test_mode_multi_weight_var.get() or
-                self.test_mode_multi_prompt_var.get() or
                 self.test_mode_combine_var.get()):
             messagebox.showwarning("提示", "请至少选择一种测试模式")
             return
         
+        # ===== 检查 LoRA 目录 =====
         test_dir = self.test_lora_dir_var.get()
         if not os.path.exists(test_dir):
             messagebox.showwarning("提示", f"LoRA 目录不存在: {test_dir}")
             return
         
-        # 获取 LoRA 列表并应用筛选
+        # ===== 获取 LoRA 列表并应用筛选 =====
         lora_files = self._get_filtered_lora_list()
-        
-        # 应用额外筛选 (v3)
         lora_files = self._apply_advanced_filters(lora_files)
         
         if not lora_files:
             messagebox.showwarning("提示", "没有找到符合条件的 LoRA 文件")
             return
         
-        # 检查模型是否存在
+        # ===== 检查模型是否存在 =====
         if self.test_mode_basic_var.get() or self.test_mode_multi_model_var.get():
-            # 检查基础模型
             if self.test_mode_basic_var.get():
                 sd15_model = self.sd15_model_path_var.get()
                 sdxl_model = self.sdxl_model_path_var.get()
@@ -760,16 +910,16 @@ class LoraManagerTab(BaseTab):
                     messagebox.showwarning("提示", f"SDXL 模型不存在: {sdxl_model}")
                     return
             
-            # 检查多模型
             if self.test_mode_multi_model_var.get():
                 models = self._get_model_list()
                 if not models:
                     messagebox.showwarning("提示", "没有找到任何模型")
                     return
         
-        # 计算预计任务数
+        # ===== 计算预计任务数 =====
         estimated_tasks = self._estimate_tasks(lora_files)
         
+        # ===== 确认对话框 =====
         if not messagebox.askyesno("确认测试",
             f"将测试 {len(lora_files)} 个 LoRA\n"
             f"预计任务数: {estimated_tasks}\n"
@@ -778,6 +928,7 @@ class LoraManagerTab(BaseTab):
         ):
             return
         
+        # ===== 启动测试 =====
         self.is_testing = True
         self.cancel_operation = False
         self.test_btn.config(state=tk.DISABLED)
@@ -794,15 +945,12 @@ class LoraManagerTab(BaseTab):
             modes.append("多模型(v2)")
         if self.test_mode_multi_weight_var.get():
             modes.append("多权重(v3)")
-        if self.test_mode_multi_prompt_var.get():
-            modes.append("多提示词(v3)")
         if self.test_mode_combine_var.get():
             modes.append("叠加(v3)")
         self._append_test_log(f"📋 测试模式: {', '.join(modes)}")
         self._append_test_log(f"📊 预计任务数: {estimated_tasks}")
         
         threading.Thread(target=self._run_batch_test, args=(lora_files,), daemon=True).start()
-
 
     def _apply_advanced_filters(self, lora_files):
         """应用高级筛选 (v3)"""
@@ -827,9 +975,35 @@ class LoraManagerTab(BaseTab):
         
         return lora_files
 
-
+    def _get_dimension_combinations(self):
+        """获取所有维度的选项组合"""
+        import itertools
+        
+        # 获取每个维度选中的选项列表
+        selected_options = []
+        dim_names = []
+        
+        for dim, options in self.dimensions.items():
+            if not self.dim_vars[dim].get():
+                continue
+            selected = [opt for opt in options if self.dim_options_vars[dim][opt].get()]
+            if selected:
+                selected_options.append(selected)
+                dim_names.append(dim)
+        
+        if not selected_options:
+            return [{}]
+        
+        # 生成所有组合
+        combinations = []
+        for combo in itertools.product(*selected_options):
+            combo_dict = dict(zip(dim_names, combo))
+            combinations.append(combo_dict)
+        
+        return combinations
+        
     def _estimate_tasks(self, lora_files):
-        """估算任务数（考虑多尺寸）"""
+        """估算任务数"""
         base_count = len(lora_files)
         tasks = 0
         
@@ -841,39 +1015,39 @@ class LoraManagerTab(BaseTab):
             sd15_sizes = [self.test_size_sd15_var.get()]
             sdxl_sizes = [self.test_size_sdxl_var.get()]
         
-        # 基础测试 (v1): SD1.5 + SDXL
+        # ===== 计算维度组合数 =====
+        dim_count = 1
+        for dim, options in self.dimensions.items():
+            if not self.dim_vars[dim].get():
+                continue
+            count = sum(1 for opt in options if self.dim_options_vars[dim][opt].get())
+            if count > 0:
+                dim_count *= count
+        
+        # 基础测试 (v1)
         if self.test_mode_basic_var.get():
-            tasks += base_count * len(sd15_sizes) + base_count * len(sdxl_sizes)
+            tasks += (base_count * len(sd15_sizes) + base_count * len(sdxl_sizes)) * dim_count
         
         # 多模型测试 (v2)
         if self.test_mode_multi_model_var.get():
             models = self._get_model_list()
-            # 每个模型使用对应类型的尺寸
             for model in models:
                 if model["type"] == "sd15":
-                    tasks += base_count * len(sd15_sizes)
+                    tasks += base_count * len(sd15_sizes) * dim_count
                 else:
-                    tasks += base_count * len(sdxl_sizes)
+                    tasks += base_count * len(sdxl_sizes) * dim_count
         
         # 多权重测试 (v3)
         if self.test_mode_multi_weight_var.get():
             weights = self._get_weights_list()
             weight_count = len(weights)
             if self.test_mode_basic_var.get():
-                tasks += base_count * len(sd15_sizes) * weight_count
-                tasks += base_count * len(sdxl_sizes) * weight_count
-            # 其他模式类似...
-        
-        # 多提示词测试 (v3)
-        if self.test_mode_multi_prompt_var.get():
-            prompts = self._get_prompt_styles()
-            prompt_count = len(prompts)
-            if self.test_mode_basic_var.get():
-                tasks += base_count * len(sd15_sizes) * prompt_count
-                tasks += base_count * len(sdxl_sizes) * prompt_count
+                tasks += (base_count * len(sd15_sizes) * weight_count + 
+                         base_count * len(sdxl_sizes) * weight_count) * dim_count
         
         return tasks
-
+    
+    
     def _get_model_list(self):
         """获取模型列表 (v2)"""
         models = []
@@ -939,14 +1113,6 @@ class LoraManagerTab(BaseTab):
             return [float(w.strip()) for w in weights_str.split(",") if w.strip()]
         except:
             return [1.0]
-
-
-    def _get_prompt_styles(self):
-        """获取提示词风格列表 (v3)"""
-        styles_str = self.test_prompts_var.get().strip()
-        if not styles_str:
-            return ["portrait"]
-        return [s.strip() for s in styles_str.split(",") if s.strip()]
 
 
     def _get_combine_list(self):
@@ -1080,16 +1246,17 @@ class LoraManagerTab(BaseTab):
             self.app.root.after(0, self._reset_test_ui)
     
 
+
     def _test_single_lora(self, pipe, lora_info, output_dir, is_sdxl=False, 
-                              run_log=None, idx=0, total=1):
-        """测试单个 LoRA（支持多尺寸）"""
+                          run_log=None, idx=0, total=1):
+        """测试单个 LoRA（支持多尺寸和多维度风格组合）"""
         lora_name = lora_info["name"]
         lora_code = lora_name.replace('.safetensors', '')
         
-        # 构建提示词
+        # 构建基础提示词
         if is_sdxl:
-            prompt = self.test_prompt_sdxl_var.get().replace("NAME", lora_code)
-            negative = self.test_negative_sdxl_var.get()
+            base_prompt = self.test_prompt_sdxl_var.get().replace("NAME", lora_code)
+            base_negative = self.test_negative_sdxl_var.get()
             steps = self.test_steps_sdxl_var.get()
             if self.test_multi_size_var.get():
                 size_str = self.test_sizes_sdxl_var.get()
@@ -1098,8 +1265,8 @@ class LoraManagerTab(BaseTab):
                 size_str = self.test_size_sdxl_var.get()
                 sizes = [tuple(map(int, size_str.split('x')))]
         else:
-            prompt = self.test_prompt_sd15_var.get().replace("NAME", lora_code)
-            negative = self.test_negative_sd15_var.get()
+            base_prompt = self.test_prompt_sd15_var.get().replace("NAME", lora_code)
+            base_negative = self.test_negative_sd15_var.get()
             steps = self.test_steps_sd15_var.get()
             if self.test_multi_size_var.get():
                 size_str = self.test_sizes_sd15_var.get()
@@ -1108,69 +1275,74 @@ class LoraManagerTab(BaseTab):
                 size_str = self.test_size_sd15_var.get()
                 sizes = [tuple(map(int, size_str.split('x')))]
         
+        # ===== 获取所有维度组合 =====
+        combinations = self._get_dimension_combinations()
+        
         # 输出路径
         lora_dir = os.path.join(output_dir, lora_code)
         os.makedirs(lora_dir, exist_ok=True)
         
         stage_key_base = "sdxl" if is_sdxl else "sd15"
         
-        # ✅ 标记是否生成了任何尺寸
-        any_generated = False
-        
-        # 对每个尺寸生成图片
-        for size_idx, size in enumerate(sizes):
-            size_label = f"{size[0]}x{size[1]}"
-            if len(sizes) > 1:
-                out_path = os.path.join(lora_dir, f"{stage_key_base.upper()}_{size_label}.png")
-                stage_key = f"{stage_key_base}_{size_label}"
-            else:
-                out_path = os.path.join(lora_dir, f"{stage_key_base.upper()}.png")
-                stage_key = stage_key_base
+        # ===== 遍历所有组合 =====
+        for combo in combinations:
+            # 构建组合名称（用于文件名）
+            combo_name = "_".join([f"{dim}_{opt}" for dim, opt in combo.items()])
             
-            # 检查是否需要跳过（只跳过当前尺寸，不跳过整个 LoRA）
-            if not self.test_re_run_var.get():
-                if run_log.get(lora_name, {}).get(stage_key, False):
-                    continue
-                if os.path.exists(out_path):
+            # 构建提示词
+            prompt, negative = self._build_prompt_with_dimensions(base_prompt, base_negative, combo)
+            
+            # 对每个尺寸生成图片
+            for size_idx, size in enumerate(sizes):
+                size_label = f"{size[0]}x{size[1]}"
+                
+                # 生成唯一文件名
+                if len(sizes) > 1:
+                    out_path = os.path.join(lora_dir, f"{stage_key_base.upper()}_{combo_name}_{size_label}.png")
+                    stage_key = f"{stage_key_base}_{combo_name}_{size_label}"
+                else:
+                    out_path = os.path.join(lora_dir, f"{stage_key_base.upper()}_{combo_name}.png")
+                    stage_key = f"{stage_key_base}_{combo_name}"
+                
+                # 检查是否需要跳过
+                if not self.test_re_run_var.get():
+                    if run_log.get(lora_name, {}).get(stage_key, False):
+                        continue
+                    if os.path.exists(out_path):
+                        if lora_name not in run_log:
+                            run_log[lora_name] = {}
+                        run_log[lora_name][stage_key] = True
+                        self._save_run_log(os.path.join(self.output_previews_dir_var.get(), "run_log.json"), run_log)
+                        continue
+                
+                try:
+                    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+                    
+                    generator = torch.Generator("cpu").manual_seed(42 + size_idx)
+                    result = pipe(
+                        prompt=prompt,
+                        negative_prompt=negative,
+                        num_inference_steps=steps,
+                        guidance_scale=7.5,
+                        height=size[1],
+                        width=size[0],
+                        generator=generator,
+                        num_images_per_prompt=1
+                    )
+                    result.images[0].save(out_path)
+                    
                     if lora_name not in run_log:
                         run_log[lora_name] = {}
                     run_log[lora_name][stage_key] = True
                     self._save_run_log(os.path.join(self.output_previews_dir_var.get(), "run_log.json"), run_log)
-                    continue
+                    
+                    self._append_test_log(f"   ✅ [{idx+1}/{total}] 已保存: {os.path.basename(out_path)}")
+                    
+                except Exception as e:
+                    self._append_test_log(f"   ❌ [{idx+1}/{total}] 生成失败: {e}")
+                
+                gc.collect()
             
-            if not any_generated:
-                self._append_test_log(f"   [{idx+1}/{total}] 🚀 测试 {lora_name} ({lora_info['size_mb']:.1f}MB)")
-                any_generated = True
-            
-            try:
-                # ✅ 【修复】再次确保目录存在（安全冗余）
-                os.makedirs(os.path.dirname(out_path), exist_ok=True)
-                
-                generator = torch.Generator("cpu").manual_seed(42 + size_idx)
-                result = pipe(
-                    prompt=prompt,
-                    negative_prompt=negative,
-                    num_inference_steps=steps,
-                    guidance_scale=7.5,
-                    height=size[1],
-                    width=size[0],
-                    generator=generator,
-                    num_images_per_prompt=1
-                )
-                result.images[0].save(out_path)
-                
-                if lora_name not in run_log:
-                    run_log[lora_name] = {}
-                run_log[lora_name][stage_key] = True
-                self._save_run_log(os.path.join(self.output_previews_dir_var.get(), "run_log.json"), run_log)
-                
-                self._append_test_log(f"   ✅ [{idx+1}/{total}] 已保存: {os.path.basename(out_path)} ({size_label})")
-                
-            except Exception as e:
-                self._append_test_log(f"   ❌ [{idx+1}/{total}] 生成失败 ({size_label}): {e}")
-            
-            gc.collect()
-        
 
     def _generate_comparison_images(self, lora_files, output_dir):
         """生成对比图"""
