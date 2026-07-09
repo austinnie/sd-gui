@@ -1143,6 +1143,9 @@ class LoraManagerTab(BaseTab):
                 any_generated = True
             
             try:
+                # ✅ 【修复】再次确保目录存在（安全冗余）
+                os.makedirs(os.path.dirname(out_path), exist_ok=True)
+                
                 generator = torch.Generator("cpu").manual_seed(42 + size_idx)
                 result = pipe(
                     prompt=prompt,
