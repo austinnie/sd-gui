@@ -426,19 +426,26 @@ class SDApp:
         self.pipeline = pipe
 
 
-    def _show_pipeline_status(self):
-        """显示 Pipeline 池状态"""
+    def show_pipeline_status(self):
+        """显示 Pipeline 池状态（调试用）"""
         from utils.pipeline_pool import pipeline_pool
         status = pipeline_pool.get_status()
-        print("\n" + "=" * 50)
-        print("📊 Pipeline 池状态")
+        
+        print("\n" + "=" * 60)
+        print("📊 Pipeline 池状态 (调试信息)")
         print(f"   总创建: {status['total_created']}")
         print(f"   活跃数: {status['active_count']}")
         print(f"   最大数: {status['max_instances']}")
-        for pipe_info in status['pipes']:
-            print(f"   - {pipe_info['model']} (引用: {pipe_info['ref_count']})")
-        print("=" * 50)
-        return status
+        print("-" * 60)
+        for pipe_info in status.get("pipes", []):
+            lora_status = f"🔗 {pipe_info['lora']}" if pipe_info.get('lora_loaded') else "无 LoRA"
+            print(f"   - {pipe_info['model']}")
+            print(f"     引用: {pipe_info['ref_count']}, {lora_status}")
+            if pipe_info.get('created'):
+                print(f"     创建: {pipe_info['created']}")
+            if pipe_info.get('last_used'):
+                print(f"     最后使用: {pipe_info['last_used']}")
+        print("=" * 60)
 
     
     def _init_components(self):
@@ -863,10 +870,7 @@ class SDApp:
                     app.root.after(0, lambda: app._on_lora_load_error("Pipeline 未加载"))
                     return
                 
-                # ===== 【方案1】检查是否已加载相同的 LoRA =====
-                # 使用一个标记来跟踪当前加载的 LoRA
-                # 因为 diffusers 没有直接获取已加载 LoRA 名称的方法，
-                # 我们用一个成员变量来记录
+                # ===== 检查是否已加载相同的 LoRA =====
                 if hasattr(app, '_current_lora_path') and app._current_lora_path == lora_path:
                     app.root.after(0, lambda: app._on_lora_already_loaded(lora_display))
                     return
@@ -881,7 +885,23 @@ class SDApp:
                 
                 # 加载新的 LoRA
                 pipe.load_lora_weights(lora_path)
-                app._current_lora_path = lora_path  # 记录当前加载的 LoRA
+                app._current_lora_path = lora_path
+                
+                # ===== 【新增】更新 Pipeline 池的 LoRA 状态 =====
+                from utils.pipeline_pool import pipeline_pool
+                
+                model_name = app.model_var.get()
+                model_path = app.checkpoint_paths.get(model_name)
+                
+                if model_path:
+                    status = pipeline_pool.get_status()
+                    for pipe_info in status.get("pipes", []):
+                        if pipe_info["model"] == os.path.basename(model_path):
+                            key = pipe_info.get("key")
+                            if key:
+                                pipeline_pool.update_lora_status(key, lora_path, app.lora_weight_var.get())
+                                print(f"   🔗 Pipeline 状态已同步: {pipe_info['model']}")
+                                break
                 
                 print(f"✅ LoRA 加载成功: {lora_display} (权重: {lora_weight})")
                 app.root.after(0, lambda: app._on_lora_load_success(lora_display))
@@ -890,7 +910,7 @@ class SDApp:
                 app.root.after(0, lambda err=e: app._on_lora_load_error(str(err)))
         
         threading.Thread(target=load_thread, daemon=True).start()
-
+    
     def _on_lora_already_loaded(self, lora_display):
         """LoRA 已经加载时的提示"""
         self.load_lora_btn.config(state=tk.NORMAL)

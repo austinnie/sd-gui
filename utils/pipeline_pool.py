@@ -117,7 +117,12 @@ class PipelinePool:
                     "ref_count": 1,
                     "model_path": model_path,
                     "lora_path": lora_path,
-                    "created": datetime.now()
+                    "lora_loaded": lora_path is not None,  # ← 新增
+                    "lora_name": os.path.basename(lora_path) if lora_path else None,  # ← 新增
+                    "lora_weight": lora_weight if lora_path else None,  # ← 新增                    
+                    "created": datetime.now(),
+                    "last_used": datetime.now(),  # ← 新增
+                    "task_id": task_id  # ← 新增                    
                 }
                 self._total_created += 1
                 
@@ -195,12 +200,33 @@ class PipelinePool:
                         "key": k,
                         "ref_count": v["ref_count"],
                         "model": os.path.basename(v["model_path"]),
-                        "lora": os.path.basename(v["lora_path"]) if v["lora_path"] else None
+                        "model_name": v.get("model_name", ""),
+                        "lora_loaded": v.get("lora_loaded", False),                        
+                        "lora": os.path.basename(v["lora_path"]) if v["lora_path"] else None,
+                        "lora_name": v.get("lora_name"),
+                        "lora_weight": v.get("lora_weight"),
+                        "task_id": v.get("task_id"),
+                        "created": v.get("created", "").strftime("%H:%M:%S") if v.get("created") else "",
+                        "last_used": v.get("last_used", "").strftime("%H:%M:%S") if v.get("last_used") else ""                        
                     }
                     for k, v in self._pipelines.items()
                 ]
             }
-    
+
+    def update_lora_status(self, key: str, lora_path: str, lora_weight: float = 1.0):
+        """
+        更新 Pipeline 的 LoRA 状态
+        用于外部加载 LoRA 后同步状态
+        """
+        with self._lock:
+            if key in self._pipelines:
+                self._pipelines[key]["lora_path"] = lora_path
+                self._pipelines[key]["lora_loaded"] = lora_path is not None
+                self._pipelines[key]["lora_name"] = os.path.basename(lora_path) if lora_path else None
+                self._pipelines[key]["lora_weight"] = lora_weight if lora_path else None
+                self._pipelines[key]["last_used"] = datetime.now()
+                print(f"🔗 更新 LoRA 状态: {self._pipelines[key]['lora_name'] or '无'}")
+                
     def clear_all(self):
         """强制释放所有 pipeline"""
         with self._lock:

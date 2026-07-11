@@ -1326,6 +1326,17 @@ class LoraManagerTab(BaseTab):
     def _run_batch_test(self, lora_files):
         """后台运行批量测试"""
         from diffusers import StableDiffusionPipeline, StableDiffusionXLPipeline, EulerDiscreteScheduler
+        from utils.pipeline_pool import pipeline_pool
+        
+
+        # ===== 【新增】打印当前 Pipeline 池状态（调试） =====
+        status = pipeline_pool.get_status()
+        self._append_test_log("📊 Pipeline 池状态:")
+        for pipe_info in status.get("pipes", []):
+            lora_status = f"🔗 {pipe_info['lora']}" if pipe_info.get('lora_loaded') else "无 LoRA"
+            self._append_test_log(
+                f"   - {pipe_info['model']} (引用: {pipe_info['ref_count']}) {lora_status}"
+            )
         
         output_dir = self.output_previews_dir_var.get()
         os.makedirs(output_dir, exist_ok=True)
