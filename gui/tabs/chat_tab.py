@@ -50,7 +50,9 @@ class ChatTab(BaseTab):
         self.chat_steps_var = tk.IntVar(value=12)  # 默认 12 步
         self.chat_cfg_var = tk.DoubleVar(value=7.5)  
         # ✅ 新增：缓存待处理的意图
+        self._last_negative = None
         self._pending_intent = None
+        self._last_negative = None
 
         # ✅ 新增：上下文记忆
         self.last_generated_image = None  # 上次生成的图片路径
@@ -956,18 +958,36 @@ class ChatTab(BaseTab):
                 from PIL import Image
                 img = Image.open(self.uploaded_image_path)
                 w, h = img.size
+                
+                # ✅ 限制最大尺寸，防止 OOM
+                max_size = 1024
+                if max(w, h) > max_size:
+                    scale = max_size / max(w, h)
+                    w = int(w * scale)
+                    h = int(h * scale)
+                
                 # 对齐到64的倍数
                 width = ((w + 31) // 64) * 64
                 height = ((h + 31) // 64) * 64
+                # 不缩放，直接使用原图尺寸（只对齐到64倍数）
+
+            
                 # 限制最大尺寸（CPU安全）
                 if width > 1024:
                     width = 1024
                 if height > 1024:
                     height = 1024
-                if width < 512:
-                    width = 512
-                if height < 512:
-                    height = 512
+                    
+                #if width < 512:
+                #    width = 512
+                #if height < 512:
+                #    height = 512
+                    
+                # 不限制最大尺寸，保持原图比例
+                if width < 256:
+                    width = 256
+                if height < 256:
+                    height = 256                    
                 
                 steps = self.chat_steps_var.get()
                 cfg = self.chat_cfg_var.get()
@@ -1109,9 +1129,15 @@ class ChatTab(BaseTab):
             
             self._update_status(f"🎨 生成中... 步骤: {params['steps']}", 0.3)
             
+            # ✅ 构建负面提示词
+            negative_prompt = "worst quality, low quality, ugly, deformed, blurry, bad anatomy, watermark, text"
+            if hasattr(self, '_last_negative') and self._last_negative:
+                negative_prompt += f", {self._last_negative}"
+                self._last_negative = None  # 用完即清
+        
             result = pipe(
                 prompt=prompt,
-                negative_prompt="worst quality, low quality, ugly, deformed, blurry, bad anatomy, watermark, text",
+                negative_prompt=negative_prompt,
                 num_inference_steps=params["steps"],
                 guidance_scale=params["cfg"],
                 height=params["height"],
@@ -1225,7 +1251,15 @@ class ChatTab(BaseTab):
         # 保留姿势
         preserve_parts.append("same pose")
         preserve_parts.append("same body language")
-        
+
+        # ===== 【新增】根据原图类型添加关键词 =====
+        # 如果原图是全身照，提示词中强调"full body"
+        if image_features.get("is_full_body", True):
+            preserve_parts.append("full body")
+            preserve_parts.append("entire body visible")
+        else:
+            preserve_parts.append("half body")
+    
         # 2. 构建完整提示词
         if not keywords.get("clothes") and not keywords.get("colors"):
             # 用户没有指定换装或换色，强调保留原图
@@ -1346,10 +1380,15 @@ class ChatTab(BaseTab):
             # 生成
             seed = random.randint(1, 2**32 - 1)
             generator = torch.Generator("cpu").manual_seed(seed)
-            
+            # ✅ 构建负面提示词
+            negative_prompt = "worst quality, low quality, ugly, deformed, blurry, bad anatomy, watermark, text"
+            if hasattr(self, '_last_negative') and self._last_negative:
+                negative_prompt += f", {self._last_negative}"
+                self._last_negative = None
+        
             result = pipe(
                 prompt=prompt,
-                negative_prompt="worst quality, low quality, ugly, deformed, blurry, bad anatomy, watermark, text",
+                negative_prompt=negative_prompt,
                 image=init_image,
                 strength=params["strength"],
                 num_inference_steps=params["steps"],
@@ -1707,7 +1746,32 @@ class ChatTab(BaseTab):
             )
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+
+            # ===== 新增：判断全身/半身 =====
+            # 如果检测到人脸，计算人脸在图片中的占比
+            is_full_body = True
+            is_portrait = False
+            face_ratio = 0  # ✅ 初始化默认值
             
+            if len(faces) > 0:
+                # 取最大的人脸
+                x, y, fw, fh = max(faces, key=lambda f: f[2] * f[3])
+                face_ratio = (fw * fh) / (w * h)
+                
+                # 如果人脸占比 > 15%，判定为半身/特写
+                if face_ratio > 0.15:
+                    is_full_body = False
+                    is_portrait = True
+                    print(f"   🧑 检测到头像/特写 (人脸占比 {face_ratio:.1%})")
+                else:
+                    is_full_body = True
+                    print(f"   🧑 检测到全身照 (人脸占比 {face_ratio:.1%})")
+            else:
+                # 没有人脸，通过宽高比判断
+                aspect = w / h
+                if aspect > 0.8:
+                    is_full_body = True
+                
             # 检测人体（简化：通过轮廓）
             has_person = len(faces) > 0
             
@@ -1733,12 +1797,13 @@ class ChatTab(BaseTab):
                 "has_face": len(faces) > 0,
                 "has_person": has_person,
                 "face_count": len(faces),
-                "face_count": len(faces),
+                "is_full_body": is_full_body,          # ✅ 新增
+                "is_portrait": is_portrait,            # ✅ 新增
+                "is_landscape": w > h * 1.2,
+                "face_ratio": face_ratio,            
                 "has_multiple_subjects": has_multiple_subjects,                
                 "width": w,
                 "height": h,
-                "is_landscape": is_landscape,
-                "is_portrait": is_portrait,
                 "is_bright": is_bright,
                 "is_dark": is_dark,
                 "is_complex_background": is_complex_background,
