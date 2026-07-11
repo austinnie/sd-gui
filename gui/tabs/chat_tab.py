@@ -27,6 +27,10 @@ class ChatTab(BaseTab):
         self.params = app.params_panel
         self._init_vars()
         self.setup_ui()
+
+        # ✅ 延迟检测 LLM（给程序启动留时间）
+        self.root.after(3000, self._check_ollama)
+    
         self._append_message("assistant", "👋 你好！我是智能生图助手\n\n我可以帮你：\n• 📝 文生图 - 输入描述生成图片\n• 🖼️ 图生图 - 上传图片并修改\n• 💬 自由对话 - 回答你的问题\n\n试试输入：\"生成一张美女在沙滩上的图片\"")
         
         # 绑定快捷键
@@ -58,7 +62,240 @@ class ChatTab(BaseTab):
             "scene": None,               # 偏好场景
             "gender": None,              # 偏好性别
         }
+
+        # ✅ 新增：本地 LLM 配置
+        self.llm_enabled = tk.BooleanVar(value=True)  # 默认启用
+        self.llm_model = tk.StringVar(value="qwen2.5:3b")  # 小模型，速度快
+        self.llm_available = False  # 启动时检测
+
+        self.llm_available = False
+        self.llm_installing = False  # 正在安装
+        self.llm_model_size = "2GB"  # 显示用
     
+
+    def _check_ollama_installed(self) -> bool:
+        """检查 Ollama 是否已安装"""
+        import subprocess
+        try:
+            result = subprocess.run(["ollama", "--version"], capture_output=True, text=True, timeout=5)
+            return result.returncode == 0
+        except:
+            return False
+
+    def _check_ollama_running(self) -> bool:
+        """检查 Ollama 服务是否运行"""
+        try:
+            import requests
+            response = requests.get("http://localhost:11434/api/tags", timeout=3)
+            return response.status_code == 200
+        except:
+            return False
+
+    def _check_model_available(self, model: str) -> bool:
+        """检查模型是否已下载"""
+        try:
+            import requests
+            response = requests.get("http://localhost:11434/api/tags", timeout=5)
+            if response.status_code == 200:
+                models = [m["name"] for m in response.json().get("models", [])]
+                return model in models or model.split(":")[0] in str(models)
+            return False
+        except:
+            return False
+
+    def _install_ollama(self):
+        """自动安装 Ollama (Windows)"""
+        import subprocess
+        import threading
+        
+        self.llm_installing = True
+        self._append_message("system", "📦 正在下载并安装 Ollama... (可能需要几分钟)")
+        self._update_status("📦 安装 Ollama...")
+        
+        def install_thread():
+            try:
+                # Windows 安装命令
+                cmd = 'powershell -Command "irm https://ollama.com/install.ps1 | iex"'
+                process = subprocess.Popen(
+                    cmd,
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
+                )
+                
+                # 实时输出
+                for line in process.stdout:
+                    if "Downloading" in line or "Installing" in line:
+                        self.app.root.after(0, lambda: self._update_status(f"📦 {line.strip()[:50]}..."))
+                        print(line.strip())
+                
+                process.wait()
+                
+                if process.returncode == 0:
+                    self.app.root.after(0, lambda: self._append_message("system", "✅ Ollama 安装完成！正在启动..."))
+                    # 启动 Ollama 服务
+                    self._start_ollama_service()
+                else:
+                    self.app.root.after(0, lambda: self._append_message("system", f"❌ Ollama 安装失败，请手动安装: https://ollama.com/download/windows"))
+                    self.llm_installing = False
+                    
+            except Exception as e:
+                self.app.root.after(0, lambda: self._append_message("system", f"❌ 安装失败: {e}"))
+                self.llm_installing = False
+        
+        threading.Thread(target=install_thread, daemon=True).start()
+
+    def _start_ollama_service(self):
+        """启动 Ollama 服务"""
+        import subprocess
+        import threading
+        import time
+        
+        self._append_message("system", "🔄 正在启动 Ollama 服务...")
+        
+        def start_thread():
+            try:
+                # 启动服务
+                subprocess.Popen(["ollama", "serve"], shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                time.sleep(3)
+                
+                # 检查是否启动成功
+                if self._check_ollama_running():
+                    self.app.root.after(0, lambda: self._append_message("system", "✅ Ollama 服务已启动"))
+                    self.app.root.after(0, lambda: self._download_model())
+                else:
+                    self.app.root.after(0, lambda: self._append_message("system", "⚠️ 服务启动失败，请手动运行: ollama serve"))
+                    self.llm_installing = False
+            except Exception as e:
+                self.app.root.after(0, lambda: self._append_message("system", f"❌ 启动失败: {e}"))
+                self.llm_installing = False
+        
+        threading.Thread(target=start_thread, daemon=True).start()
+
+    def _download_model(self):
+        """下载 LLM 模型"""
+        import subprocess
+        import threading
+        
+        model = self.llm_model.get()
+        self._append_message("system", f"📦 正在下载模型: {model} (约 {self.llm_model_size})...")
+        self._append_message("system", "⏳ 这可能需要 10-30 分钟，请耐心等待...")
+        self._update_status(f"📦 下载模型 {model}...")
+        
+        def download_thread():
+            try:
+                process = subprocess.Popen(
+                    ["ollama", "pull", model],
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    bufsize=1
+                )
+                
+                for line in process.stdout:
+                    line = line.strip()
+                    if "downloading" in line.lower() or "downloading" in line:
+                        # 提取进度信息
+                        if "%" in line:
+                            self.app.root.after(0, lambda l=line: self._update_status(f"📦 {l[:60]}..."))
+                        print(line)
+                
+                process.wait()
+                
+                if process.returncode == 0:
+                    self.app.root.after(0, lambda: self._on_llm_ready())
+                else:
+                    self.app.root.after(0, lambda: self._append_message("system", f"❌ 模型下载失败: {process.stderr.read()}"))
+                    self.app.root.after(0, lambda: self._append_message("system", f"💡 请手动下载: ollama pull {model}"))
+                    self.llm_installing = False
+                    
+            except Exception as e:
+                self.app.root.after(0, lambda: self._append_message("system", f"❌ 下载失败: {e}"))
+                self.llm_installing = False
+        
+        threading.Thread(target=download_thread, daemon=True).start()
+
+    def _on_llm_ready(self):
+        """LLM 准备就绪"""
+        self.llm_available = True
+        self.llm_installing = False
+        self.llm_status.config(text="●", foreground="green")
+        self._append_message("system", f"✅ LLM 已就绪！模型: {self.llm_model.get()}")
+        self._append_message("assistant", "🧠 本地 LLM 已启用，可以智能理解你的需求了！")
+        self._update_status("✅ LLM 就绪", 1.0)
+    
+    def _check_ollama(self):
+        """检测并自动设置 LLM（完整版）"""
+        # 1. 检查 Ollama 是否安装
+        if not self._check_ollama_installed():
+            self.llm_status.config(text="●", foreground="orange")
+            self._append_message("system", "⚠️ Ollama 未安装，点击「安装 LLM」按钮自动安装")
+            # 显示安装按钮（如果有的话）
+            return
+        
+        # 2. 检查 Ollama 服务是否运行
+        if not self._check_ollama_running():
+            self.llm_status.config(text="●", foreground="orange")
+            self._append_message("system", "⏳ Ollama 服务未启动，正在自动启动...")
+            self._start_ollama_service()
+            return
+        
+        # 3. 检查模型是否已下载
+        model = self.llm_model.get()
+        if not self._check_model_available(model):
+            self.llm_status.config(text="●", foreground="orange")
+            self._append_message("system", f"📦 模型 {model} 未下载，正在自动下载...")
+            self._download_model()
+            return
+        
+        # 4. 一切就绪
+        self.llm_available = True
+        self.llm_status.config(text="●", foreground="green")
+        self._append_message("system", f"✅ LLM 已就绪 (模型: {model})")
+    
+    def _call_ollama(self, prompt: str, timeout: int = 30) -> str:
+        """调用本地 Ollama（轻量版）"""
+        if not self.llm_available:
+            return None
+        
+        try:
+            import requests
+            response = requests.post(
+                "http://localhost:11434/api/generate",
+                json={
+                    "model": self.llm_model.get(),
+                    "prompt": prompt,
+                    "temperature": 0.7,
+                    "stream": False,
+                    "max_tokens": 256  # 限制输出长度，加快速度
+                },
+                timeout=timeout
+            )
+            if response.status_code == 200:
+                return response.json().get("response", "").strip()
+            return None
+        except requests.exceptions.Timeout:
+            print("⚠️ Ollama 超时")
+            return None
+        except Exception as e:
+            print(f"⚠️ Ollama 调用失败: {e}")
+            return None
+
+    def _llm_enhance_prompt(self, text: str) -> str:
+        """使用 LLM 优化提示词（轻量版，只用小模型）"""
+        if not self.llm_available:
+            return None
+        
+        # 简洁的 prompt，减少 token 消耗
+        prompt = f"""提取关键词生成 SD 提示词，只输出提示词：
+    {text}"""
+        
+        result = self._call_ollama(prompt, timeout=20)
+        if result and len(result) < 200:
+            return result
+        return None
     
     
     def setup_ui(self):
@@ -138,6 +375,35 @@ class ChatTab(BaseTab):
             btn.pack(side=tk.LEFT, padx=1)
         
         ttk.Label(param_bar, text="💡 步数越低越快，8-12步快速预览", foreground="gray", font=("", 8)).pack(side=tk.LEFT, padx=15)
+
+        # ✅ LLM 开关
+        ttk.Separator(param_bar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=10)
+        
+        self.llm_check = ttk.Checkbutton(
+            param_bar,
+            text="🧠 LLM",
+            variable=self.llm_enabled,
+            command=self._on_llm_toggle
+        )
+        self.llm_check.pack(side=tk.LEFT, padx=5)
+
+        # ✅ 新增：LLM 安装按钮
+        self.llm_install_btn = ttk.Button(
+            param_bar,
+            text="📦 安装 LLM",
+            command=self._manual_install_llm,
+            width=10
+        )
+        self.llm_install_btn.pack(side=tk.LEFT, padx=5)
+        
+        # LLM 状态指示
+        self.llm_status = ttk.Label(
+            param_bar,
+            text="●",  # 灰色点
+            foreground="gray",
+            font=("", 10)
+        )
+        self.llm_status.pack(side=tk.LEFT, padx=2)
         
         # ===== 对话区域 =====
         chat_container = ttk.Frame(main_frame)
@@ -216,6 +482,59 @@ class ChatTab(BaseTab):
         self.progress_bar = ttk.Progressbar(status_frame, length=200, mode='determinate')
         self.progress_bar.pack(side=tk.RIGHT, padx=5)
 
+    def _manual_install_llm(self):
+        """手动安装 LLM"""
+        if self.llm_installing:
+            self._append_message("system", "⏳ 正在安装中...")
+            return
+        
+        if self.llm_available:
+            self._append_message("system", "✅ LLM 已就绪")
+            return
+        
+        if messagebox.askyesno("安装 LLM",
+            "将自动安装 Ollama 并下载模型。\n\n"
+            f"1. 下载 Ollama (约 100MB)\n"
+            f"2. 下载模型 {self.llm_model.get()} (约 {self.llm_model_size})\n"
+            f"3. 自动启动服务\n\n"
+            "整个过程可能需要 10-30 分钟，确定继续吗？"
+        ):
+            self._install_ollama()
+        
+    def _on_llm_toggle(self):
+        """LLM 开关切换"""
+        if self.llm_enabled.get():
+            if self.llm_installing:
+                self._append_message("system", "⏳ 正在安装中，请稍候...")
+                return
+            
+            if not self.llm_available:
+                self._append_message("system", "🔍 正在检测 LLM 环境...")
+                
+                # 检查并自动安装
+                if not self._check_ollama_installed():
+                    # 询问用户是否自动安装
+                    if messagebox.askyesno("安装 LLM", 
+                        "检测到 Ollama 未安装。\n"
+                        "是否自动下载并安装 Ollama？\n\n"
+                        f"下载大小: ~{self.llm_model_size}\n"
+                        "安装后需要下载模型，请确保网络畅通。"
+                    ):
+                        self._install_ollama()
+                    else:
+                        self.llm_enabled.set(False)
+                        self.llm_status.config(text="●", foreground="gray")
+                    return
+                
+                # 如果已安装但未运行/未下载，自动处理
+                self._check_ollama()
+            else:
+                self.llm_status.config(text="●", foreground="green")
+                self._append_message("system", "🧠 LLM 增强已启用")
+        else:
+            self._append_message("system", "🧠 LLM 增强已禁用")
+            self.llm_status.config(text="●", foreground="gray")
+        
     def _update_context(self, intent: dict, result: dict = None):
         """更新上下文"""
         # 记录最后一次操作
@@ -486,12 +805,20 @@ class ChatTab(BaseTab):
         continuation_keywords = ['再来', '继续', '换一个', '换一张', '再生成', '再来一张', 'another', 'continue']
         is_continuation = any(k in text_lower for k in continuation_keywords)
         
-        # 如果用户说"再来一张"，复用上次的提示词
         if is_continuation and self.last_prompt:
             smart_prompt = self.last_prompt
-            self._append_message("system", f"🔄 复用上次提示词: {smart_prompt[:50]}...")
+            self._append_message("system", f"🔄 复用上次提示词")
         else:
-            smart_prompt = self._build_smart_prompt(text, keywords)
+            # ===== 优先使用 LLM 增强 =====
+            if self.llm_enabled.get() and self.llm_available:
+                enhanced = self._llm_enhance_prompt(text)
+                if enhanced:
+                    smart_prompt = enhanced
+                    self._append_message("system", f"🧠 LLM 优化提示词: {smart_prompt[:50]}...")
+                else:
+                    smart_prompt = self._build_smart_prompt(text, keywords)
+            else:
+                smart_prompt = self._build_smart_prompt(text, keywords)
         
         # 文生图关键词
         gen_keywords = ['生成', '画', '创建', 'create', 'generate', '画一张', '生成一张']
@@ -517,7 +844,8 @@ class ChatTab(BaseTab):
                 "prompt": smart_prompt,
                 "keywords": keywords,
                 "original_text": text,
-                "is_continuation": is_continuation
+                "is_continuation": is_continuation,
+                "llm_enhanced": self.llm_enabled.get() and self.llm_available
             }
         elif is_gen or (not is_edit and len(text) > 10):
             return {
@@ -525,9 +853,19 @@ class ChatTab(BaseTab):
                 "prompt": smart_prompt,
                 "keywords": keywords,
                 "original_text": text,
-                "is_continuation": is_continuation
+                "is_continuation": is_continuation,
+                "llm_enhanced": self.llm_enabled.get() and self.llm_available
             }
         else:
+            # 对话也可以由 LLM 处理
+            if self.llm_enabled.get() and self.llm_available:
+                reply = self._call_ollama(f"用户说：{text}\n简短回复（一句话）：", timeout=15)
+                if reply:
+                    return {
+                        "type": "chat",
+                        "original_text": text,
+                        "llm_reply": reply
+                    }        
             return {
                 "type": "chat",
                 "original_text": text
@@ -1227,6 +1565,11 @@ class ChatTab(BaseTab):
         """处理对话"""
         text = intent["original_text"]
         text_lower = text.lower()
+
+        # 检查是否有 LLM 回复
+        if intent.get("llm_reply"):
+            self._append_message("assistant", intent["llm_reply"])
+            return
         
         # 检查是否有上传图片但用户没有明确说要修改
         if self.uploaded_image is not None:
@@ -1271,7 +1614,7 @@ class ChatTab(BaseTab):
                 self._append_message("assistant", "📌 还没有记录你的偏好。生成图片时我会自动学习！")
             return
         
-        # 简单问答
+        # 简单规则对话（保留，作为 LLM 不可用时的备选）
         responses = {
             '你好': '你好！有什么可以帮你的吗？',
             '你是谁': '我是智能生图助手，可以帮助你生成和修改图片。试试说 "生成一张..."！',
@@ -1290,6 +1633,14 @@ class ChatTab(BaseTab):
         if reply:
             self._append_message("assistant", reply)
         else:
+            # 尝试 LLM 对话
+            if self.llm_enabled.get() and self.llm_available:
+                self._append_message("system", "🧠 正在思考...")
+                llm_reply = self._call_ollama(f"用户说：{text}\n简短友好的回复（一句话）：", timeout=15)
+                if llm_reply:
+                    self._append_message("assistant", llm_reply)
+                    return
+                
             self._append_message("assistant", f"🤔 我理解你想说：\"{text}\"\n\n如果你想生成图片，可以试试说：\n• \"生成一张...\" (文生图)\n• 先上传图片，然后说 \"改成...\" (图生图)\n\n或者直接告诉我你的需求！")
         
     def _ensure_model_loaded(self) -> bool:
