@@ -833,8 +833,11 @@ class ChatTab(BaseTab):
         
         # 文生图关键词
         gen_keywords = ['生成', '画', '创建', 'create', 'generate', '画一张', '生成一张']
-        edit_keywords = ['修改', '改', '换', '变成', '改成', 'edit', 'change', 'modify', '替换', '去除', '去掉']
-        
+
+        # ✅ 扩充编辑关键词
+        edit_keywords = ['修改', '改', '换', '变成', '改成', '做成', '转换为', '转化', '制作成',
+                         'edit', 'change', 'modify', '替换', '去除', '去掉', 'turn into', 'make into']
+                     
         is_gen = any(k in text_lower for k in gen_keywords)
         is_edit = any(k in text_lower for k in edit_keywords)
         
@@ -1226,6 +1229,16 @@ class ChatTab(BaseTab):
         
         prompt = intent["prompt"]
         keywords = intent.get("keywords", {})  # ✅ 添加这一行
+        
+        # ===== 检测是否是材质转换 =====
+        if keywords.get("is_statue") or "transform_material" in keywords.get("actions", []):
+            materials = keywords.get("materials", [])
+            if materials:
+                # 构建更强的材质转换提示词
+                material = materials[0]
+                prompt = f"same person, same face, same pose, made of {material}, {material} statue, sculpture, {material} texture, polished, classical style"
+                self._append_message("system", f"🗿 检测到材质转换: {material}")
+                
         original_text = intent.get("original_text", "")
         # ===== 【调试】打印完整意图 =====
         print("\n" + "=" * 60)
@@ -1631,6 +1644,58 @@ class ChatTab(BaseTab):
             if cn in text_lower:
                 lighting.append(en)
 
+
+        # ===== 新增：材质 =====
+        materials_map = {
+            '大理石': 'marble',
+            '石膏': 'plaster',
+            '青铜': 'bronze',
+            '铜': 'bronze',
+            '金': 'gold',
+            '银': 'silver',
+            '水晶': 'crystal',
+            '玻璃': 'glass',
+            '陶瓷': 'ceramic',
+            '粘土': 'clay',
+            '木头': 'wood',
+            '木雕': 'wood carving',
+            '石雕': 'stone carving',
+            '玉石': 'jade',
+            '翡翠': 'jade',
+            '金属': 'metal',
+            '铁': 'iron',
+            '钢铁': 'steel',
+            '蜡': 'wax',
+            '塑料': 'plastic',
+            '树脂': 'resin',
+            '织物': 'fabric',
+            '丝绸': 'silk',
+            '天鹅绒': 'velvet',
+            '皮革': 'leather',
+            '纸质': 'paper',
+        }
+        materials = []
+        material_terms = []
+        for cn, en in materials_map.items():
+            if cn in text_lower:
+                materials.append(en)
+                material_terms.append(cn)  # 记录中文
+        
+        # ===== 检测是否要变成雕像/雕塑 =====
+        is_statue = any(k in text_lower for k in ['雕像', '雕塑', '石刻', '石像', '塑像', 'statue', 'sculpture'])
+        is_bust = any(k in text_lower for k in ['半身像', '胸像', 'bust'])
+        
+        # 如果是雕像，自动添加 marble 或 stone
+        if is_statue:
+            if not materials:
+                materials.append('marble')  # 默认大理石
+            # 添加雕像相关词
+            if is_bust:
+                materials.append('bust')
+            else:
+                materials.append('statue')
+            materials.append('sculpture')
+        
         # ===== 新增：检测操作指令 =====
         actions = []
         
@@ -1657,6 +1722,9 @@ class ChatTab(BaseTab):
             actions.append("add_element")
         if any(k in text_lower for k in ['去掉', '去除', '删除', '移除']):
             actions.append("remove_element")
+        # ===== 新增：修改/制作类指令 =====
+        if any(k in text_lower for k in ['做成', '变成', '转换为', '转化', '制作', '转为', 'turn into', 'convert to', 'make into']):
+            actions.append("transform_material")
         
         return {
             "genders": genders,
@@ -1670,6 +1738,9 @@ class ChatTab(BaseTab):
             "lighting": lighting,
             "has_clothes": len(clothes) > 0,
             "has_scene": len(scenes) > 0,
+            "materials": materials,        # ✅ 新增
+            "is_statue": is_statue,        # ✅ 新增
+            "material_terms": material_terms,  # ✅ 新增            
             "actions": actions,  # ✅ 新增
         }
 
@@ -1680,7 +1751,26 @@ class ChatTab(BaseTab):
         prompt_parts = ["masterpiece", "best quality", "photorealistic", "8k", "highly detailed"]
         # ===== 检查特殊指令 =====
         actions = keywords.get("actions", [])
-        
+
+        # ===== 材质转换指令 =====
+        if "transform_material" in actions or keywords.get("is_statue"):
+            materials = keywords.get("materials", [])
+            if materials:
+                # 构建材质提示词
+                material_str = ", ".join(materials)
+                # 如果是雕像，添加雕塑风格
+                if keywords.get("is_statue"):
+                    prompt_parts.append(f"{material_str} statue")
+                    prompt_parts.append("sculpture")
+                    prompt_parts.append("solid marble")
+                    prompt_parts.append("polished surface")
+                    prompt_parts.append("classical sculpture style")
+                    prompt_parts.append("stone texture")
+                    # 对于去衣场景，添加负面词防止衣服残留
+                    self._last_negative = "clothes, fabric, dress, shirt, pants, underwear, bra, panties, fabric texture, cloth"
+                else:
+                    prompt_parts.append(material_str)
+                
         if "remove_clothes" in actions:
             # 裸体指令
             prompt_parts.append("nude")
