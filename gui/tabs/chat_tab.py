@@ -42,6 +42,12 @@ class ChatTab(BaseTab):
         self.messages = []  # 对话历史
         self.chat_context = {}  # 上下文信息
         self._is_loading_model = False  # ✅ 新增：防止重复加载
+        # ✅ 新增：会话生图参数
+        self.chat_steps_var = tk.IntVar(value=12)  # 默认 12 步
+        self.chat_cfg_var = tk.DoubleVar(value=7.5)  
+        # ✅ 新增：缓存待处理的意图
+        self._pending_intent = None
+    
     
     def setup_ui(self):
         """设置 UI"""
@@ -69,6 +75,57 @@ class ChatTab(BaseTab):
         # 图片预览（缩略图）
         self.preview_label = ttk.Label(toolbar)
         self.preview_label.pack(side=tk.LEFT, padx=5)
+
+        # ===== 【新增】参数控制栏（第二行） =====
+        param_bar = ttk.Frame(main_frame)
+        param_bar.pack(fill=tk.X, pady=2)
+        
+        ttk.Label(param_bar, text="步数:").pack(side=tk.LEFT, padx=5)
+        
+        # 步数 Spinbox
+        self.steps_spinbox = ttk.Spinbox(
+            param_bar,
+            from_=4,
+            to=50,
+            textvariable=self.chat_steps_var,
+            width=5,
+            increment=1
+        )
+        self.steps_spinbox.pack(side=tk.LEFT, padx=2)
+        
+        # 快速步数按钮
+        for steps in [8, 12, 20, 30]:
+            btn = ttk.Button(
+                param_bar,
+                text=str(steps),
+                width=3,
+                command=lambda s=steps: self.chat_steps_var.set(s)
+            )
+            btn.pack(side=tk.LEFT, padx=1)
+        
+        ttk.Label(param_bar, text="CFG:").pack(side=tk.LEFT, padx=15)
+        
+        self.cfg_spinbox = ttk.Spinbox(
+            param_bar,
+            from_=1.0,
+            to=20.0,
+            textvariable=self.chat_cfg_var,
+            width=5,
+            increment=0.5
+        )
+        self.cfg_spinbox.pack(side=tk.LEFT, padx=2)
+        
+        # 快速 CFG 按钮
+        for cfg in [5, 7, 7.5, 9]:
+            btn = ttk.Button(
+                param_bar,
+                text=str(cfg),
+                width=3,
+                command=lambda c=cfg: self.chat_cfg_var.set(c)
+            )
+            btn.pack(side=tk.LEFT, padx=1)
+        
+        ttk.Label(param_bar, text="💡 步数越低越快，8-12步快速预览", foreground="gray", font=("", 8)).pack(side=tk.LEFT, padx=15)
         
         # ===== 对话区域 =====
         chat_container = ttk.Frame(main_frame)
@@ -415,15 +472,10 @@ class ChatTab(BaseTab):
             width, height = 640, 896
         else:
             width, height = 512, 768
-        
-        # 步数
-        if is_image:
-            steps = 25
-        else:
-            steps = 20
-        
-        # CFG
-        cfg = 7.5
+            
+        # ===== 使用用户设置的步数和 CFG =====
+        steps = self.chat_steps_var.get()
+        cfg = self.chat_cfg_var.get()
         
         # 图生图强度
         strength = 0.45 if is_image else None
@@ -448,6 +500,8 @@ class ChatTab(BaseTab):
         
         if not self.app.model_manager.is_sd_loaded:
             self._append_message("assistant", "📦 正在自动加载模型...")
+            # ✅ 缓存意图，加载完成后自动重试
+            self._pending_intent = intent            
             if not self._ensure_model_loaded():
                 return
             # 等待加载完成
@@ -455,11 +509,18 @@ class ChatTab(BaseTab):
             return
         
         prompt = intent["prompt"]
+        params = self._estimate_params(prompt)
+        
+        # ✅ 显示当前参数
+        self._append_message(
+            "system", 
+            f"⚙️ 参数: 步数={params['steps']}, CFG={params['cfg']}, 尺寸={params['width']}x{params['height']}"
+        )    
         
         self._append_message("assistant", f"🎨 正在生成图片...\n\n📝 提示词: {prompt[:100]}{'...' if len(prompt) > 100 else ''}")
         
         # 估算参数
-        params = self._estimate_params(prompt)
+
         self._update_status(f"🎨 生成中... (尺寸: {params['width']}x{params['height']})", 0.1)
         
         # 检查模型
@@ -557,12 +618,17 @@ class ChatTab(BaseTab):
             
             # 添加到预览
             self.app.add_to_preview(filepath, result.images[0])
+            # ✅ 清除缓存
+            self._pending_intent = None
+            
             
         except Exception as e:
             self._append_message("assistant", f"❌ 生成失败: {str(e)}")
             self._update_status("❌ 生成失败", 0)
             import traceback
             traceback.print_exc()
+            # ✅ 清除缓存，防止卡住
+            self._pending_intent = None            
     
     # ==================== 图生图处理 ====================
     
@@ -579,17 +645,27 @@ class ChatTab(BaseTab):
         
         if not self.app.model_manager.is_sd_loaded:
             self._append_message("assistant", "📦 正在自动加载模型...")
+            # ✅ 缓存意图，加载完成后自动重试
+            self._pending_intent = intent
+        
             if not self._ensure_model_loaded():
                 return
             self._append_message("assistant", "⏳ 模型加载中，请稍候再试...")
             return
         
         prompt = intent["prompt"]
-        
+        params = self._estimate_params(prompt, is_image=True)
+
+        # ✅ 显示当前参数
+        self._append_message(
+            "system", 
+            f"⚙️ 参数: 步数={params['steps']}, CFG={params['cfg']}, 强度={params['strength']}"
+        )
+    
         self._append_message("assistant", f"🔄 正在修改图片...\n\n📝 指令: {prompt[:100]}{'...' if len(prompt) > 100 else ''}")
         
         # 估算参数
-        params = self._estimate_params(prompt, is_image=True)
+
         self._update_status(f"🔄 修改中... (强度: {params['strength']})", 0.1)
         
         # 检查模型
@@ -686,6 +762,8 @@ class ChatTab(BaseTab):
             
             # 添加到预览
             self.app.add_to_preview(filepath, result.images[0])
+            # ✅ 清除缓存
+            self._pending_intent = None            
             
             # 清空上传的图片（可选）
             # self._clear_upload()
@@ -695,6 +773,8 @@ class ChatTab(BaseTab):
             self._update_status("❌ 修改失败", 0)
             import traceback
             traceback.print_exc()
+            # ✅ 清除缓存，防止卡住
+            self._pending_intent = None            
     
     # ==================== 对话处理 ====================
     
@@ -782,11 +862,24 @@ class ChatTab(BaseTab):
             self._append_message("system", f"✅ 模型加载完成: {model_name[:40]}...")
             self._update_status("✅ 模型就绪", 1.0)
             self.progress_bar.config(value=0)
-            # 模型加载完成后可以继续生成
-            self._append_message("assistant", "✅ 模型已就绪，可以开始生图了！")
+            
+            # ✅ 如果有缓存的意图，自动执行
+            if self._pending_intent is not None:
+                intent = self._pending_intent
+                self._pending_intent = None
+                self._append_message("system", "🔄 继续执行之前的请求...")
+                
+                # 重新执行
+                if intent["type"] == "text_to_image":
+                    self._handle_text_to_image(intent)
+                elif intent["type"] == "image_to_image":
+                    self._handle_image_to_image(intent)
+            else:
+                self._append_message("assistant", "✅ 模型已就绪，可以开始生图了！")
         else:
             self._append_message("assistant", "❌ 模型加载失败\n\n请在主界面手动加载模型后重试。")
             self._update_status("❌ 加载失败", 0)
+            self._pending_intent = None  # 清除缓存
             
     def _clear_upload(self):
         """清除上传的图片"""
