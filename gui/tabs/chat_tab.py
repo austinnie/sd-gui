@@ -657,6 +657,7 @@ class ChatTab(BaseTab):
             return
         
         prompt = intent["prompt"]
+        keywords = intent.get("keywords", {})  # ✅ 添加这一行
         params = self._estimate_params(prompt, is_image=True)
         
         
