@@ -390,36 +390,39 @@ class ChatTab(BaseTab):
             self.cancel_btn.config(state=tk.DISABLED)
             self.progress_bar.config(value=0)
     
+
     def _analyze_intent(self, text: str) -> dict:
-        """分析用户意图"""
+        """分析用户意图 - 使用智能提示词"""
         text_lower = text.lower()
-        
-        # 检测是否有上传图片
         has_image = self.uploaded_image is not None
         
+        # 提取关键词
+        keywords = self._extract_keywords(text)
+        smart_prompt = self._build_smart_prompt(text, keywords)
+        
         # 文生图关键词
-        gen_keywords = ['生成', '画', '创建', 'create', 'generate', '画一张', '生成一张', '画一个', '生成一个']
+        gen_keywords = ['生成', '画', '创建', 'create', 'generate', '画一张', '生成一张']
+        edit_keywords = ['修改', '改', '换', '变成', '改成', 'edit', 'change', 'modify', '替换', '去除', '去掉']
         
-        # 图生图关键词
-        edit_keywords = ['修改', '改', '换', '变成', '改成', '变成', 'edit', 'change', 'modify', '替换', '去除', '去掉']
-        
-        # 检测是否包含生图意图
         is_gen = any(k in text_lower for k in gen_keywords)
         is_edit = any(k in text_lower for k in edit_keywords)
         
-        # 提取提示词
-        prompt = self._extract_prompt(text)
-        
         if has_image and is_edit:
+            # 图生图：如果有"换"或"改成"，但用户没有指定颜色/服装，保留原样
+            if not keywords.get("clothes") and not keywords.get("colors") and not keywords.get("styles"):
+                smart_prompt = f"same person, same pose, {smart_prompt}"
+            
             return {
                 "type": "image_to_image",
-                "prompt": prompt,
+                "prompt": smart_prompt,
+                "keywords": keywords,
                 "original_text": text
             }
         elif is_gen or (not is_edit and len(text) > 10):
             return {
                 "type": "text_to_image",
-                "prompt": prompt,
+                "prompt": smart_prompt,
+                "keywords": keywords,
                 "original_text": text
             }
         else:
@@ -427,7 +430,7 @@ class ChatTab(BaseTab):
                 "type": "chat",
                 "original_text": text
             }
-    
+        
     def _extract_prompt(self, text: str) -> str:
         """从文本中提取提示词"""
         # 移除常见前缀
@@ -655,13 +658,48 @@ class ChatTab(BaseTab):
         
         prompt = intent["prompt"]
         params = self._estimate_params(prompt, is_image=True)
-
+        
+        
+        # ===== 分析原图特征 =====
+        image_features = self._analyze_image_features(self.uploaded_image_path)
+        
+        # ===== 根据原图特征调整参数 =====
+        if image_features.get("has_face"):
+            self._append_message("system", f"👤 检测到人脸 ({image_features.get('face_count', 0)} 张)")
+        
+        if image_features.get("is_portrait"):
+            self._append_message("system", "📐 检测到竖图")
+            # 竖图保持竖图
+        elif image_features.get("is_landscape"):
+            self._append_message("system", "📐 检测到横图")
+        
+        # ===== 根据原图特征调整强度 =====
+        strength = 0.45
+        if image_features.get("is_bright"):
+            strength = 0.40  # 亮图用低强度保持质感
+        elif image_features.get("is_dark"):
+            strength = 0.55  # 暗图用高强度改变更多
+        
+        # 如果有脸部，降低强度保护面部
+        if image_features.get("has_face"):
+            strength = min(strength, 0.45)
+            self._append_message("system", f"🛡️ 检测到面部，降低强度保护面部: {strength:.2f}")
+        
+        params = self._estimate_params(prompt, is_image=True)
+        params["strength"] = strength
+    
         # ✅ 显示当前参数
         self._append_message(
             "system", 
             f"⚙️ 参数: 步数={params['steps']}, CFG={params['cfg']}, 强度={params['strength']}"
         )
-    
+
+        # ===== 构建优化的图生图提示词 =====
+        # 保留原图核心特征
+        if not keywords.get("clothes") and not keywords.get("colors"):
+            # 用户没有指定换装或换色，强调保留原图
+            prompt = f"same person, same face, same expression, {prompt}"
+        
         self._append_message("assistant", f"🔄 正在修改图片...\n\n📝 指令: {prompt[:100]}{'...' if len(prompt) > 100 else ''}")
         
         # 估算参数
@@ -775,7 +813,304 @@ class ChatTab(BaseTab):
             traceback.print_exc()
             # ✅ 清除缓存，防止卡住
             self._pending_intent = None            
-    
+
+    # 在 _init_vars 后添加以下方法
+
+    def _extract_keywords(self, text: str) -> dict:
+        """提取关键词"""
+        text_lower = text.lower()
+        
+        # 性别
+        genders = []
+        if any(k in text_lower for k in ['女', '美女', '女孩', '女性', '姑娘', '小姐姐']):
+            genders.append("1girl")
+        elif any(k in text_lower for k in ['男', '帅哥', '男孩', '男性', '小哥哥']):
+            genders.append("1boy")
+        elif any(k in text_lower for k in ['情侣', '双人', '两人', '夫妻', 'couple']):
+            genders.append("1girl, 1boy")
+        
+        # 服装
+        clothes_map = {
+            '裙子': 'dress',
+            '连衣裙': 'dress',
+            '礼服': 'evening gown',
+            '旗袍': 'qipao',
+            '汉服': 'hanfu',
+            '和服': 'kimono',
+            '上衣': 'top',
+            '衬衫': 'shirt',
+            'T恤': 't-shirt',
+            '外套': 'jacket',
+            '大衣': 'coat',
+            '牛仔裤': 'jeans',
+            '裤子': 'pants',
+            '短裤': 'shorts',
+            '泳衣': 'swimsuit',
+            '比基尼': 'bikini',
+            '内衣': 'lingerie',
+            '蕾丝': 'lace',
+            '丝袜': 'stockings',
+            '高跟鞋': 'high heels',
+        }
+        clothes = []
+        for cn, en in clothes_map.items():
+            if cn in text_lower:
+                clothes.append(en)
+        
+        # 颜色
+        colors_map = {
+            '白色': 'white',
+            '黑色': 'black',
+            '红色': 'red',
+            '蓝色': 'blue',
+            '绿色': 'green',
+            '粉色': 'pink',
+            '紫色': 'purple',
+            '黄色': 'yellow',
+            '金色': 'golden',
+            '银色': 'silver',
+            '透明': 'transparent',
+            '裸色': 'nude',
+        }
+        colors = []
+        for cn, en in colors_map.items():
+            if cn in text_lower:
+                colors.append(en)
+        
+        # 场景
+        scenes_map = {
+            '沙滩': 'beach',
+            '海滩': 'beach',
+            '海边': 'ocean',
+            '卧室': 'bedroom',
+            '浴室': 'bathroom',
+            '花园': 'garden',
+            '森林': 'forest',
+            '城市': 'city',
+            '街道': 'street',
+            '咖啡厅': 'cafe',
+            '餐厅': 'restaurant',
+            '办公室': 'office',
+            '公园': 'park',
+            '泳池': 'swimming pool',
+            '舞台': 'stage',
+            '宫殿': 'palace',
+        }
+        scenes = []
+        for cn, en in scenes_map.items():
+            if cn in text_lower:
+                scenes.append(en)
+        
+        # 风格
+        styles_map = {
+            '动漫': 'anime style',
+            '油画': 'oil painting style',
+            '水彩': 'watercolor style',
+            '素描': 'sketch style',
+            '写实': 'photorealistic',
+            '赛博朋克': 'cyberpunk style',
+            '暗黑': 'dark style',
+            '梦幻': 'dreamy style',
+            '复古': 'vintage style',
+            '古风': 'traditional Chinese style',
+            '唯美': 'aesthetic style',
+            '可爱': 'cute style',
+            '性感': 'sexy style',
+            '优雅': 'elegant style',
+        }
+        styles = []
+        for cn, en in styles_map.items():
+            if cn in text_lower:
+                styles.append(en)
+        
+        # 姿势
+        poses_map = {
+            '站立': 'standing',
+            '坐': 'sitting',
+            '躺': 'lying',
+            '蹲': 'squatting',
+            '跪': 'kneeling',
+            '弯腰': 'bending over',
+            '回头': 'looking back',
+            '侧身': 'side view',
+            '趴': 'lying on stomach',
+            '睡': 'sleeping',
+            '奔跑': 'running',
+            '走路': 'walking',
+            '跳舞': 'dancing',
+            '拥抱': 'hugging',
+            '接吻': 'kissing',
+        }
+        poses = []
+        for cn, en in poses_map.items():
+            if cn in text_lower:
+                poses.append(en)
+        
+        # 表情
+        expressions_map = {
+            '微笑': 'smiling',
+            '大笑': 'laughing',
+            '严肃': 'serious',
+            '忧郁': 'melancholy',
+            '诱惑': 'seductive',
+            '性感': 'seductive',
+            '可爱': 'cute expression',
+            '害羞': 'shy',
+            '惊讶': 'surprised',
+            '愤怒': 'angry',
+            '悲伤': 'sad',
+            '深情': 'affectionate',
+        }
+        expressions = []
+        for cn, en in expressions_map.items():
+            if cn in text_lower:
+                expressions.append(en)
+        
+        # 身体特征
+        body_map = {
+            '大胸': 'large breasts',
+            '巨乳': 'huge breasts',
+            '丰满': 'curvy figure',
+            '苗条': 'slim figure',
+            '匀称': 'fit body',
+            '肌肉': 'muscular',
+        }
+        body = []
+        for cn, en in body_map.items():
+            if cn in text_lower:
+                body.append(en)
+        
+        # 光线
+        lighting_map = {
+            '自然光': 'natural lighting',
+            '暖光': 'warm lighting',
+            '冷光': 'cold lighting',
+            '柔光': 'soft lighting',
+            '逆光': 'backlighting',
+            '阳光': 'sunlight',
+            '月光': 'moonlight',
+            '烛光': 'candlelight',
+            '霓虹': 'neon lighting',
+        }
+        lighting = []
+        for cn, en in lighting_map.items():
+            if cn in text_lower:
+                lighting.append(en)
+        
+        return {
+            "genders": genders,
+            "clothes": clothes,
+            "colors": colors,
+            "scenes": scenes,
+            "styles": styles,
+            "poses": poses,
+            "expressions": expressions,
+            "body": body,
+            "lighting": lighting,
+            "has_clothes": len(clothes) > 0,
+            "has_scene": len(scenes) > 0,
+        }
+
+
+    def _build_smart_prompt(self, text: str, keywords: dict) -> str:
+        """根据关键词构建提示词"""
+        # 质量词
+        prompt_parts = ["masterpiece", "best quality", "photorealistic", "8k", "highly detailed"]
+        
+        # 性别
+        if keywords.get("genders"):
+            prompt_parts.extend(keywords["genders"])
+        
+        # 身体特征
+        if keywords.get("body"):
+            prompt_parts.extend(keywords["body"])
+        
+        # 颜色
+        if keywords.get("colors"):
+            prompt_parts.append(" ".join(keywords["colors"]))
+        
+        # 服装
+        if keywords.get("clothes"):
+            prompt_parts.append("wearing " + ", ".join(keywords["clothes"]))
+        
+        # 表情
+        if keywords.get("expressions"):
+            prompt_parts.extend(keywords["expressions"])
+        
+        # 姿势
+        if keywords.get("poses"):
+            prompt_parts.extend(keywords["poses"])
+        
+        # 场景
+        if keywords.get("scenes"):
+            prompt_parts.extend(keywords["scenes"])
+        
+        # 光线
+        if keywords.get("lighting"):
+            prompt_parts.extend(keywords["lighting"])
+        
+        # 风格（加到最前面，紧接质量词）
+        if keywords.get("styles"):
+            prompt_parts.insert(2, ", ".join(keywords["styles"]))
+        
+        # 去重
+        seen = set()
+        unique_parts = []
+        for p in prompt_parts:
+            if p not in seen:
+                seen.add(p)
+                unique_parts.append(p)
+        
+        return ", ".join(unique_parts)
+
+    def _analyze_image_features(self, image_path: str) -> dict:
+        """分析图片特征"""
+        try:
+            import cv2
+            import numpy as np
+            
+            img = cv2.imread(image_path)
+            if img is None:
+                return {}
+            
+            h, w = img.shape[:2]
+            
+            # 检测人脸
+            face_cascade = cv2.CascadeClassifier(
+                cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+            )
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+            
+            # 检测人体（简化：通过轮廓）
+            has_person = len(faces) > 0
+            
+            # 判断横竖图
+            is_landscape = w > h * 1.2
+            is_portrait = h > w * 1.2
+            
+            # 检测亮度
+            brightness = np.mean(gray)
+            is_bright = brightness > 150
+            is_dark = brightness < 80
+            
+            return {
+                "has_face": len(faces) > 0,
+                "has_person": has_person,
+                "face_count": len(faces),
+                "width": w,
+                "height": h,
+                "is_landscape": is_landscape,
+                "is_portrait": is_portrait,
+                "is_bright": is_bright,
+                "is_dark": is_dark,
+                "aspect_ratio": w / h
+            }
+        except Exception as e:
+            print(f"⚠️ 分析图片失败: {e}")
+            return {}
+        
+
     # ==================== 对话处理 ====================
     
     def _handle_chat(self, intent: dict):
