@@ -52,7 +52,7 @@ class ChatTab(BaseTab):
         # ✅ 新增：缓存待处理的意图
         self._last_negative = None
         self._pending_intent = None
-        self._last_negative = None
+
 
         # ✅ 新增：上下文记忆
         self.last_generated_image = None  # 上次生成的图片路径
@@ -1244,9 +1244,20 @@ class ChatTab(BaseTab):
         
         # 如果是双人/多人
         face_count = image_features.get("face_count", 0)
-        if face_count >= 2:
+
+        # ✅ 额外验证：如果检测到多人，但关键词中没有 "couple"、"双人" 等，可能误检
+        # 检查用户输入是否真的提到了多人
+        user_text = intent.get("original_text", "").lower()
+        mentioned_multiple = any(k in user_text for k in ['双人', '多人', '两人', '情侣', 'couple', 'two', 'group'])
+        
+        if face_count >= 2 and mentioned_multiple:
             preserve_parts.append("same two people")
             preserve_parts.append("same couple")
+            self._append_message("system", f"👥 检测到双人/多人 ({face_count} 张人脸)")
+        elif face_count >= 2 and not mentioned_multiple:
+            # 可能是误检，只当作单人处理
+            self._append_message("system", f"⚠️ 检测到 {face_count} 张人脸，但用户未提及多人，按单人处理")
+            face_count = 1  # 强制按单人处理
         
         # 保留姿势
         preserve_parts.append("same pose")
@@ -1745,8 +1756,50 @@ class ChatTab(BaseTab):
                 cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
             )
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+            
+            # ✅ 提高检测阈值，减少误检
+            faces = face_cascade.detectMultiScale(
+                gray, 
+                scaleFactor=1.1, 
+                minNeighbors=8,  # 从 4 提高到 8，减少误检
+                minSize=(30, 30)  # 最小人脸尺寸
+            )
 
+            # ✅ 过滤掉太小的人脸（可能是误检）
+            valid_faces = []
+            for (x, y, fw, fh) in faces:
+                if fw > 40 and fh > 40:  # 至少 40x40 像素
+                    valid_faces.append((x, y, fw, fh))
+            faces = valid_faces
+        
+
+            # ===== 新增：验证检测到的人脸是否真的不同 =====
+            # 如果检测到多张人脸，检查它们的位置是否重叠
+            if len(faces) >= 2:
+                filtered_faces = []
+                for i, (x1, y1, fw1, fh1) in enumerate(faces):
+                    is_duplicate = False
+                    for j, (x2, y2, fw2, fh2) in enumerate(faces):
+                        if i == j:
+                            continue
+                        # 计算 IoU（重叠度）
+                        x_left = max(x1, x2)
+                        y_top = max(y1, y2)
+                        x_right = min(x1 + fw1, x2 + fw2)
+                        y_bottom = min(y1 + fh1, y2 + fh2)
+                        
+                        if x_right > x_left and y_bottom > y_top:
+                            inter_area = (x_right - x_left) * (y_bottom - y_top)
+                            area1 = fw1 * fh1
+                            area2 = fw2 * fh2
+                            iou = inter_area / min(area1, area2)
+                            if iou > 0.3:  # 重叠超过 30% 认为是同一张脸
+                                is_duplicate = True
+                                break
+                    if not is_duplicate:
+                        filtered_faces.append((x1, y1, fw1, fh1))
+                faces = filtered_faces
+            
             # ===== 新增：判断全身/半身 =====
             # 如果检测到人脸，计算人脸在图片中的占比
             is_full_body = True
@@ -1792,6 +1845,9 @@ class ChatTab(BaseTab):
             edges = cv2.Canny(gray, 50, 150)
             edge_density = np.sum(edges > 0) / (h * w)
             is_complex_background = edge_density > 0.05
+            
+            # ✅ 实际人脸数量
+            actual_face_count = len(faces)
         
             return {
                 "has_face": len(faces) > 0,
