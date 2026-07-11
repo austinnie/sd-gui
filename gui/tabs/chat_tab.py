@@ -793,21 +793,25 @@ class ChatTab(BaseTab):
             self.progress_bar.config(value=0)
     
 
+
     def _analyze_intent(self, text: str) -> dict:
         """分析用户意图 - 使用智能提示词 + 上下文"""
+        print("\n" + "=" * 60)
+        print("🔍 [意图分析调试]")
+        print(f"   用户输入: {text}")
+
         text_lower = text.lower()
         has_image = self.uploaded_image is not None
         
         # 提取关键词
         keywords = self._extract_keywords(text)
+        print(f"   提取的关键词: {keywords}")
         
         # ===== 利用上下文补全缺失信息 =====
-        # 如果用户没有指定风格，但之前偏好某风格，自动补全
         if not keywords.get("styles") and self.user_preferences.get("style"):
-            # 但不要覆盖用户明确指定的
             pass
         
-        # 检测是否涉及"继续"、"再来"、"换一个"等延续性指令
+        # 检测是否涉及"继续"、"再来"等延续性指令
         continuation_keywords = ['再来', '继续', '换一个', '换一张', '再生成', '再来一张', 'another', 'continue']
         is_continuation = any(k in text_lower for k in continuation_keywords)
         
@@ -815,7 +819,6 @@ class ChatTab(BaseTab):
             smart_prompt = self.last_prompt
             self._append_message("system", f"🔄 复用上次提示词")
         else:
-            # ===== 优先使用 LLM 增强 =====
             if self.llm_enabled.get() and self.llm_available:
                 enhanced = self._llm_enhance_prompt(text)
                 if enhanced:
@@ -835,17 +838,33 @@ class ChatTab(BaseTab):
         
         # 如果没有明确意图，但有上下文，尝试推断
         if not is_gen and not is_edit and self._has_context():
-            # 如果用户发了"再改一下"之类的，可能是图生图
             if has_image:
                 is_edit = True
             elif self.last_intent_type == "text_to_image":
                 is_gen = True
         
+        # ===== 判断意图类型 =====
         if has_image and is_edit:
-            if not keywords.get("clothes") and not keywords.get("colors") and not keywords.get("styles"):
+            # ===== 【修复】检查是否有特殊指令 =====
+            actions = keywords.get("actions", [])
+            
+            if "remove_clothes" in actions:
+                # 去掉衣服：保留人物，改为裸体
+                smart_prompt = f"same person, same face, same pose, nude, naked, bare skin, no clothes, without clothes, artistic nude"
+                self._append_message("system", f"👗 检测到去衣指令，生成裸体提示词")
+            elif "change_clothes" in actions and keywords.get("clothes"):
+                # 换衣服
+                clothes_str = ", ".join(keywords["clothes"])
+                smart_prompt = f"same person, same face, same pose, wearing {clothes_str}"
+                self._append_message("system", f"👗 检测到换衣指令: {clothes_str}")
+            elif "change_background" in actions and keywords.get("scenes"):
+                scene_str = ", ".join(keywords["scenes"])
+                smart_prompt = f"same person, same face, same pose, {scene_str} background"
+                self._append_message("system", f"🏠 检测到换背景指令: {scene_str}")
+            elif not keywords.get("clothes") and not keywords.get("colors") and not keywords.get("styles"):
                 smart_prompt = f"same person, same pose, {smart_prompt}"
             
-            return {
+            result = {
                 "type": "image_to_image",
                 "prompt": smart_prompt,
                 "keywords": keywords,
@@ -853,8 +872,13 @@ class ChatTab(BaseTab):
                 "is_continuation": is_continuation,
                 "llm_enhanced": self.llm_enabled.get() and self.llm_available
             }
+            print(f"   分析结果: {result['type']}")
+            print(f"   提示词: {result['prompt']}")
+            print("=" * 60 + "\n")
+            return result
+            
         elif is_gen or (not is_edit and len(text) > 10):
-            return {
+            result = {
                 "type": "text_to_image",
                 "prompt": smart_prompt,
                 "keywords": keywords,
@@ -862,20 +886,33 @@ class ChatTab(BaseTab):
                 "is_continuation": is_continuation,
                 "llm_enhanced": self.llm_enabled.get() and self.llm_available
             }
+            print(f"   分析结果: {result['type']}")
+            print(f"   提示词: {result['prompt']}")
+            print("=" * 60 + "\n")
+            return result
+            
         else:
             # 对话也可以由 LLM 处理
             if self.llm_enabled.get() and self.llm_available:
                 reply = self._call_ollama(f"用户说：{text}\n简短回复（一句话）：", timeout=15)
                 if reply:
-                    return {
+                    result = {
                         "type": "chat",
                         "original_text": text,
                         "llm_reply": reply
-                    }        
-            return {
+                    }
+                    print(f"   分析结果: {result['type']}")
+                    print(f"   LLM回复: {reply}")
+                    print("=" * 60 + "\n")
+                    return result
+            
+            result = {
                 "type": "chat",
                 "original_text": text
             }
+            print(f"   分析结果: {result['type']}")
+            print("=" * 60 + "\n")
+            return result
         
     def _extract_prompt(self, text: str) -> str:
         """从文本中提取提示词"""
@@ -907,20 +944,67 @@ class ChatTab(BaseTab):
         # 检测场景
         is_portrait = any(k in prompt_lower for k in ['portrait', 'headshot', 'close up', 'face', '头像', '特写'])
         is_full_body = any(k in prompt_lower for k in ['full body', 'standing', '全身', '站立'])
+        is_half_body = any(k in prompt_lower for k in ['half body', '半身', 'from waist up'])
         is_landscape = any(k in prompt_lower for k in ['landscape', 'scenery', '风景', '山水'])
         is_couple = any(k in prompt_lower for k in ['couple', 'two people', '双人', '情侣'])
+        is_group = any(k in prompt_lower for k in ['group', 'three people', '多人', '三人', '人群'])
         
         # 尺寸
-        if is_portrait:
+        # ===== 如果是图生图，优先使用原图尺寸 =====
+        if is_image and self.uploaded_image_path:
+            try:
+                from PIL import Image
+                img = Image.open(self.uploaded_image_path)
+                w, h = img.size
+                # 对齐到64的倍数
+                width = ((w + 31) // 64) * 64
+                height = ((h + 31) // 64) * 64
+                # 限制最大尺寸（CPU安全）
+                if width > 1024:
+                    width = 1024
+                if height > 1024:
+                    height = 1024
+                if width < 512:
+                    width = 512
+                if height < 512:
+                    height = 512
+                
+                steps = self.chat_steps_var.get()
+                cfg = self.chat_cfg_var.get()
+                return {
+                    "width": width,
+                    "height": height,
+                    "steps": steps,
+                    "cfg": cfg,
+                    "strength": 0.45,
+                    "num_images": 1
+                }
+            except:
+                pass  # 失败则使用自动判断
+            
+        # ===== 文生图尺寸判断 =====
+        if is_full_body:
             width, height = 512, 768
-        elif is_full_body:
-            width, height = 512, 768
+            size_msg = "全身照（竖图）"
+        elif is_portrait:
+            width, height = 512, 512
+            size_msg = "头像/特写（方图）"
+        elif is_half_body:
+            width, height = 640, 768
+            size_msg = "半身照"
         elif is_landscape:
             width, height = 896, 512
+            size_msg = "风景/横图"
         elif is_couple:
             width, height = 640, 896
+            size_msg = "双人照"
+        elif is_group:
+            width, height = 768, 640
+            size_msg = "多人照"
         else:
             width, height = 512, 768
+            size_msg = "默认竖图"
+        
             
         # ===== 使用用户设置的步数和 CFG =====
         steps = self.chat_steps_var.get()
@@ -958,6 +1042,15 @@ class ChatTab(BaseTab):
             return
         
         prompt = intent["prompt"]
+        original_text = intent.get("original_text", "")
+        
+        # ===== 【调试】打印完整意图 =====
+        print("\n" + "=" * 60)
+        print("📊 [文生图调试] 完整意图信息")
+        print(f"   用户原始输入: {original_text}")
+        print(f"   生成的提示词: {prompt}")
+        print("=" * 60 + "\n")
+        
         params = self._estimate_params(prompt)
         
         # ✅ 显示当前参数
@@ -1107,22 +1200,59 @@ class ChatTab(BaseTab):
         
         prompt = intent["prompt"]
         keywords = intent.get("keywords", {})  # ✅ 添加这一行
-        params = self._estimate_params(prompt, is_image=True)
-        
+        original_text = intent.get("original_text", "")
+        # ===== 【调试】打印完整意图 =====
+        print("\n" + "=" * 60)
+        print("📊 [图生图调试] 完整意图信息")
+        print(f"   用户原始输入: {original_text}")
+        print(f"   提取的关键词: {keywords}")
+        print(f"   生成的提示词: {prompt}")
+        print("=" * 60 + "\n")
         
         # ===== 分析原图特征 =====
         image_features = self._analyze_image_features(self.uploaded_image_path)
         
-        # ===== 根据原图特征调整参数 =====
-        if image_features.get("has_face"):
-            self._append_message("system", f"👤 检测到人脸 ({image_features.get('face_count', 0)} 张)")
+        # ===== 构建保留特征的提示词 =====
+        # 1. 保留人物特征
+        preserve_parts = ["same person", "same face", "same identity"]
         
-        if image_features.get("is_portrait"):
-            self._append_message("system", "📐 检测到竖图")
-            # 竖图保持竖图
-        elif image_features.get("is_landscape"):
-            self._append_message("system", "📐 检测到横图")
+        # 如果是双人/多人
+        face_count = image_features.get("face_count", 0)
+        if face_count >= 2:
+            preserve_parts.append("same two people")
+            preserve_parts.append("same couple")
         
+        # 保留姿势
+        preserve_parts.append("same pose")
+        preserve_parts.append("same body language")
+        
+        # 2. 构建完整提示词
+        if not keywords.get("clothes") and not keywords.get("colors"):
+            # 用户没有指定换装或换色，强调保留原图
+            preserve_str = ", ".join(preserve_parts)
+            full_prompt = f"{preserve_str}, {prompt}"
+        else:
+            # 用户指定了换装，保留面部和姿势
+            full_prompt = f"same person, same face, same pose, {prompt}"
+
+        print(f"📝 [调试] 最终提示词: {full_prompt}")
+        print("=" * 60 + "\n")
+    
+        # ===== 添加到 UI 显示（显示完整提示词） =====
+        self._append_message(
+            "system", 
+            f"📝 完整提示词:\n{full_prompt[:200]}{'...' if len(full_prompt) > 200 else ''}"
+        )
+        
+        # 3. 添加原图尺寸信息（保持同尺寸）
+        params = self._estimate_params(prompt, is_image=True)
+        
+        # 强制使用原图尺寸（不要缩放）
+        orig_w = image_features.get("width", 512)
+        orig_h = image_features.get("height", 768)
+        params["width"] = ((orig_w + 31) // 64) * 64
+        params["height"] = ((orig_h + 31) // 64) * 64
+    
         # ===== 根据原图特征调整强度 =====
         strength = 0.45
         if image_features.get("is_bright"):
@@ -1450,6 +1580,33 @@ class ChatTab(BaseTab):
         for cn, en in lighting_map.items():
             if cn in text_lower:
                 lighting.append(en)
+
+        # ===== 新增：检测操作指令 =====
+        actions = []
+        
+        # 衣服相关操作
+        if any(k in text_lower for k in ['去掉衣服', '脱衣服', '脱光', '去衣', '裸体', 'nude', 'naked']):
+            actions.append("remove_clothes")
+        elif any(k in text_lower for k in ['换衣服', '换装', '改衣服', '换成']):
+            actions.append("change_clothes")
+        
+        # 颜色修改
+        if any(k in text_lower for k in ['换颜色', '改颜色', '变色']):
+            actions.append("change_color")
+        
+        # 背景修改
+        if any(k in text_lower for k in ['换背景', '改背景', '背景换成']):
+            actions.append("change_background")
+        
+        # 风格修改
+        if any(k in text_lower for k in ['换风格', '改风格', '风格换成']):
+            actions.append("change_style")
+        
+        # 添加/去除
+        if any(k in text_lower for k in ['加上', '添加', '增加']):
+            actions.append("add_element")
+        if any(k in text_lower for k in ['去掉', '去除', '删除', '移除']):
+            actions.append("remove_element")
         
         return {
             "genders": genders,
@@ -1463,6 +1620,7 @@ class ChatTab(BaseTab):
             "lighting": lighting,
             "has_clothes": len(clothes) > 0,
             "has_scene": len(scenes) > 0,
+            "actions": actions,  # ✅ 新增
         }
 
 
@@ -1470,6 +1628,20 @@ class ChatTab(BaseTab):
         """根据关键词构建提示词"""
         # 质量词
         prompt_parts = ["masterpiece", "best quality", "photorealistic", "8k", "highly detailed"]
+        # ===== 检查特殊指令 =====
+        actions = keywords.get("actions", [])
+        
+        if "remove_clothes" in actions:
+            # 裸体指令
+            prompt_parts.append("nude")
+            prompt_parts.append("naked")
+            prompt_parts.append("bare skin")
+            prompt_parts.append("no clothes")
+            prompt_parts.append("artistic nude")
+            # 添加负面词防止穿衣服
+            self._last_negative = "clothes, fabric, dress, shirt, pants, underwear, bra, panties, bikini, swimsuit, covering"
+        else:
+            self._last_negative = None
         
         # 性别
         if keywords.get("genders"):
@@ -1547,17 +1719,29 @@ class ChatTab(BaseTab):
             brightness = np.mean(gray)
             is_bright = brightness > 150
             is_dark = brightness < 80
+
+            # ✅ 新增：检测是否有多个主体
+            has_multiple_subjects = len(faces) >= 2
             
+            # ✅ 新增：检测背景类型（简化）
+            # 计算边缘密度
+            edges = cv2.Canny(gray, 50, 150)
+            edge_density = np.sum(edges > 0) / (h * w)
+            is_complex_background = edge_density > 0.05
+        
             return {
                 "has_face": len(faces) > 0,
                 "has_person": has_person,
                 "face_count": len(faces),
+                "face_count": len(faces),
+                "has_multiple_subjects": has_multiple_subjects,                
                 "width": w,
                 "height": h,
                 "is_landscape": is_landscape,
                 "is_portrait": is_portrait,
                 "is_bright": is_bright,
                 "is_dark": is_dark,
+                "is_complex_background": is_complex_background,
                 "aspect_ratio": w / h
             }
         except Exception as e:
