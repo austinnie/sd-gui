@@ -29,7 +29,7 @@ class ChatTab(BaseTab):
         self.setup_ui()
 
         # ✅ 延迟检测 LLM（给程序启动留时间）
-        self.root.after(3000, self._check_ollama)
+        self.app.root.after(3000, self._check_ollama)
     
         self._append_message("assistant", "👋 你好！我是智能生图助手\n\n我可以帮你：\n• 📝 文生图 - 输入描述生成图片\n• 🖼️ 图生图 - 上传图片并修改\n• 💬 自由对话 - 回答你的问题\n\n试试输入：\"生成一张美女在沙滩上的图片\"")
         
@@ -65,12 +65,12 @@ class ChatTab(BaseTab):
 
         # ✅ 新增：本地 LLM 配置
         self.llm_enabled = tk.BooleanVar(value=True)  # 默认启用
-        self.llm_model = tk.StringVar(value="qwen2.5:3b")  # 小模型，速度快
+        self.llm_model = tk.StringVar(value="qwen2.5:1.5b")  # 改成你有的模型
         self.llm_available = False  # 启动时检测
 
         self.llm_available = False
         self.llm_installing = False  # 正在安装
-        self.llm_model_size = "2GB"  # 显示用
+        self.llm_model_size = "1GB"  # 显示用
     
 
     def _check_ollama_installed(self) -> bool:
@@ -103,41 +103,40 @@ class ChatTab(BaseTab):
         except:
             return False
 
+
     def _install_ollama(self):
-        """自动安装 Ollama (Windows)"""
+        """自动安装 Ollama (Windows) - 后台线程"""
         import subprocess
-        import threading
         
         self.llm_installing = True
-        self._append_message("system", "📦 正在下载并安装 Ollama... (可能需要几分钟)")
-        self._update_status("📦 安装 Ollama...")
+        self.app.root.after(0, lambda: self._append_message("system", "📦 正在下载并安装 Ollama... (可能需要几分钟)"))
+        self.app.root.after(0, lambda: self._update_status("📦 安装 Ollama..."))
         
         def install_thread():
             try:
-                # Windows 安装命令
                 cmd = 'powershell -Command "irm https://ollama.com/install.ps1 | iex"'
                 process = subprocess.Popen(
                     cmd,
                     shell=True,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    text=True
+                    text=True,
+                    creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0
                 )
                 
-                # 实时输出
                 for line in process.stdout:
                     if "Downloading" in line or "Installing" in line:
-                        self.app.root.after(0, lambda: self._update_status(f"📦 {line.strip()[:50]}..."))
+                        self.app.root.after(0, lambda l=line: self._update_status(f"📦 {l.strip()[:50]}..."))
                         print(line.strip())
                 
                 process.wait()
                 
                 if process.returncode == 0:
                     self.app.root.after(0, lambda: self._append_message("system", "✅ Ollama 安装完成！正在启动..."))
-                    # 启动 Ollama 服务
-                    self._start_ollama_service()
+                    # 启动服务也在后台
+                    threading.Thread(target=self._start_ollama_service, daemon=True).start()
                 else:
-                    self.app.root.after(0, lambda: self._append_message("system", f"❌ Ollama 安装失败，请手动安装: https://ollama.com/download/windows"))
+                    self.app.root.after(0, lambda: self._append_message("system", "❌ Ollama 安装失败，请手动安装"))
                     self.llm_installing = False
                     
             except Exception as e:
@@ -145,43 +144,47 @@ class ChatTab(BaseTab):
                 self.llm_installing = False
         
         threading.Thread(target=install_thread, daemon=True).start()
-
+    
+    
     def _start_ollama_service(self):
-        """启动 Ollama 服务"""
+        """启动 Ollama 服务（后台线程）"""
         import subprocess
-        import threading
         import time
         
         self._append_message("system", "🔄 正在启动 Ollama 服务...")
         
-        def start_thread():
-            try:
-                # 启动服务
-                subprocess.Popen(["ollama", "serve"], shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                time.sleep(3)
-                
-                # 检查是否启动成功
-                if self._check_ollama_running():
-                    self.app.root.after(0, lambda: self._append_message("system", "✅ Ollama 服务已启动"))
-                    self.app.root.after(0, lambda: self._download_model())
-                else:
-                    self.app.root.after(0, lambda: self._append_message("system", "⚠️ 服务启动失败，请手动运行: ollama serve"))
-                    self.llm_installing = False
-            except Exception as e:
-                self.app.root.after(0, lambda: self._append_message("system", f"❌ 启动失败: {e}"))
+        try:
+            # 启动服务（后台运行）
+            subprocess.Popen(
+                ["ollama", "serve"],
+                shell=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0
+            )
+            time.sleep(3)
+            
+            # 检查是否启动成功
+            if self._check_ollama_running():
+                self.app.root.after(0, lambda: self._append_message("system", "✅ Ollama 服务已启动"))
+                # 下载模型也在后台
+                threading.Thread(target=self._download_model, daemon=True).start()
+            else:
+                self.app.root.after(0, lambda: self._append_message("system", "⚠️ 服务启动失败，请手动运行: ollama serve"))
                 self.llm_installing = False
-        
-        threading.Thread(target=start_thread, daemon=True).start()
+        except Exception as e:
+            self.app.root.after(0, lambda: self._append_message("system", f"❌ 启动失败: {e}"))
+            self.llm_installing = False
+
 
     def _download_model(self):
-        """下载 LLM 模型"""
+        """下载 LLM 模型（后台线程）"""
         import subprocess
-        import threading
         
         model = self.llm_model.get()
-        self._append_message("system", f"📦 正在下载模型: {model} (约 {self.llm_model_size})...")
-        self._append_message("system", "⏳ 这可能需要 10-30 分钟，请耐心等待...")
-        self._update_status(f"📦 下载模型 {model}...")
+        self.app.root.after(0, lambda: self._append_message("system", f"📦 正在下载模型: {model} (约 {self.llm_model_size})..."))
+        self.app.root.after(0, lambda: self._append_message("system", "⏳ 这可能需要 10-30 分钟，请耐心等待..."))
+        self.app.root.after(0, lambda: self._update_status(f"📦 下载模型 {model}..."))
         
         def download_thread():
             try:
@@ -191,13 +194,13 @@ class ChatTab(BaseTab):
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
-                    bufsize=1
+                    bufsize=1,
+                    creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0
                 )
                 
                 for line in process.stdout:
                     line = line.strip()
                     if "downloading" in line.lower() or "downloading" in line:
-                        # 提取进度信息
                         if "%" in line:
                             self.app.root.after(0, lambda l=line: self._update_status(f"📦 {l[:60]}..."))
                         print(line)
@@ -207,7 +210,7 @@ class ChatTab(BaseTab):
                 if process.returncode == 0:
                     self.app.root.after(0, lambda: self._on_llm_ready())
                 else:
-                    self.app.root.after(0, lambda: self._append_message("system", f"❌ 模型下载失败: {process.stderr.read()}"))
+                    self.app.root.after(0, lambda: self._append_message("system", f"❌ 模型下载失败"))
                     self.app.root.after(0, lambda: self._append_message("system", f"💡 请手动下载: ollama pull {model}"))
                     self.llm_installing = False
                     
@@ -216,7 +219,7 @@ class ChatTab(BaseTab):
                 self.llm_installing = False
         
         threading.Thread(target=download_thread, daemon=True).start()
-
+    
     def _on_llm_ready(self):
         """LLM 准备就绪"""
         self.llm_available = True
@@ -226,20 +229,21 @@ class ChatTab(BaseTab):
         self._append_message("assistant", "🧠 本地 LLM 已启用，可以智能理解你的需求了！")
         self._update_status("✅ LLM 就绪", 1.0)
     
+
     def _check_ollama(self):
-        """检测并自动设置 LLM（完整版）"""
+        """检测并自动设置 LLM（完整版）- 后台线程"""
         # 1. 检查 Ollama 是否安装
         if not self._check_ollama_installed():
             self.llm_status.config(text="●", foreground="orange")
             self._append_message("system", "⚠️ Ollama 未安装，点击「安装 LLM」按钮自动安装")
-            # 显示安装按钮（如果有的话）
             return
         
         # 2. 检查 Ollama 服务是否运行
         if not self._check_ollama_running():
             self.llm_status.config(text="●", foreground="orange")
             self._append_message("system", "⏳ Ollama 服务未启动，正在自动启动...")
-            self._start_ollama_service()
+            # ✅ 在后台线程启动
+            threading.Thread(target=self._start_ollama_service, daemon=True).start()
             return
         
         # 3. 检查模型是否已下载
@@ -247,7 +251,8 @@ class ChatTab(BaseTab):
         if not self._check_model_available(model):
             self.llm_status.config(text="●", foreground="orange")
             self._append_message("system", f"📦 模型 {model} 未下载，正在自动下载...")
-            self._download_model()
+            # ✅ 在后台线程下载
+            threading.Thread(target=self._download_model, daemon=True).start()
             return
         
         # 4. 一切就绪
@@ -483,7 +488,7 @@ class ChatTab(BaseTab):
         self.progress_bar.pack(side=tk.RIGHT, padx=5)
 
     def _manual_install_llm(self):
-        """手动安装 LLM"""
+        """手动安装 LLM（不阻塞 UI）"""
         if self.llm_installing:
             self._append_message("system", "⏳ 正在安装中...")
             return
@@ -499,8 +504,9 @@ class ChatTab(BaseTab):
             f"3. 自动启动服务\n\n"
             "整个过程可能需要 10-30 分钟，确定继续吗？"
         ):
-            self._install_ollama()
-        
+            # ✅ 在后台安装
+            threading.Thread(target=self._install_ollama, daemon=True).start()
+            
     def _on_llm_toggle(self):
         """LLM 开关切换"""
         if self.llm_enabled.get():

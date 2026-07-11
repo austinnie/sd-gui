@@ -36,16 +36,16 @@ MIRRORS = [
     "https://mirrors.aliyun.com/pypi/simple/",
 ]
 
-# ===== 核心依赖列表（自动适配 CUDA/CPU） =====
+# ===== 核心依赖列表（基于实际测试的兼容版本） =====
 REQUIRED_PACKAGES = [
-    # PyTorch (动态: 不加 +cpu 后缀，自动适配)
-    "torch==2.12.1",
-    "torchvision==0.27.1",
+    # PyTorch (CPU 版本，与 NumPy 2.x 兼容)
+    "torch==2.5.1",
+    "torchvision==0.20.1",
     
     # 核心库
     "diffusers==0.26.0",
-    "transformers==4.36.0",
-    "huggingface-hub==0.20.3",
+    "transformers==4.40.0",
+    "huggingface-hub==0.24.0",
     "accelerate==1.14.0",
     "safetensors==0.8.0",
     
@@ -53,18 +53,22 @@ REQUIRED_PACKAGES = [
     "numpy==2.4.6",
     "pillow==12.2.0",
     "opencv-python==4.13.0.92",
+    "scipy==1.18.0",
+    "scikit-image==0.26.0",
     
     # 工具
     "psutil==7.2.2",
     "packaging==26.2",
     "tqdm==4.68.3",
+    "requests==2.34.2",
+    "filelock==3.29.0",
     
     # ✅ 遮罩与背景去除 (图生图换衣核心)
-    "rembg==2.0.60",
+    "rembg==2.0.76",
     
     # ✅ CLIP 反推及打分功能
     "open_clip_torch==3.3.0",
-    "clip-interrogator==0.6.0",
+    # "clip-interrogator==0.6.0",  # 可选，有兼容性问题时注释
     
     # ✅ Janus-Pro 依赖 (多模态模型)
     "attrdict==2.0.1",
@@ -90,7 +94,6 @@ VERIFY_MODULES = [
     ("tqdm", "tqdm.__version__"),
     ("rembg", "rembg.__version__"),
     ("open_clip", "open_clip.__version__"),
-    ("clip_interrogator", "clip_interrogator.__version__"),
     # Janus
     ("attrdict", "attrdict.__version__"),
     ("einops", "einops.__version__"),
@@ -166,7 +169,6 @@ def install_pytorch(venv_python):
     """自动检测 CUDA 并安装 PyTorch"""
     print_cyan("   🔍 正在检测 CUDA...")
     
-    # 简单检测 CUDA (通过 nvidia-smi)
     has_cuda = False
     try:
         result = subprocess.run("nvidia-smi", capture_output=True, text=True, timeout=5)
@@ -178,16 +180,14 @@ def install_pytorch(venv_python):
     except:
         print_yellow("   ⚠️ 未检测到 CUDA，将安装 CPU 版 PyTorch")
     
-    # 清理旧版本
     print("   🔄 清理旧版本...")
     run_in_venv(venv_python, "uninstall torch torchvision torchaudio -y", timeout=120)
     print()
     
-    # 安装 PyTorch
     if has_cuda:
-        cmd = 'install torch==2.12.1 torchvision==0.27.1'
+        cmd = 'install torch==2.5.1 torchvision==0.20.1'
     else:
-        cmd = f'install torch==2.12.1+cpu torchvision==0.27.1+cpu --index-url {PYTORCH_CPU}'
+        cmd = f'install torch==2.5.1+cpu torchvision==0.20.1+cpu --index-url {PYTORCH_CPU}'
     
     print_cyan(f"   {cmd}")
     success, _, _ = run_in_venv(venv_python, cmd, timeout=600)
@@ -202,7 +202,6 @@ def install_pytorch(venv_python):
 
 def install_package(venv_python, pkg):
     """安装单个包"""
-    # 尝试直接安装
     cmd = f"install {pkg}"
     success, _, _ = run_in_venv(venv_python, cmd, timeout=300)
     if success:
@@ -283,11 +282,10 @@ def generate_requirements(project_dir):
     content += "# 生成时间: " + __import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M:%S') + "\n"
     content += "# ============================================================\n\n"
     
-    # PyTorch 特殊提示
     content += "# PyTorch (自动适配 CUDA/CPU)\n"
-    content += "# pip install torch==2.12.1 torchvision==0.27.1\n"
+    content += "# pip install torch==2.5.1 torchvision==0.20.1\n"
     content += "# 如果是 CPU 环境，请改为:\n"
-    content += "# pip install torch==2.12.1+cpu torchvision==0.27.1+cpu --index-url https://download.pytorch.org/whl/cpu\n\n"
+    content += "# pip install torch==2.5.1+cpu torchvision==0.20.1+cpu --index-url https://download.pytorch.org/whl/cpu\n\n"
     
     content += "# 核心依赖\n"
     for pkg in REQUIRED_PACKAGES:
@@ -304,56 +302,48 @@ def main():
     print("  自动检测 CUDA，完美兼容 CPU 环境")
     print()
     
-    # ===== 1. 获取项目目录 =====
     project_dir = Path(__file__).parent.absolute()
     venv_python = get_venv_python(project_dir)
     
     print(f"[1/6] 项目目录: {project_dir}")
     print()
     
-    # ===== 2. 创建虚拟环境 =====
     print("[2/6] 创建/检查虚拟环境...")
     if not create_venv(project_dir):
         input("按 Enter 退出...")
         return
     print()
     
-    # ===== 3. 升级 pip =====
     print("[3/6] 升级 pip...")
     success, _, _ = run_in_venv(venv_python, "install --upgrade pip", timeout=120)
     print_green("   ✅ pip 已升级" if success else "   ⚠️ pip 升级失败")
     print()
     
-    # ===== 4. 安装 PyTorch =====
     print("[4/6] 安装 PyTorch...")
     if not install_pytorch(venv_python):
         print()
         print_red("   ❌ PyTorch 安装失败")
         print()
         print("请手动执行以下命令后重新运行:")
-        print(f'   {venv_python} -m pip install torch==2.12.1 torchvision==0.27.1')
+        print(f'   {venv_python} -m pip install torch==2.5.1+cpu torchvision==0.20.1+cpu --index-url https://download.pytorch.org/whl/cpu')
         print()
         input("按 Enter 退出...")
         return
     print()
     
-    # ===== 5. 安装所有依赖 =====
     print("[5/6] 安装依赖包...")
     if not install_all_packages(venv_python):
         print()
         print_yellow("⚠️ 部分包安装失败，请检查后手动安装")
     print()
     
-    # ===== 6. 验证 =====
     print("[6/6] 验证安装...")
     all_ok = verify_installation(venv_python)
     print()
     
-    # ===== 生成 requirements.txt =====
     generate_requirements(project_dir)
     print()
     
-    # ===== 完成 =====
     print_header("安装完成")
     
     if all_ok:
