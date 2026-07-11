@@ -14,7 +14,7 @@ from .janus_tab import JanusTab
 from .grid_test_tab import GridTestTab
 from .pipeline_tab import PipelineTab
 from .lora_manager_tab import LoraManagerTab  # ✅ 新增
-
+from .chat_tab import ChatTab  # ✅ 新增
 __all__ = [
     'BaseTab',
     'Txt2ImgTab',
@@ -26,4 +26,5 @@ __all__ = [
     'GridTestTab',
     'PipelineTab'
     'LoraManagerTab',  # ✅ 新增
+    'ChatTab',  # ✅ 新增
 ]

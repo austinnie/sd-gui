@@ -40,6 +40,7 @@ from gui.components.nsfw_panel import NSFWPanel
 from gui.tabs.pipeline_tab import PipelineTab
 from utils.scheduler_factory import get_scheduler, get_scheduler_description 
 from gui.tabs.lora_manager_tab import LoraManagerTab
+from gui.tabs.chat_tab import ChatTab  # 顶部导入
 
 class ModelType(Enum):
     """模型类型枚举"""
@@ -1218,7 +1219,10 @@ class SDApp:
 
         # ✅ 新增 LoRA 管理标签页
         self.lora_manager_tab = LoraManagerTab(self.notebook, self)
-        self.notebook.add(self.lora_manager_tab.get_frame(), text="🔧 LoRA 管理")
+        
+        # ✅ 新增智能会话标签页
+        self.chat_tab = ChatTab(self.notebook, self)
+        self.notebook.add(self.chat_tab.get_frame(), text="💬 智能生图")        
     
     def _reload_modules(self):
         """热重载模块"""
@@ -1289,6 +1293,7 @@ class SDApp:
             "gui.tabs.grid_test_tab",
             "gui.tabs.pipeline_tab",  
             "gui.tabs.lora_manager_tab",  # ✅ 新增
+            "gui.tabs.chat_tab",  # ✅ 新增
             
             
             # ===== GUI 管理 =====
@@ -1502,6 +1507,7 @@ class SDApp:
         from gui.tabs.grid_test_tab import GridTestTab
         from gui.tabs.pipeline_tab import PipelineTab  # ✅ 添加这行
         from gui.tabs.lora_manager_tab import LoraManagerTab  # ✅ 新增
+        from gui.tabs.chat_tab import ChatTab  # ✅ 新增
         
         for tab in self.notebook.tabs():
             self.notebook.forget(tab)
@@ -1534,6 +1540,10 @@ class SDApp:
         # ✅ 新增 LoRA 管理标签页
         self.lora_manager_tab = LoraManagerTab(self.notebook, self)
         self.notebook.add(self.lora_manager_tab.get_frame(), text="🔧 LoRA 管理")
+        
+        # ✅ 新增智能会话标签页
+        self.chat_tab = ChatTab(self.notebook, self)
+        self.notebook.add(self.chat_tab.get_frame(), text="💬 智能生图")        
         
     
     def run(self):
