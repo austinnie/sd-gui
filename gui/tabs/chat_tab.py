@@ -47,6 +47,18 @@ class ChatTab(BaseTab):
         self.chat_cfg_var = tk.DoubleVar(value=7.5)  
         # ✅ 新增：缓存待处理的意图
         self._pending_intent = None
+
+        # ✅ 新增：上下文记忆
+        self.last_generated_image = None  # 上次生成的图片路径
+        self.last_prompt = None           # 上次使用的提示词
+        self.last_intent_type = None      # 上次操作类型
+        self.conversation_history = []    # 对话历史（结构化）
+        self.user_preferences = {         # 用户偏好
+            "style": None,               # 偏好风格
+            "scene": None,               # 偏好场景
+            "gender": None,              # 偏好性别
+        }
+    
     
     
     def setup_ui(self):
@@ -203,7 +215,72 @@ class ChatTab(BaseTab):
         
         self.progress_bar = ttk.Progressbar(status_frame, length=200, mode='determinate')
         self.progress_bar.pack(side=tk.RIGHT, padx=5)
-    
+
+    def _update_context(self, intent: dict, result: dict = None):
+        """更新上下文"""
+        # 记录最后一次操作
+        self.last_intent_type = intent.get("type")
+        self.last_prompt = intent.get("prompt")
+        
+        if result and result.get("image_path"):
+            self.last_generated_image = result.get("image_path")
+        
+        # 更新用户偏好
+        keywords = intent.get("keywords", {})
+        if keywords.get("styles"):
+            self.user_preferences["style"] = keywords["styles"][0]
+        if keywords.get("scenes"):
+            self.user_preferences["scene"] = keywords["scenes"][0]
+        if keywords.get("genders"):
+            gender = keywords["genders"][0]
+            if "girl" in gender:
+                self.user_preferences["gender"] = "女性"
+            elif "boy" in gender:
+                self.user_preferences["gender"] = "男性"
+        
+        # 保存到对话历史
+        self.conversation_history.append({
+            "timestamp": datetime.now().isoformat(),
+            "intent": intent,
+            "result": result
+        })
+
+
+    def _get_context_summary(self) -> str:
+        """获取上下文摘要"""
+        if not self.conversation_history:
+            return ""
+        
+        summary_parts = []
+        
+        # 偏好信息
+        prefs = []
+        if self.user_preferences.get("style"):
+            prefs.append(f"风格偏好: {self.user_preferences['style']}")
+        if self.user_preferences.get("scene"):
+            prefs.append(f"场景偏好: {self.user_preferences['scene']}")
+        if self.user_preferences.get("gender"):
+            prefs.append(f"性别偏好: {self.user_preferences['gender']}")
+        
+        if prefs:
+            summary_parts.append("📌 用户偏好: " + ", ".join(prefs))
+        
+        # 上次生成信息
+        if self.last_prompt:
+            summary_parts.append(f"📝 上次提示词: {self.last_prompt[:50]}...")
+        
+        # 对话轮数
+        user_msgs = [m for m in self.messages if m.get("role") == "user"]
+        if user_msgs:
+            summary_parts.append(f"💬 已对话 {len(user_msgs)} 轮")
+        
+        return "\n".join(summary_parts) if summary_parts else "无上下文"
+
+
+    def _has_context(self) -> bool:
+        """检查是否有上下文"""
+        return len(self.conversation_history) > 0 or self.last_prompt is not None
+        
     def _on_send_shift_check(self, event):
         """检查是否按了 Shift+Enter"""
         if event.state & 0x1:  # Shift 键
@@ -392,13 +469,29 @@ class ChatTab(BaseTab):
     
 
     def _analyze_intent(self, text: str) -> dict:
-        """分析用户意图 - 使用智能提示词"""
+        """分析用户意图 - 使用智能提示词 + 上下文"""
         text_lower = text.lower()
         has_image = self.uploaded_image is not None
         
         # 提取关键词
         keywords = self._extract_keywords(text)
-        smart_prompt = self._build_smart_prompt(text, keywords)
+        
+        # ===== 利用上下文补全缺失信息 =====
+        # 如果用户没有指定风格，但之前偏好某风格，自动补全
+        if not keywords.get("styles") and self.user_preferences.get("style"):
+            # 但不要覆盖用户明确指定的
+            pass
+        
+        # 检测是否涉及"继续"、"再来"、"换一个"等延续性指令
+        continuation_keywords = ['再来', '继续', '换一个', '换一张', '再生成', '再来一张', 'another', 'continue']
+        is_continuation = any(k in text_lower for k in continuation_keywords)
+        
+        # 如果用户说"再来一张"，复用上次的提示词
+        if is_continuation and self.last_prompt:
+            smart_prompt = self.last_prompt
+            self._append_message("system", f"🔄 复用上次提示词: {smart_prompt[:50]}...")
+        else:
+            smart_prompt = self._build_smart_prompt(text, keywords)
         
         # 文生图关键词
         gen_keywords = ['生成', '画', '创建', 'create', 'generate', '画一张', '生成一张']
@@ -407,8 +500,15 @@ class ChatTab(BaseTab):
         is_gen = any(k in text_lower for k in gen_keywords)
         is_edit = any(k in text_lower for k in edit_keywords)
         
+        # 如果没有明确意图，但有上下文，尝试推断
+        if not is_gen and not is_edit and self._has_context():
+            # 如果用户发了"再改一下"之类的，可能是图生图
+            if has_image:
+                is_edit = True
+            elif self.last_intent_type == "text_to_image":
+                is_gen = True
+        
         if has_image and is_edit:
-            # 图生图：如果有"换"或"改成"，但用户没有指定颜色/服装，保留原样
             if not keywords.get("clothes") and not keywords.get("colors") and not keywords.get("styles"):
                 smart_prompt = f"same person, same pose, {smart_prompt}"
             
@@ -416,14 +516,16 @@ class ChatTab(BaseTab):
                 "type": "image_to_image",
                 "prompt": smart_prompt,
                 "keywords": keywords,
-                "original_text": text
+                "original_text": text,
+                "is_continuation": is_continuation
             }
         elif is_gen or (not is_edit and len(text) > 10):
             return {
                 "type": "text_to_image",
                 "prompt": smart_prompt,
                 "keywords": keywords,
-                "original_text": text
+                "original_text": text,
+                "is_continuation": is_continuation
             }
         else:
             return {
@@ -616,6 +718,9 @@ class ChatTab(BaseTab):
             # 显示结果
             self._append_image_result(filepath)
             self._append_message("assistant", f"✅ 图片已生成！\n📁 {os.path.basename(filepath)}\n\n💡 提示: 继续发送描述可以生成更多图片")
+
+            # ✅ 更新上下文
+            self._update_context(intent, {"image_path": filepath, "prompt": prompt})
             
             self._update_status("✅ 生成完成", 1.0)
             
@@ -796,6 +901,10 @@ class ChatTab(BaseTab):
             # 显示结果
             self._append_image_result(filepath)
             self._append_message("assistant", f"✅ 图片已修改完成！\n📁 {os.path.basename(filepath)}")
+            
+
+            # ✅ 更新上下文
+            self._update_context(intent, {"image_path": filepath, "prompt": prompt})
             
             self._update_status("✅ 修改完成", 1.0)
             
@@ -1117,15 +1226,50 @@ class ChatTab(BaseTab):
     def _handle_chat(self, intent: dict):
         """处理对话"""
         text = intent["original_text"]
-        
-        # 简单规则对话
         text_lower = text.lower()
         
         # 检查是否有上传图片但用户没有明确说要修改
         if self.uploaded_image is not None:
             if any(k in text_lower for k in ['这是什么', '这是什么图片', '描述']):
-                self._append_message("assistant", "📷 我检测到你有上传图片。如果你想修改它，请说：\n• \"把这张图改成...\"\n• \"换成...风格\"\n• \"去除...\"\n\n或者直接描述你想要的效果。")
+                # 分析图片并描述
+                image_features = self._analyze_image_features(self.uploaded_image_path)
+                if image_features.get("has_face"):
+                    self._append_message("assistant", 
+                        f"📷 这张图片包含 {image_features.get('face_count', 0)} 张人脸\n"
+                        f"📐 尺寸: {image_features.get('width')}x{image_features.get('height')}\n"
+                        f"{'📱 竖图' if image_features.get('is_portrait') else '🖥️ 横图'}\n\n"
+                        f"💡 如果你想修改它，请说：\n"
+                        f"• \"把这张图改成...\"\n"
+                        f"• \"换成...风格\""
+                    )
+                else:
+                    self._append_message("assistant", 
+                        f"📷 已上传图片: {os.path.basename(self.uploaded_image_path)}\n"
+                        f"📐 尺寸: {image_features.get('width')}x{image_features.get('height')}\n\n"
+                        f"💡 如果你想修改它，请说：\"把这张图改成...\""
+                    )
                 return
+        
+        # ✅ 检查上下文相关指令
+        if '上下文' in text_lower or 'context' in text_lower:
+            summary = self._get_context_summary()
+            self._append_message("assistant", f"📊 当前上下文:\n{summary}")
+            return
+        
+        if '偏好' in text_lower or 'preference' in text_lower:
+            prefs = []
+            if self.user_preferences.get("style"):
+                prefs.append(f"风格: {self.user_preferences['style']}")
+            if self.user_preferences.get("scene"):
+                prefs.append(f"场景: {self.user_preferences['scene']}")
+            if self.user_preferences.get("gender"):
+                prefs.append(f"性别: {self.user_preferences['gender']}")
+            
+            if prefs:
+                self._append_message("assistant", f"📌 你的偏好:\n• " + "\n• ".join(prefs))
+            else:
+                self._append_message("assistant", "📌 还没有记录你的偏好。生成图片时我会自动学习！")
+            return
         
         # 简单问答
         responses = {
@@ -1137,7 +1281,6 @@ class ChatTab(BaseTab):
             '再见': '再见！随时回来找我生成图片 😊'
         }
         
-        # 匹配关键词
         reply = None
         for key, value in responses.items():
             if key in text_lower:
@@ -1148,7 +1291,7 @@ class ChatTab(BaseTab):
             self._append_message("assistant", reply)
         else:
             self._append_message("assistant", f"🤔 我理解你想说：\"{text}\"\n\n如果你想生成图片，可以试试说：\n• \"生成一张...\" (文生图)\n• 先上传图片，然后说 \"改成...\" (图生图)\n\n或者直接告诉我你的需求！")
-            
+        
     def _ensure_model_loaded(self) -> bool:
         """确保模型已加载，如果没有则自动加载"""
         if self.app.model_manager.is_sd_loaded:
