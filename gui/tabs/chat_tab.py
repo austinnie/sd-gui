@@ -1142,7 +1142,33 @@ class ChatTab(BaseTab):
         self.image_status = ttk.Label(toolbar, text="", foreground="green")
         self.image_status.pack(side=tk.LEFT, padx=10)
         
+
+        # ===== 🚀 新增：安全模式切换 =====
+        ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=5)
         
+        self.safe_mode_var = tk.BooleanVar(value=True)  # 默认开启安全模式
+        
+        self.safe_mode_btn = tk.Button(
+            toolbar,
+            text="🛡️ 安全模式",
+            command=self._toggle_safe_mode,
+            relief="sunken" if self.safe_mode_var.get() else "raised",
+            bg="#e8f5e9" if self.safe_mode_var.get() else "#f5f5f5",
+            font=("微软雅黑", 8),
+            width=10,
+            height=1
+        )
+        self.safe_mode_btn.pack(side=tk.LEFT, padx=5)
+        
+        # 安全模式状态标签
+        self.safe_mode_label = ttk.Label(
+            toolbar,
+            text="🟢 已启用",
+            foreground="green",
+            font=("", 8)
+        )
+        self.safe_mode_label.pack(side=tk.LEFT, padx=2)
+    
         ttk.Button(toolbar, text="🔧 测试 LLM", command=self.debug_test_llm, width=10).pack(side=tk.LEFT, padx=2)
         ttk.Button(toolbar, text="🗑️ 清除对话", command=self._clear_chat, width=12).pack(side=tk.LEFT, padx=2)
 
@@ -1379,6 +1405,119 @@ class ChatTab(BaseTab):
         self.progress_bar = ttk.Progressbar(status_frame, length=200, mode='determinate')
         self.progress_bar.pack(side=tk.RIGHT, padx=5)
 
+    def _toggle_safe_mode(self):
+        """切换安全模式"""
+        current = self.safe_mode_var.get()
+        self.safe_mode_var.set(not current)
+        
+        if self.safe_mode_var.get():
+            self.safe_mode_btn.config(
+                relief="sunken",
+                bg="#e8f5e9",
+                text="🛡️ 安全模式"
+            )
+            self.safe_mode_label.config(text="🟢 已启用", foreground="green")
+            self._append_message("system", "🛡️ 安全模式已启用 - 将过滤不当内容")
+        else:
+            self.safe_mode_btn.config(
+                relief="raised",
+                bg="#ffebee",
+                text="⚠️ 自由模式"
+            )
+            self.safe_mode_label.config(text="🔴 已禁用", foreground="red")
+            self._append_message("system", "⚠️ 安全模式已禁用 - 内容不受限制")
+        
+    def _update_safe_mode_status(self):
+        """更新安全模式状态显示"""
+        if self.safe_mode_var.get():
+            self.safe_mode_label.config(text="🟢 已启用", foreground="green")
+            self.safe_mode_btn.config(
+                relief="sunken",
+                bg="#e8f5e9",
+                text="🛡️ 安全模式"
+            )
+        else:
+            self.safe_mode_label.config(text="🔴 已禁用", foreground="red")
+            self.safe_mode_btn.config(
+                relief="raised",
+                bg="#ffebee",
+                text="⚠️ 自由模式"
+            )
+        
+    def _check_unsafe_content(self, text: str) -> tuple:
+        """
+        检测不当内容
+        返回: (是否不安全, 匹配的关键词列表)
+        """
+        # 性行为相关关键词（中英文）
+        unsafe_keywords = [
+            # 中文
+            '阴茎', '阴道', '插入', '性交', '做爱', '操', '干', '肏',
+            '射精', '高潮', '精液', '阴蒂', '口交', '肛交', '自慰',
+            '手淫', '淫荡', '色情', '全裸', '一丝不挂',
+            '乳交', '足交', '性虐', 'sm', '捆绑', '性爱', '性行为',
+            # 英文
+            'penis', 'vagina', 'insert', 'intercourse', 'sexual', 'fuck',
+            'sperm', 'ejaculate', 'orgasm', 'clitoris', 'oral sex',
+            'anal sex', 'masturbate', 'porn', 'naked', 'nude',
+            'hardcore', 'explicit', 'xxx', 'sex scene', 'sex',
+        ]
+        
+        text_lower = text.lower()
+        matched = []
+        
+        for keyword in unsafe_keywords:
+            if keyword in text_lower:
+                matched.append(keyword)
+        
+        return len(matched) > 0, matched
+
+    def _get_safe_alternatives(self, text: str) -> list:
+        """
+        根据输入文本生成安全的替代提示词
+        """
+        # 检测文本中的关键词，选择相关的替代方案
+        text_lower = text.lower()
+        
+        # 基础替代方案（按亲密程度分级）
+        alternatives = {
+            "romantic": [
+                "couple hugging in sunset, romantic atmosphere, artistic photography, masterpiece, best quality",
+                "lovers embracing, intimate moment, soft lighting, elegant, 8k, highly detailed",
+                "romantic kiss in the rain, cinematic style, beautiful composition, masterpiece",
+                "two people cuddling, cozy bedroom, warm tones, tender moment, photorealistic"
+            ],
+            "passionate": [
+                "passionate embrace, intense emotion, dramatic lighting, artistic photography",
+                "lovers in bed, morning light, intimate atmosphere, artistic nude, soft focus",
+                "romantic dance, elegant pose, dreamy background, masterpiece",
+                "intimate couple, sensual atmosphere, warm colors, artistic composition"
+            ],
+            "dancing": [
+                "couple dancing, elegant movement, beautiful dress, romantic atmosphere",
+                "ballroom dance, passionate tango, dramatic lighting, stunning composition"
+            ],
+            "portrait": [
+                "couple portrait, close up, intimate gaze, soft lighting, masterpiece",
+                "romantic portrait, affectionate couple, beautiful bokeh, professional photography"
+            ]
+        }
+        
+        # 根据输入选择相关类别
+        if '拥抱' in text_lower or 'hug' in text_lower:
+            category = "romantic"
+        elif '接吻' in text_lower or 'kiss' in text_lower:
+            category = "passionate"
+        elif '跳舞' in text_lower or 'dance' in text_lower:
+            category = "dancing"
+        elif '肖像' in text_lower or 'portrait' in text_lower:
+            category = "portrait"
+        else:
+            # 默认混合
+            category = "romantic"
+        
+        return alternatives.get(category, alternatives["romantic"])
+    
     def _clear_upload(self):
         """清除上传的图片"""
         self.uploaded_images = []
@@ -1917,7 +2056,49 @@ class ChatTab(BaseTab):
         text_lower = text.lower()
         has_image = self.uploaded_image is not None
         has_multiple_images = len(self.uploaded_images) >= 2
+
+        # ===== 🚀 内容安全检测 =====
+        is_unsafe, unsafe_keywords = self._check_unsafe_content(text)
         
+        if is_unsafe:
+            # 获取安全的替代提示词
+            safe_alternatives = self._get_safe_alternatives(text)
+            
+            if self.safe_mode_var.get():
+                # 安全模式：自动替换并提示
+                self._append_message("system", f"🛡️ 检测到不当内容: {', '.join(unsafe_keywords[:3])}")
+                self._append_message("assistant", 
+                    f"💡 建议使用更艺术的表达方式：\n\n"
+                    f"📝 已替换为：\n{safe_alternatives[0]}\n\n"
+                    f"💡 如需生成原内容，请关闭安全模式"
+                )
+                
+                return {
+                    "type": "text_to_image",
+                    "prompt": safe_alternatives[0],
+                    "keywords": self._extract_keywords(safe_alternatives[0]),
+                    "original_text": text,
+                    "is_continuation": False,
+                    "llm_enhanced": False,
+                    "params": self._optimize_parameters(safe_alternatives[0], "text_to_image", None),
+                    "content_filtered": True,
+                    "safe_alternatives": safe_alternatives,  # 保存所有替代方案
+                }
+            else:
+                # 自由模式：提示但不替换，但给出建议
+                self._append_message("system", f"⚠️ 检测到敏感内容: {', '.join(unsafe_keywords[:3])}")
+                self._append_message("assistant", 
+                    f"⚠️ 当前为自由模式，将尝试生成您的请求。\n\n"
+                    f"💡 建议使用更艺术的表达方式：\n"
+                    f"• {safe_alternatives[0]}\n"
+                    f"• {safe_alternatives[1]}\n"
+                    f"• {safe_alternatives[2]}\n\n"
+                    f"🛡️ 点击「安全模式」启用自动过滤"
+                )
+                # 继续原有的处理流程
+                # 但记录标记
+                self._unsafe_content_detected = True
+            
         # ===== 🚀 新增：检测双人合成意图 =====
         is_couple_intent = has_multiple_images and self._detect_couple_intent(text)
         
