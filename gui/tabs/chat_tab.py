@@ -1273,7 +1273,7 @@ class ChatTab(BaseTab):
 
         return None
 
-    def _parse_llm_response(self, response: str) -> dict:
+    def _parse_llm_response_v1(self, response: str) -> dict:
         lines = response.strip().split('\n')
 
         result = {
@@ -1483,6 +1483,238 @@ class ChatTab(BaseTab):
 
         return result
 
+    # This is _parse_llm_response_v2
+    def _parse_llm_response(self, response: str, original_text: str = "") -> dict:
+        lines = response.strip().split('\n')
+        
+        result = {
+            "prompt": "",
+            "negative": "",
+            "style": "",
+            "quality": "masterpiece, best quality, photorealistic, 8k, highly detailed",
+        }
+        
+        current_key = None
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            
+            if '正面提示词' in line or '正面' in line:
+                current_key = 'prompt'
+                content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
+                if content:
+                    result['prompt'] = content
+            elif '负面提示词' in line or '负面' in line:
+                current_key = 'negative'
+                content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
+                if content:
+                    result['negative'] = content
+            elif '风格' in line:
+                current_key = 'style'
+                content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
+                if content:
+                    result['style'] = content
+            elif '质量' in line:
+                current_key = 'quality'
+                content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
+                if content:
+                    result['quality'] = content
+            elif current_key and line:
+                if current_key == 'prompt':
+                    result['prompt'] += ', ' + line if result['prompt'] else line
+                elif current_key == 'negative':
+                    result['negative'] += ', ' + line if result['negative'] else line
+        
+        if not result['prompt']:
+            cleaned = re.sub(r'^.*?：', '', response)
+            cleaned = re.sub(r'^.*?:', '', cleaned)
+            cleaned = cleaned.strip()
+            if cleaned:
+                result['prompt'] = cleaned
+            else:
+                return None
+        
+        prompt_text = result['prompt']
+        prompt_lower = prompt_text.lower()
+        
+        # 检测是否是自然语言
+        sentence_indicators = [
+            'maintain', 'exchange', 'retain', 'keep', 'change',
+            'feature', 'outfit', 'formal', 'gown', 'the woman',
+            'the man', 'the person', 'the image', 'the picture',
+            'inserts', 'behind', 'engaging', 'intimate', 'activity',
+            'strong', 'muscular', 'large', 'big', 'enjoying',
+        ]
+        is_natural_language = any(ind in prompt_lower for ind in sentence_indicators)
+        has_chinese = any('\u4e00' <= char <= '\u9fff' for char in prompt_text)
+        
+        if is_natural_language or has_chinese:
+            print(f"   ⚠️ 检测到自然语言格式，正在转换为 SD 提示词...")
+            print(f"   📝 原始: {prompt_text[:100]}...")
+            
+            # ===== ✅ 修复：使用原始用户输入检测性别 =====
+            # 如果传入了 original_text，使用它；否则使用 prompt_text
+            if original_text:
+                detect_text = original_text
+            else:
+                detect_text = prompt_text
+            
+            detect_lower = detect_text.lower()
+            
+            # 检测性别（从原始输入中检测）
+            is_man = any(k in detect_lower for k in [
+                '男', '帅哥', '男孩', '男性', '小哥哥', '男神',
+                'man', 'male', 'boy', 'guy', 'gentleman', 'him', 'he', 'his'
+            ])
+            is_woman = any(k in detect_lower for k in [
+                '女', '美女', '女孩', '女性', '小姐姐', '女神',
+                'woman', 'female', 'girl', 'lady', 'her', 'she', 'hers'
+            ])
+            is_couple = any(k in detect_lower for k in [
+                '两人', '双人', '情侣', '夫妻', '一对', '两个',
+                'couple', 'together', 'both', 'two people', 'pair'
+            ])
+            
+            print(f"   🧐 性别检测: 男性={is_man}, 女性={is_woman}, 双人={is_couple}")
+            
+            # 提取身体特征
+            body_features = []
+            if any(k in prompt_lower for k in ['strong', 'muscular', '强壮', '肌肉']):
+                body_features.append("muscular")
+            if any(k in prompt_lower for k in ['large breasts', 'big breasts', 'huge breasts', '大胸', '巨乳']):
+                body_features.append("large breasts")
+            if any(k in prompt_lower for k in ['curvy', '丰满']):
+                body_features.append("curvy figure")
+            if any(k in prompt_lower for k in ['slim', '苗条']):
+                body_features.append("slim figure")
+            
+            # ===== 构建提示词 =====
+            prompt_parts = []
+            
+            # 1. 性别和人数（基于原始输入）
+            if is_couple or (is_man and is_woman):
+                prompt_parts.append("1man, 1woman")
+                prompt_parts.append("couple")
+                prompt_parts.append("two people")
+            elif is_man:
+                prompt_parts.append("1man")
+            elif is_woman:
+                prompt_parts.append("1woman")
+            else:
+                # 默认：单女
+                prompt_parts.append("1woman")
+            
+            # 2. 姿势（从文本中提取）
+            pose_keywords = {
+                'behind': 'from behind',
+                'front': 'from front',
+                'standing': 'standing',
+                '站着': 'standing',
+                '坐': 'sitting',
+                'sitting': 'sitting',
+                '躺': 'lying down',
+                'lying': 'lying down',
+                'bed': 'on bed',
+                '床上': 'on bed',
+                'embrace': 'embracing',
+                '拥抱': 'hugging',
+                'hug': 'hugging',
+                'kiss': 'kissing',
+                '接吻': 'kissing',
+                'hold': 'holding',
+                'touch': 'touching',
+            }
+            
+            poses_found = []
+            for key, pose in pose_keywords.items():
+                if key in prompt_lower:
+                    poses_found.append(pose)
+            
+            if poses_found:
+                prompt_parts.extend(poses_found)
+            
+            # 3. 身体特征
+            if body_features:
+                prompt_parts.append("with " + ", ".join(body_features))
+            
+            # 4. 服装
+            clothes_keywords = []
+            clothes_map = {
+                '旗袍': 'qipao', '汉服': 'hanfu', '礼服': 'evening gown',
+                'dress': 'dress', 'gown': 'evening gown', '裙子': 'dress',
+                '西装': 'suit', '制服': 'uniform', '泳衣': 'swimsuit',
+                '比基尼': 'bikini', '内衣': 'lingerie', '蕾丝': 'lace',
+            }
+            for cn, en in clothes_map.items():
+                if cn in prompt_lower:
+                    if en not in clothes_keywords:
+                        clothes_keywords.append(en)
+            if clothes_keywords:
+                prompt_parts.append("wearing " + ", ".join(clothes_keywords))
+            
+            # 5. 场景
+            scene_keywords = []
+            scenes_map = {
+                '沙滩': 'beach', '海滩': 'beach', '海边': 'ocean',
+                '花园': 'garden', '森林': 'forest', '城市': 'city',
+                '卧室': 'bedroom', '浴室': 'bathroom', '舞台': 'stage',
+                '宫殿': 'palace', '日落': 'sunset', '星空': 'starry sky',
+            }
+            for cn, en in scenes_map.items():
+                if cn in prompt_lower:
+                    if en not in scene_keywords:
+                        scene_keywords.append(en)
+            if scene_keywords:
+                prompt_parts.extend(scene_keywords)
+            
+            # 6. 风格
+            style_keywords = []
+            styles_map = {
+                '动漫': 'anime style', '油画': 'oil painting style',
+                '水彩': 'watercolor style', '素描': 'sketch style',
+                '写实': 'photorealistic', '赛博朋克': 'cyberpunk style',
+                '暗黑': 'dark style', '梦幻': 'dreamy style',
+                '复古': 'vintage style', '古风': 'traditional chinese style',
+                '唯美': 'aesthetic style', '可爱': 'cute style',
+                '性感': 'sexy style', '优雅': 'elegant style',
+            }
+            for cn, en in styles_map.items():
+                if cn in prompt_lower:
+                    if en not in style_keywords:
+                        style_keywords.append(en)
+            if style_keywords:
+                prompt_parts.extend(style_keywords)
+            
+            # 7. 质量词（去重）
+            prompt_parts.append("masterpiece")
+            prompt_parts.append("best quality")
+            prompt_parts.append("photorealistic")
+            prompt_parts.append("8k")
+            prompt_parts.append("highly detailed")
+            
+            # 组合成最终提示词（去重）
+            seen = set()
+            unique_parts = []
+            for p in prompt_parts:
+                if p not in seen:
+                    seen.add(p)
+                    unique_parts.append(p)
+            
+            new_prompt = ", ".join(unique_parts)
+            result['prompt'] = new_prompt
+            
+            print(f"   ✅ 转换后提示词: {new_prompt}")
+        
+        # 确保有质量词
+        if 'masterpiece' not in result['prompt'].lower() and 'best quality' not in result['prompt'].lower():
+            result['prompt'] = f"masterpiece, best quality, photorealistic, 8k, highly detailed, {result['prompt']}"
+        
+        if not result['negative']:
+            result['negative'] = self._negative_templates["default"]
+        
+        return result
+    
     def _enhance_prompt_with_context(self, base_prompt: str, keywords: dict) -> str:
         quality_parts = ["masterpiece", "best quality", "photorealistic", "8k", "highly detailed", "ultra detailed"]
         prompt_parts = quality_parts.copy()
