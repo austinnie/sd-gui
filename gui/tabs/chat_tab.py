@@ -1262,6 +1262,19 @@ class ChatTab(BaseTab):
         )
         self.quality_btn.pack(side=tk.LEFT, padx=2)
         
+        # 在 setup_ui 的模式按钮中添加
+        self.ultra_btn = tk.Button(
+            mode_frame,
+            text="🌟 超高质量",
+            command=lambda: self._set_quality_mode("超高质量"),
+            relief="sunken" if self.quality_mode_var.get() == "超高质量" else "raised",
+            bg="#fce4ec" if self.quality_mode_var.get() == "超高质量" else "#f5f5f5",
+            font=("微软雅黑", 8),
+            width=6,
+            height=1
+        )
+        self.ultra_btn.pack(side=tk.LEFT, padx=2)
+        
         # 模式提示
         self.mode_hint = ttk.Label(param_bar, text="⚡ 快速模式", foreground="green", font=("", 8))
         self.mode_hint.pack(side=tk.LEFT, padx=10)
@@ -1391,7 +1404,8 @@ class ChatTab(BaseTab):
         colors = {
             "快速": {"bg": "#e8f5e9", "hint": "⚡ 快速模式 (8步, 小尺寸)", "fg": "green"},
             "平衡": {"bg": "#e3f2fd", "hint": "⚖️ 平衡模式 (12步, 中等尺寸)", "fg": "blue"},
-            "高质量": {"bg": "#fff3e0", "hint": "🌟 高质量模式 (20-30步, 大尺寸)", "fg": "orange"},
+            "高质量": {"bg": "#fff3e0", "hint": "🌟 高质量模式 (20步, 大尺寸)", "fg": "orange"},
+            "超高质量": {"bg": "#fce4ec", "hint": "✨ 超高质量模式 (30步, 超大尺寸, 建议16GB+内存)", "fg": "red"},
         }
         
         for name, btn in buttons.items():
@@ -1683,10 +1697,17 @@ class ChatTab(BaseTab):
             intent = self._analyze_intent(user_input)
             
             self._append_message("system", f"🔍 分析意图: {intent['type']}")
-            
+
+            # ===== 检测是否超高质量模式 =====
+            mode = self.quality_mode_var.get() if hasattr(self, 'quality_mode_var') else "平衡"
+            is_ultra = mode == "超高质量"
+        
             # 2. 执行对应操作
             # ===== 🚀 新增：双人合成路由 =====
-            if intent["type"] == "couple_generation":
+            if intent["type"] == "text_to_image" and is_ultra:
+                # ✅ 超高质量模式使用大尺度生成
+                self._handle_large_scale_generation(intent)            
+            elif intent["type"] == "couple_generation":
                 self._handle_couple_generation(intent)
             elif intent["type"] == "text_to_image":
                 self._handle_text_to_image(intent)
@@ -2548,7 +2569,23 @@ class ChatTab(BaseTab):
         mode = getattr(self, 'quality_mode_var', tk.StringVar(value="平衡")).get()
         
         # ===== 根据模式定义尺寸 =====
-        if mode == "快速":
+
+        # ✅ 新增：超高质量模式
+        if mode == "超高质量":
+            size_config = {
+                "portrait": (768, 1024),
+                "full_body": (768, 1152),
+                "half_body": (896, 1024),
+                "landscape": (1344, 768),
+                "couple": (896, 1344),
+                "group": (1152, 896),
+                "square": (1024, 1024),
+                "default": (768, 1024),
+            }
+            steps_override = 30
+            max_size = 1536  # ✅ 允许更大
+        
+        elif mode == "快速":
             # 快速模式：小尺寸
             size_config = {
                 "portrait": (256, 384),
@@ -2669,7 +2706,185 @@ class ChatTab(BaseTab):
         }
     
     # ==================== 文生图处理 ====================
-    
+    def _handle_large_scale_generation(self, intent: dict):
+        """
+        大尺度图片生成（两阶段：文生图 + 超分辨率）
+        适用于需要生成 1536x1536 以上大图的场景
+        """
+        try:
+            prompt = intent.get("prompt", "")
+            original_text = intent.get("original_text", "")
+            params = intent.get("params", {})
+            
+            self._append_message("system", "📐 正在生成大尺度图片（两阶段）...")
+            
+            # ===== 阶段1：生成 512x768 小图 =====
+            self._append_message("system", "📝 阶段1: 生成预览图...")
+            
+            from utils.pipeline_pool import pipeline_pool
+            import random
+            from datetime import datetime
+            
+            model_name = self.app.model_var.get()
+            model_path = self.app._get_model_path(model_name)
+            
+            lora_path = None
+            lora_weight = 1.0
+            if hasattr(self.app, 'lora_var') and hasattr(self.app, 'lora_paths'):
+                lora_display = self.app.lora_var.get()
+                if lora_display:
+                    lora_path = self.app.lora_paths.get(lora_display)
+                    lora_weight = self.app.lora_weight_var.get()
+            
+            task_id = f"large_scale_{datetime.now().strftime('%H%M%S')}"
+            
+            pipe, is_new = pipeline_pool.get_pipeline(
+                model_path=model_path,
+                model_name=model_name,
+                lora_path=lora_path,
+                lora_weight=lora_weight,
+                task_id=task_id
+            )
+            
+            if pipe is None:
+                self._append_message("assistant", "❌ 无法获取 Pipeline")
+                return
+            
+            # 生成小图
+            seed = random.randint(1, 2**32 - 1)
+            generator = torch.Generator("cpu").manual_seed(seed)
+            
+            small_result = pipe(
+                prompt=prompt,
+                negative_prompt=self._negative_templates["default"],
+                num_inference_steps=20,
+                guidance_scale=7.5,
+                height=768,
+                width=512,
+                generator=generator,
+                num_images_per_prompt=1
+            )
+            
+            # 保存小图
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            temp_path = os.path.join(tempfile.gettempdir(), f"temp_{timestamp}_small.png")
+            small_result.images[0].save(temp_path)
+            
+            pipeline_pool.release_pipeline(model_path, lora_path, task_id)
+            
+            self._append_message("system", "✅ 阶段1完成，正在放大...")
+            
+            # ===== 阶段2：使用 Real-ESRGAN 超分辨率 =====
+            output_path = self._upscale_image(temp_path, scale=2)
+            
+            # 如果超分辨率失败，尝试用 PIL 简单放大
+            if output_path == temp_path:
+                self._append_message("system", "⚠️ 使用 PIL 简单放大...")
+                img = Image.open(temp_path)
+                new_size = (img.width * 2, img.height * 2)
+                img = img.resize(new_size, Image.Resampling.LANCZOS)
+                output_dir = app_config.paths.output_dir
+                os.makedirs(output_dir, exist_ok=True)
+                output_path = os.path.join(output_dir, f"{timestamp}_large_{original_text[:20]}.png")
+                img.save(output_path)
+            
+            # 清理临时文件
+            try:
+                os.remove(temp_path)
+            except:
+                pass
+            
+            # 显示结果
+            self._append_image_result(output_path)
+            self._append_message("assistant", f"✅ 大尺度图片生成完成！\n📁 {os.path.basename(output_path)}\n📐 尺寸: {Image.open(output_path).size}")
+            self.app.add_to_preview(output_path, Image.open(output_path))
+            
+        except Exception as e:
+            self._append_message("assistant", f"❌ 大尺度生成失败: {str(e)}")
+            import traceback
+            traceback.print_exc()
+        
+    def _upscale_image(self, image_path: str, scale: int = 2) -> str:
+        """
+        超分辨率放大图片
+        支持 Real-ESRGAN，如果不可用则降级到 PIL LANCZOS
+        """
+        from datetime import datetime
+        from config.app_config import app_config
+        
+        try:
+            # ===== 尝试使用 Real-ESRGAN =====
+            try:
+                import cv2
+                from basicsr.archs.rrdbnet_arch import RRDBNet
+                from realesrgan import RealESRGANer
+                
+                img = cv2.imread(image_path)
+                if img is None:
+                    return image_path
+                
+                # 检查模型文件是否存在
+                model_path = "models/realesrgan_x4plus.pth"
+                if not os.path.exists(model_path):
+                    print(f"⚠️ Real-ESRGAN 模型不存在: {model_path}")
+                    raise FileNotFoundError("模型文件不存在")
+                
+                model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=scale)
+                upsampler = RealESRGANer(
+                    scale=scale,
+                    model_path=model_path,
+                    model=model,
+                    tile=0,
+                    tile_pad=10,
+                    pre_pad=0,
+                    half=False
+                )
+                
+                output, _ = upsampler.enhance(img, outscale=scale)
+                
+                # 保存放大后的图片
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                output_dir = app_config.paths.output_dir
+                os.makedirs(output_dir, exist_ok=True)
+                output_path = os.path.join(output_dir, f"{timestamp}_upscaled_{scale}x.png")
+                cv2.imwrite(output_path, output)
+                
+                print(f"✅ 超分辨率完成: {output_path}")
+                return output_path
+                
+            except ImportError as e:
+                print(f"⚠️ Real-ESRGAN 未安装: {e}")
+                
+            except FileNotFoundError as e:
+                print(f"⚠️ {e}")
+            
+            # ===== 备用方案：PIL LANCZOS 放大 =====
+            from PIL import Image
+            
+            print("📦 使用 PIL LANCZOS 放大...")
+            img = Image.open(image_path)
+            
+            # 计算新尺寸
+            new_width = img.width * scale
+            new_height = img.height * scale
+            
+            # 使用 LANCZOS 重采样（高质量）
+            img_resized = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            
+            # 保存
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_dir = app_config.paths.output_dir
+            os.makedirs(output_dir, exist_ok=True)
+            output_path = os.path.join(output_dir, f"{timestamp}_upscaled_{scale}x_pil.png")
+            img_resized.save(output_path)
+            
+            print(f"✅ PIL 放大完成: {output_path}")
+            return output_path
+            
+        except Exception as e:
+            print(f"⚠️ 超分辨率失败: {e}")
+            return image_path
+        
     def _handle_text_to_image(self, intent: dict):
         """处理文生图（优化版）"""
         if self._is_loading_model:
