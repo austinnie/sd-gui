@@ -15,6 +15,16 @@ from datetime import datetime
 from PIL import Image, ImageTk
 import torch
 
+# ===== 🚀 方案2：设置 Hugging Face 缓存环境变量 =====
+# 必须在导入 diffusers 之前设置
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+hf_cache_dir = os.path.join(project_root, "models", "huggingface_cache")
+os.makedirs(hf_cache_dir, exist_ok=True)
+
+os.environ["HF_HOME"] = hf_cache_dir
+os.environ["HF_HUB_CACHE"] = os.path.join(hf_cache_dir, "hub")
+
+
 from .base_tab import BaseTab
 from gui.components.memory_monitor import force_memory_cleanup
 import tempfile
@@ -836,7 +846,7 @@ class ChatTab(BaseTab):
         return full_prompt
     
     # ==================== UI 设置 ====================
-    
+        
     def setup_ui(self):
         """设置 UI"""
         frame = self.frame
@@ -851,6 +861,14 @@ class ChatTab(BaseTab):
         
         ttk.Button(toolbar, text="🔧 测试 LLM", command=self.debug_test_llm, width=10).pack(side=tk.LEFT, padx=2)
         ttk.Button(toolbar, text="🗑️ 清除对话", command=self._clear_chat, width=12).pack(side=tk.LEFT, padx=2)
+
+        # ✅ 新增：ControlNet 缓存状态
+        if hasattr(self, '_check_controlnet_cached') and self._check_controlnet_cached():
+            size = self._get_controlnet_size()
+            cache_status = f"🦴 ControlNet 已缓存 ({size})"
+            ttk.Label(toolbar, text=cache_status, foreground="green").pack(side=tk.LEFT, padx=10)
+        else:
+            ttk.Label(toolbar, text="🦴 ControlNet 未缓存", foreground="orange").pack(side=tk.LEFT, padx=10)
         
         self.upload_btn = ttk.Button(toolbar, text="📎 上传图片", command=self._upload_image, width=12)
         self.upload_btn.pack(side=tk.LEFT, padx=2)
@@ -860,8 +878,6 @@ class ChatTab(BaseTab):
         
         self.preview_label = ttk.Label(toolbar)
         self.preview_label.pack(side=tk.LEFT, padx=5)
-
-    
 
         # ===== 参数控制栏 =====
         param_bar = ttk.Frame(main_frame)
@@ -911,6 +927,61 @@ class ChatTab(BaseTab):
         
         ttk.Label(param_bar, text="💡 步数越高质量越好", foreground="gray", font=("", 8)).pack(side=tk.LEFT, padx=15)
 
+        # ===== 🚀 新增：速度/质量模式切换 =====
+        ttk.Separator(param_bar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=10)
+        
+        # 创建变量存储模式
+        self.quality_mode_var = tk.StringVar(value="快速")
+        
+        # 模式选项
+        mode_frame = ttk.Frame(param_bar)
+        mode_frame.pack(side=tk.LEFT, padx=5)
+        
+        ttk.Label(mode_frame, text="模式:", font=("", 9)).pack(side=tk.LEFT)
+        
+        # 快速模式按钮
+        self.fast_btn = tk.Button(
+            mode_frame,
+            text="⚡ 快速",
+            command=lambda: self._set_quality_mode("快速"),
+            relief="sunken" if self.quality_mode_var.get() == "快速" else "raised",
+            bg="#e8f5e9" if self.quality_mode_var.get() == "快速" else "#f5f5f5",
+            font=("微软雅黑", 8),
+            width=6,
+            height=1
+        )
+        self.fast_btn.pack(side=tk.LEFT, padx=2)
+        
+        # 平衡模式按钮
+        self.balance_btn = tk.Button(
+            mode_frame,
+            text="⚖️ 平衡",
+            command=lambda: self._set_quality_mode("平衡"),
+            relief="sunken" if self.quality_mode_var.get() == "平衡" else "raised",
+            bg="#e3f2fd" if self.quality_mode_var.get() == "平衡" else "#f5f5f5",
+            font=("微软雅黑", 8),
+            width=6,
+            height=1
+        )
+        self.balance_btn.pack(side=tk.LEFT, padx=2)
+        
+        # 高质量模式按钮
+        self.quality_btn = tk.Button(
+            mode_frame,
+            text="🌟 高质量",
+            command=lambda: self._set_quality_mode("高质量"),
+            relief="sunken" if self.quality_mode_var.get() == "高质量" else "raised",
+            bg="#fff3e0" if self.quality_mode_var.get() == "高质量" else "#f5f5f5",
+            font=("微软雅黑", 8),
+            width=6,
+            height=1
+        )
+        self.quality_btn.pack(side=tk.LEFT, padx=2)
+        
+        # 模式提示
+        self.mode_hint = ttk.Label(param_bar, text="⚡ 快速模式", foreground="green", font=("", 8))
+        self.mode_hint.pack(side=tk.LEFT, padx=10)
+
         # LLM 开关
         ttk.Separator(param_bar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=10)
         
@@ -937,11 +1008,11 @@ class ChatTab(BaseTab):
             font=("", 10)
         )
         self.llm_status.pack(side=tk.LEFT, padx=2)
-        
+
         # ===== 对话区域 =====
         chat_container = ttk.Frame(main_frame)
         chat_container.pack(fill=tk.BOTH, expand=True, pady=5)
-        
+
         self.chat_text = tk.Text(
             chat_container,
             height=20,
@@ -954,10 +1025,10 @@ class ChatTab(BaseTab):
         )
         scrollbar = ttk.Scrollbar(chat_container, orient=tk.VERTICAL, command=self.chat_text.yview)
         self.chat_text.configure(yscrollcommand=scrollbar.set)
-        
+
         self.chat_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
+
         self.chat_text.config(state=tk.DISABLED)
         
         # ===== 底部输入区 =====
@@ -1011,6 +1082,41 @@ class ChatTab(BaseTab):
         self.progress_bar = ttk.Progressbar(status_frame, length=200, mode='determinate')
         self.progress_bar.pack(side=tk.RIGHT, padx=5)
 
+    def _set_quality_mode(self, mode: str):
+        """切换质量模式"""
+        self.quality_mode_var.set(mode)
+        
+        # 更新按钮样式
+        buttons = {
+            "快速": self.fast_btn,
+            "平衡": self.balance_btn,
+            "高质量": self.quality_btn,
+        }
+        
+        colors = {
+            "快速": {"bg": "#e8f5e9", "hint": "⚡ 快速模式 (8步, 小尺寸)", "fg": "green"},
+            "平衡": {"bg": "#e3f2fd", "hint": "⚖️ 平衡模式 (12步, 中等尺寸)", "fg": "blue"},
+            "高质量": {"bg": "#fff3e0", "hint": "🌟 高质量模式 (20-30步, 大尺寸)", "fg": "orange"},
+        }
+        
+        for name, btn in buttons.items():
+            if name == mode:
+                btn.config(relief="sunken", bg=colors[name]["bg"])
+            else:
+                btn.config(relief="raised", bg="#f5f5f5")
+        
+        self.mode_hint.config(text=colors[mode]["hint"], foreground=colors[mode]["fg"])
+        
+        # 根据模式自动调整步数
+        if mode == "快速":
+            self.chat_steps_var.set(8)
+        elif mode == "平衡":
+            self.chat_steps_var.set(12)
+        else:  # 高质量
+            self.chat_steps_var.set(20)
+        
+        self._append_message("system", f"📊 切换到 {mode} 模式")
+    
     def _manual_install_llm(self):
         """手动安装 LLM"""
         if self.llm_installing:
@@ -1291,19 +1397,46 @@ class ChatTab(BaseTab):
         
     # 在 chat_tab.py 中添加 ControlNet 相关方法
     def _setup_controlnet(self):
-        """初始化 ControlNet（懒加载）"""
+        """初始化 ControlNet（懒加载）- 方案1+3"""
         if hasattr(self, 'controlnet_available') and self.controlnet_available:
+            print("✅ ControlNet 已就绪（使用缓存）")
             return
         
         try:
             from diffusers import ControlNetModel, StableDiffusionControlNetPipeline
             
             print("📦 正在加载 ControlNet...")
-            controlnet = ControlNetModel.from_pretrained(
-                "lllyasviel/sd-controlnet-openpose",
-                torch_dtype=torch.float32,
-                low_cpu_mem_usage=True
+            
+            # ===== 🚀 方案1：指定缓存目录 =====
+            controlnet_cache_dir = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                "models", "controlnet_cache"
             )
+            os.makedirs(controlnet_cache_dir, exist_ok=True)
+            
+            # ===== 🚀 方案3：检查本地是否已有模型 =====
+            # 检查是否已下载
+            model_path = os.path.join(controlnet_cache_dir, "models--lllyasviel--sd-controlnet-openpose")
+            if os.path.exists(model_path):
+                print(f"   ✅ 找到本地缓存: {model_path}")
+                # 直接从本地加载
+                controlnet = ControlNetModel.from_pretrained(
+                    "lllyasviel/sd-controlnet-openpose",
+                    torch_dtype=torch.float32,
+                    low_cpu_mem_usage=True,
+                    cache_dir=controlnet_cache_dir,
+                    local_files_only=True,  # ✅ 只使用本地文件
+                )
+            else:
+                print("   📦 本地未找到，从 Hugging Face 下载...")
+                controlnet = ControlNetModel.from_pretrained(
+                    "lllyasviel/sd-controlnet-openpose",
+                    torch_dtype=torch.float32,
+                    low_cpu_mem_usage=True,
+                    cache_dir=controlnet_cache_dir,
+                    resume_download=True,  # ✅ 支持断点续传
+                )
+                print("   ✅ 下载完成，已缓存到本地")
             
             pipe = self.app.model_manager.get_pipeline()
             if pipe:
@@ -1319,11 +1452,48 @@ class ChatTab(BaseTab):
                     requires_safety_checker=False,
                 )
                 self.controlnet_available = True
-                print("✅ ControlNet 已加载")
+                print(f"✅ ControlNet 已加载（缓存: {controlnet_cache_dir}）")
+            else:
+                print("⚠️ 无法获取 Pipeline，ControlNet 加载失败")
+                self.controlnet_available = False
+                
         except Exception as e:
             print(f"⚠️ ControlNet 加载失败: {e}")
             self.controlnet_available = False
         
+
+    def _check_controlnet_cached(self) -> bool:
+        """检查 ControlNet 是否已缓存"""
+        controlnet_cache_dir = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "models", "controlnet_cache"
+        )
+        model_path = os.path.join(controlnet_cache_dir, "models--lllyasviel--sd-controlnet-openpose")
+        return os.path.exists(model_path)
+
+    def _get_controlnet_size(self) -> str:
+        """获取 ControlNet 缓存大小"""
+        controlnet_cache_dir = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "models", "controlnet_cache"
+        )
+        if not os.path.exists(controlnet_cache_dir):
+            return "未缓存"
+        
+        total_size = 0
+        for dirpath, dirnames, filenames in os.walk(controlnet_cache_dir):
+            for f in filenames:
+                fp = os.path.join(dirpath, f)
+                if os.path.exists(fp):
+                    total_size += os.path.getsize(fp)
+        
+        # 转换为 MB/GB
+        if total_size > 1024**3:
+            return f"{total_size / 1024**3:.1f} GB"
+        elif total_size > 1024**2:
+            return f"{total_size / 1024**2:.1f} MB"
+        else:
+            return f"{total_size / 1024:.1f} KB"
         
     def _extract_pose_from_image(self, image_path: str) -> Image.Image:
         """
@@ -1630,7 +1800,7 @@ class ChatTab(BaseTab):
         elif any(k in prompt_lower for k in ['写实', '真实', '照片']):
             params["steps"] = 24
         else:
-            params["steps"] = 20  # 默认
+            params["steps"] = 12  # 默认
         
         # ===== 2. 自动判断 CFG =====
         if any(k in prompt_lower for k in ['抽象', '梦幻', '随意']):
@@ -1971,7 +2141,7 @@ class ChatTab(BaseTab):
         }
 
     def _estimate_params(self, prompt: str, is_image: bool = False) -> dict:
-        """根据提示词估算参数（优化版）"""
+        """根据提示词估算参数（支持质量模式）"""
         prompt_lower = prompt.lower()
         
         # 检测场景
@@ -1983,15 +2153,67 @@ class ChatTab(BaseTab):
         is_group = any(k in prompt_lower for k in ['group', 'three people', '多人', '三人', '人群'])
         is_square = any(k in prompt_lower for k in ['square', '1:1', '方图'])
         
-        # ===== 图生图：使用原图尺寸 =====
+        # ===== 获取质量模式 =====
+        mode = getattr(self, 'quality_mode_var', tk.StringVar(value="平衡")).get()
+        
+        # ===== 根据模式定义尺寸 =====
+        if mode == "快速":
+            # 快速模式：小尺寸
+            size_config = {
+                "portrait": (256, 384),
+                "full_body": (256, 384),
+                "half_body": (320, 384),
+                "landscape": (448, 256),
+                "couple": (320, 448),
+                "group": (384, 320),
+                "square": (320, 320),
+                "default": (256, 384),
+            }
+            steps_override = 8
+            size_suffix = "（快速模式）"
+        elif mode == "平衡":
+            # 平衡模式：中等尺寸（推荐）
+            size_config = {
+                "portrait": (384, 512),
+                "full_body": (384, 576),
+                "half_body": (448, 576),
+                "landscape": (640, 384),
+                "couple": (448, 640),
+                "group": (576, 448),
+                "square": (448, 448),
+                "default": (384, 576),
+            }
+            steps_override = 12
+            size_suffix = "（平衡模式）"
+        else:  # 高质量
+            # 高质量模式：大尺寸
+            size_config = {
+                "portrait": (512, 640),
+                "full_body": (512, 768),
+                "half_body": (640, 768),
+                "landscape": (896, 512),
+                "couple": (640, 896),
+                "group": (768, 640),
+                "square": (640, 640),
+                "default": (512, 768),
+            }
+            steps_override = 20
+            size_suffix = "（高质量模式）"
+        
+        # ===== 图生图：使用原图尺寸（优化版） =====
         if is_image and self.uploaded_image_path:
             try:
                 from PIL import Image
                 img = Image.open(self.uploaded_image_path)
                 w, h = img.size
                 
-                # 限制最大尺寸
-                max_size = 1024
+                # 根据模式限制最大尺寸
+                max_size = {
+                    "快速": 384,
+                    "平衡": 512,
+                    "高质量": 768,
+                }.get(mode, 512)
+                
                 if max(w, h) > max_size:
                     scale = max_size / max(w, h)
                     w = int(w * scale)
@@ -2000,17 +2222,16 @@ class ChatTab(BaseTab):
                 width = ((w + 31) // 64) * 64
                 height = ((h + 31) // 64) * 64
                 
-                # 限制最小尺寸
                 if width < 256:
                     width = 256
                 if height < 256:
                     height = 256
-                if width > 1024:
-                    width = 1024
-                if height > 1024:
-                    height = 1024
                 
                 steps = self.chat_steps_var.get()
+                # 如果用户没有手动改步数，使用模式默认值
+                if steps > 30:
+                    steps = steps_override
+                
                 cfg = self.chat_cfg_var.get()
                 
                 return {
@@ -2018,37 +2239,30 @@ class ChatTab(BaseTab):
                     "height": height,
                     "steps": steps,
                     "cfg": cfg,
-                    "strength": 0.4,  # 默认强度
-                    "num_images": 1
+                    "strength": 0.4,
+                    "num_images": 1,
+                    "mode": mode,
                 }
             except:
                 pass
         
-        # ===== 文生图尺寸判断（优化） =====
+        # ===== 文生图尺寸判断 =====
         if is_portrait:
-            width, height = 512, 640
-            size_msg = "头像/特写（竖图）"
+            width, height = size_config["portrait"]
         elif is_full_body:
-            width, height = 512, 768
-            size_msg = "全身照（竖图）"
+            width, height = size_config["full_body"]
         elif is_half_body:
-            width, height = 640, 768
-            size_msg = "半身照（竖图）"
+            width, height = size_config["half_body"]
         elif is_landscape:
-            width, height = 896, 512
-            size_msg = "风景/横图"
+            width, height = size_config["landscape"]
         elif is_couple:
-            width, height = 640, 896
-            size_msg = "双人照（竖图）"
+            width, height = size_config["couple"]
         elif is_group:
-            width, height = 768, 640
-            size_msg = "多人照"
+            width, height = size_config["group"]
         elif is_square:
-            width, height = 640, 640
-            size_msg = "方图"
+            width, height = size_config["square"]
         else:
-            width, height = 512, 768
-            size_msg = "默认竖图"
+            width, height = size_config["default"]
         
         steps = self.chat_steps_var.get()
         cfg = self.chat_cfg_var.get()
@@ -2059,7 +2273,8 @@ class ChatTab(BaseTab):
             "steps": steps,
             "cfg": cfg,
             "strength": 0.4 if is_image else None,
-            "num_images": 1
+            "num_images": 1,
+            "mode": mode,
         }
     
     # ==================== 文生图处理 ====================
@@ -2147,7 +2362,7 @@ class ChatTab(BaseTab):
                 height=params["height"],
                 width=params["width"],
                 generator=generator,
-                num_images_per_prompt=1
+                num_images_per_prompt=4
             )
             
             # 保存图片
