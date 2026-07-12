@@ -59,9 +59,14 @@ class ChatTab(BaseTab):
         """初始化变量"""
         self.is_generating = False
         self.cancel_generation = False
-        self.uploaded_image_path = None
-        self.uploaded_image = None
+        
+        self.uploaded_image_paths = []  # ✅ 改为列表，支持多张
+        self.uploaded_images = []       # ✅ 多张图片        
+        self.uploaded_image = None      # ✅ 保留兼容性（第一张）
+        self.uploaded_image_path = None # ✅ 保留兼容性（第一张路径）
+        
         self.messages = []  # 对话历史
+        
         self.chat_context = {}  # 上下文信息
         self._is_loading_model = False
         # 会话生图参数
@@ -99,7 +104,265 @@ class ChatTab(BaseTab):
             "landscape": "worst quality, low quality, ugly, deformed, blurry, watermark, text, bad composition, cluttered",
             "nude": "clothes, fabric, dress, shirt, pants, underwear, bra, panties, bikini, swimsuit, covering, censorship, mosaic",
         }
+        
+     
 
+    def _detect_couple_intent(self, text: str) -> bool:
+        """检测是否想要合成双人图"""
+        keywords = ['和', '与', '一起', '两人', '双人', '情侣', 'couple', 'together',
+                    '拥抱', '牵手', '接吻', '依偎', '并肩', '合成', '合并', '合并成一张']
+        return any(k in text for k in keywords)
+
+    def _detect_action_from_text(self, text: str) -> str:
+        """从文本中检测动作"""
+        action_map = {
+            '拥抱': 'hugging each other',
+            '牵手': 'holding hands',
+            '接吻': 'kissing',
+            '依偎': 'cuddling',
+            '并肩': 'standing side by side',
+            '背靠背': 'back to back',
+            '跳舞': 'dancing together',
+            '对视': 'looking at each other',
+        }
+        text_lower = text.lower()
+        for cn, en in action_map.items():
+            if cn in text_lower:
+                return en
+        return "standing together"
+
+    def _handle_couple_generation(self, intent: dict):
+        """处理双人合成"""
+        if len(self.uploaded_images) < 2:
+            self._append_message("assistant", "❌ 请上传两张图片（一男一女）")
+            return
+        
+        self._append_message("system", "👫 正在合成双人图片...")
+        
+        try:
+            prompt = intent["prompt"]
+            action = intent.get("action", "standing together")
+            
+            # ===== 1. 提取两个人的姿态 =====
+            pose_image = self._extract_couple_pose(
+                self.uploaded_image_paths[0],
+                self.uploaded_image_paths[1]
+            )
+            
+            if pose_image:
+                self._append_message("system", "🦴 已提取双人姿态图")
+                # 使用 ControlNet 生成
+                params = intent.get("params", {})
+                self._handle_controlnet_generation(prompt, pose_image, intent, params)
+                return
+            else:
+                self._append_message("system", "⚠️ 姿态提取失败，使用普通图生图")
+                # 降级到普通图生图
+                self._handle_couple_img2img(intent)
+                
+        except Exception as e:
+            self._append_message("assistant", f"❌ 双人合成失败: {str(e)}")
+            import traceback
+            traceback.print_exc()
+        
+
+    def _extract_couple_pose(self, img1_path: str, img2_path: str) -> Image.Image:
+        """提取双人姿态图"""
+        try:
+            import cv2
+            import numpy as np
+            from PIL import Image
+            
+            # ===== 方案1：使用 OpenPose 检测双人 =====
+            try:
+                from controlnet_aux import OpenPoseDetector
+                detector = OpenPoseDetector.from_pretrained("lllyasviel/ControlNet")
+                
+                # 分别检测两个人的骨骼
+                img1 = cv2.imread(img1_path)
+                img2 = cv2.imread(img2_path)
+                
+                # 检测第一个人
+                pose1 = detector(img1, output_type="pil")
+                # 检测第二个人
+                pose2 = detector(img2, output_type="pil")
+                
+                # 合并两张姿态图
+                combined = self._merge_pose_images(pose1, pose2)
+                return combined
+                
+            except ImportError:
+                print("   ⚠️ controlnet_aux 未安装，使用备用方案")
+                pass
+            
+            # ===== 方案2：使用 MediaPipe 检测双人 =====
+            try:
+                import mediapipe as mp
+                
+                img1 = cv2.imread(img1_path)
+                img2 = cv2.imread(img2_path)
+                h, w = img1.shape[:2]
+                
+                mp_pose = mp.solutions.pose
+                with mp_pose.Pose(static_image_mode=True) as pose:
+                    # 检测第一个人
+                    results1 = pose.process(cv2.cvtColor(img1, cv2.COLOR_BGR2RGB))
+                    # 检测第二个人
+                    results2 = pose.process(cv2.cvtColor(img2, cv2.COLOR_BGR2RGB))
+                    
+                    # 创建空白画布
+                    combined_img = np.zeros((h, w * 2, 3), dtype=np.uint8)
+                    
+                    # 绘制第一个人（左半部分）
+                    if results1.pose_landmarks:
+                        # 绘制骨骼...
+                        pass
+                    
+                    # 绘制第二个人（右半部分）
+                    if results2.pose_landmarks:
+                        # 绘制骨骼...
+                        pass
+                    
+                    return Image.fromarray(combined_img)
+                    
+            except ImportError:
+                print("   ⚠️ mediapipe 未安装")
+                pass
+            
+            # ===== 方案3：最简备用 - 边缘检测 =====
+            img1 = cv2.imread(img1_path)
+            img2 = cv2.imread(img2_path)
+            
+            gray1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
+            gray2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+            
+            edges1 = cv2.Canny(gray1, 50, 150)
+            edges2 = cv2.Canny(gray2, 50, 150)
+            
+            # 水平拼接
+            combined_edges = np.hstack([edges1, edges2])
+            return Image.fromarray(combined_edges)
+            
+        except Exception as e:
+            print(f"⚠️ 双人姿态提取失败: {e}")
+            return None
+
+    def _merge_pose_images(self, pose1: Image.Image, pose2: Image.Image) -> Image.Image:
+        """合并两张姿态图"""
+        import numpy as np
+        from PIL import Image
+        
+        # 确保尺寸一致
+        w1, h1 = pose1.size
+        w2, h2 = pose2.size
+        
+        # 缩放使高度一致
+        if h1 != h2:
+            if h1 > h2:
+                pose2 = pose2.resize((int(w2 * h1 / h2), h1))
+            else:
+                pose1 = pose1.resize((int(w1 * h2 / h1), h2))
+        
+        # 水平拼接
+        combined = Image.new('RGB', (pose1.width + pose2.width, pose1.height))
+        combined.paste(pose1, (0, 0))
+        combined.paste(pose2, (pose1.width, 0))
+        
+        return combined
+
+    def _handle_couple_img2img(self, intent: dict):
+        """备用方案：普通双人图生图"""
+        try:
+            from utils.pipeline_pool import pipeline_pool
+            from datetime import datetime
+            import random
+            
+            prompt = intent["prompt"]
+            params = intent.get("params", {})
+            
+            # 获取模型
+            model_name = self.app.model_var.get()
+            model_path = self.app._get_model_path(model_name)
+            
+            # 获取 LoRA
+            lora_path = None
+            lora_weight = 1.0
+            if hasattr(self.app, 'lora_var') and hasattr(self.app, 'lora_paths'):
+                lora_display = self.app.lora_var.get()
+                if lora_display:
+                    lora_path = self.app.lora_paths.get(lora_display)
+                    lora_weight = self.app.lora_weight_var.get()
+            
+            task_id = f"couple_{datetime.now().strftime('%H%M%S')}"
+            
+            pipe, is_new = pipeline_pool.get_pipeline(
+                model_path=model_path,
+                model_name=model_name,
+                lora_path=lora_path,
+                lora_weight=lora_weight,
+                task_id=task_id
+            )
+            
+            if pipe is None:
+                self._append_message("assistant", "❌ 无法获取 Pipeline")
+                return
+            
+            # 准备双人输入图
+            # 将两张图水平拼接作为输入
+            img1 = self.uploaded_images[0].convert('RGB')
+            img2 = self.uploaded_images[1].convert('RGB')
+            
+            # 缩放使高度一致
+            h1, w1 = img1.size
+            h2, w2 = img2.size
+            target_h = min(h1, h2, 512)
+            
+            img1 = img1.resize((int(w1 * target_h / h1), target_h))
+            img2 = img2.resize((int(w2 * target_h / h2), target_h))
+            
+            # 水平拼接
+            combined_img = Image.new('RGB', (img1.width + img2.width, target_h))
+            combined_img.paste(img1, (0, 0))
+            combined_img.paste(img2, (img1.width, 0))
+            
+            # 生成
+            steps = params.get("steps", 20)
+            cfg = params.get("cfg", 7.5)
+            strength = 0.5  # 双人合成用稍高强度
+            
+            seed = random.randint(1, 2**32 - 1)
+            generator = torch.Generator("cpu").manual_seed(seed)
+            
+            result = pipe(
+                prompt=prompt,
+                negative_prompt=self._negative_templates["default"],
+                image=combined_img,
+                strength=strength,
+                num_inference_steps=steps,
+                guidance_scale=cfg,
+                generator=generator,
+                num_images_per_prompt=1
+            )
+            
+            # 保存图片
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"{timestamp}_couple_{intent.get('action', 'together')}.png"
+            
+            from config.app_config import app_config
+            output_dir = app_config.paths.output_dir
+            os.makedirs(output_dir, exist_ok=True)
+            filepath = os.path.join(output_dir, filename)
+            result.images[0].save(filepath)
+            
+            self._append_image_result(filepath)
+            self._append_message("assistant", f"✅ 双人合成完成！\n📁 {os.path.basename(filepath)}")
+            self.app.add_to_preview(filepath, result.images[0])
+            
+        except Exception as e:
+            self._append_message("assistant", f"❌ 双人合成失败: {str(e)}")
+            import traceback
+            traceback.print_exc()
+        
     def _check_ollama_installed(self) -> bool:
         """检查 Ollama 是否已安装"""
         import subprocess
@@ -866,6 +1129,19 @@ class ChatTab(BaseTab):
         # ===== 工具栏 =====
         toolbar = ttk.Frame(main_frame)
         toolbar.pack(fill=tk.X, pady=2)
+        # 在工具栏添加清除图片按钮
+        self.clear_images_btn = ttk.Button(
+            toolbar, 
+            text="🗑️ 清除图片", 
+            command=self._clear_upload,
+            width=10
+        )
+        self.clear_images_btn.pack(side=tk.LEFT, padx=2)
+
+        # 修改图片状态显示，显示数量
+        self.image_status = ttk.Label(toolbar, text="", foreground="green")
+        self.image_status.pack(side=tk.LEFT, padx=10)
+        
         
         ttk.Button(toolbar, text="🔧 测试 LLM", command=self.debug_test_llm, width=10).pack(side=tk.LEFT, padx=2)
         ttk.Button(toolbar, text="🗑️ 清除对话", command=self._clear_chat, width=12).pack(side=tk.LEFT, padx=2)
@@ -1090,6 +1366,17 @@ class ChatTab(BaseTab):
         self.progress_bar = ttk.Progressbar(status_frame, length=200, mode='determinate')
         self.progress_bar.pack(side=tk.RIGHT, padx=5)
 
+    def _clear_upload(self):
+        """清除上传的图片"""
+        self.uploaded_images = []
+        self.uploaded_image_paths = []
+        self.uploaded_image = None
+        self.uploaded_image_path = None
+        self.image_status.config(text="")
+        self.preview_label.config(image="")
+        self.preview_label.image = None
+        self._append_message("system", "🗑️ 已清除所有图片")
+    
     def _set_quality_mode(self, mode: str):
         """切换质量模式"""
         self.quality_mode_var.set(mode)
@@ -1254,25 +1541,39 @@ class ChatTab(BaseTab):
         threading.Thread(target=self._process_message, args=(user_input,), daemon=True).start()
     
     def _upload_image(self):
-        """上传图片"""
+        """上传图片（支持多张）"""
         file = filedialog.askopenfilename(
             title="选择图片",
             filetypes=[("图片文件", "*.png *.jpg *.jpeg *.bmp *.gif *.webp"), ("所有文件", "*.*")]
         )
         if file:
-            self.uploaded_image_path = file
-            self.uploaded_image = Image.open(file)
+            # ✅ 添加到列表
+            self.uploaded_image_paths.append(file)
+            img = Image.open(file)
+            self.uploaded_images.append(img)
             
-            self.image_status.config(text=f"📎 {os.path.basename(file)}")
+            # ✅ 保留兼容性（第一张）
+            if not self.uploaded_image:
+                self.uploaded_image = img
+                self.uploaded_image_path = file
             
-            thumb = self.uploaded_image.copy()
+            # ✅ 更新状态显示
+            count = len(self.uploaded_images)
+            self.image_status.config(text=f"📎 {count} 张图片")
+            
+            # ✅ 显示缩略图（显示第一张或拼图）
+            thumb = img.copy()
             thumb.thumbnail((40, 40))
             photo = ImageTk.PhotoImage(thumb)
             self.preview_label.config(image=photo)
             self.preview_label.image = photo
             
-            self._append_message("system", f"📎 已上传图片: {os.path.basename(file)}")
-    
+            self._append_message("system", f"📎 已上传图片 ({count}/2): {os.path.basename(file)}")
+            
+            # ✅ 如果已有2张，提示可以合成
+            if count >= 2:
+                self._append_message("system", "✅ 已上传2张图片！输入 '合成'、'在一起'、'拥抱' 等指令生成双人图")
+                
     def _cancel_generation(self):
         """取消生成"""
         self.cancel_generation = True
@@ -1384,7 +1685,10 @@ class ChatTab(BaseTab):
             self._append_message("system", f"🔍 分析意图: {intent['type']}")
             
             # 2. 执行对应操作
-            if intent["type"] == "text_to_image":
+            # ===== 🚀 新增：双人合成路由 =====
+            if intent["type"] == "couple_generation":
+                self._handle_couple_generation(intent)
+            elif intent["type"] == "text_to_image":
                 self._handle_text_to_image(intent)
             elif intent["type"] == "image_to_image":
                 self._handle_image_to_image(intent)
@@ -1591,6 +1895,56 @@ class ChatTab(BaseTab):
 
         text_lower = text.lower()
         has_image = self.uploaded_image is not None
+        has_multiple_images = len(self.uploaded_images) >= 2
+        
+        # ===== 🚀 新增：检测双人合成意图 =====
+        is_couple_intent = has_multiple_images and self._detect_couple_intent(text)
+        
+        if is_couple_intent:
+            print(f"   👫 检测到双人合成意图")
+            action = self._detect_action_from_text(text)
+            print(f"   🎬 动作: {action}")
+            
+            # 提取两个人物的性别
+            genders = []
+            for img in self.uploaded_images[:2]:
+                # 分析每张图片的特征
+                # 这里简化处理，实际可以用更精确的方法
+                pass
+            
+            # 构建双人提示词
+            gender1 = "1woman"  # 默认
+            gender2 = "1man"    # 默认
+            
+            # 从关键词检测性别
+            if any(k in text_lower for k in ['男', '帅哥', '男孩', '男性', 'man', 'boy']):
+                gender2 = "1man"
+            if any(k in text_lower for k in ['女', '美女', '女孩', '女性', 'woman', 'girl']):
+                gender1 = "1woman"
+            
+            smart_prompt = f"{gender1} and {gender2}, {action}, couple, romantic, masterpiece, best quality, photorealistic"
+            
+            # 使用 LLM 增强
+            use_llm = self.llm_enabled.get() and self.llm_available
+            if use_llm:
+                llm_result = self._llm_enhance_prompt(text, is_img2img=True)
+                if llm_result and llm_result.get('prompt'):
+                    smart_prompt = llm_result['prompt']
+            
+            result = {
+                "type": "couple_generation",  # ✅ 新类型
+                "prompt": smart_prompt,
+                "action": action,
+                "keywords": self._extract_keywords(text),
+                "original_text": text,
+                "is_continuation": False,
+                "llm_enhanced": llm_result is not None if use_llm else False,
+                "params": self._optimize_parameters(smart_prompt, "image_to_image", None),
+            }
+            print(f"   分析结果: {result['type']}")
+            print(f"   提示词: {result['prompt'][:150]}...")
+            print("=" * 60 + "\n")
+            return result
         
         # ===== 1. 智能分类 =====
         classification = self._classify_intent(text, has_image)
@@ -3064,13 +3418,6 @@ class ChatTab(BaseTab):
             self._update_status("❌ 加载失败", 0)
             self._pending_intent = None
             
-    def _clear_upload(self):
-        """清除上传的图片"""
-        self.uploaded_image = None
-        self.uploaded_image_path = None
-        self.image_status.config(text="")
-        self.preview_label.config(image="")
-        self.preview_label.image = None
     
     def get_frame(self):
         return self.frame
