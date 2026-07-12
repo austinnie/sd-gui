@@ -914,16 +914,19 @@ class ChatTab(BaseTab):
             else:
                 return None
         
-        # ===== 🚀 新增：检测自然语言并转换为 SD 格式 =====
+        # ===== 🚀 检测自然语言并转换为 SD 格式 =====
         prompt_text = result['prompt']
+        prompt_lower = prompt_text.lower()
         
         # 检测是否是自然语言（包含完整句子的特征）
         sentence_indicators = [
             'maintain', 'exchange', 'retain', 'keep', 'change', 
             'feature', 'outfit', 'formal', 'gown', 'the woman',
-            'the man', 'the person', 'the image', 'the picture'
+            'the man', 'the person', 'the image', 'the picture',
+            'inserts', 'behind', 'engaging', 'intimate', 'activity',
+            'strong', 'muscular', 'large', 'big', 'enjoying',
         ]
-        is_natural_language = any(ind in prompt_text.lower() for ind in sentence_indicators)
+        is_natural_language = any(ind in prompt_lower for ind in sentence_indicators)
         
         # 检测是否包含中文（也是自然语言的特征）
         has_chinese = any('\u4e00' <= char <= '\u9fff' for char in prompt_text)
@@ -932,29 +935,68 @@ class ChatTab(BaseTab):
             print(f"   ⚠️ 检测到自然语言格式，正在转换为 SD 提示词...")
             print(f"   📝 原始: {prompt_text[:100]}...")
             
-            # 提取性别
-            gender = "1girl"
-            if "woman" in prompt_text.lower() or "female" in prompt_text.lower() or "her" in prompt_text.lower():
-                gender = "1girl"
-            elif "man" in prompt_text.lower() or "male" in prompt_text.lower() or "him" in prompt_text.lower():
-                gender = "1boy"
+            # ===== 检测人物数量和性别 =====
+            is_man = any(k in prompt_lower for k in ['man', 'male', 'boy', 'him', 'he', 'his', '男人', '男孩', '男性', '帅哥'])
+            is_woman = any(k in prompt_lower for k in ['woman', 'female', 'girl', 'her', 'she', 'hers', '女人', '女孩', '女性', '美女'])
+            is_couple = any(k in prompt_lower for k in ['couple', 'together', 'both', 'two', '双人', '情侣', '两人', '一起'])
             
-            # ✅ 修复：定义 prompt_parts 列表
+            # 提取身体特征
+            body_features = []
+            if any(k in prompt_lower for k in ['strong', 'muscular', '强壮', '肌肉']):
+                body_features.append("muscular")
+            if any(k in prompt_lower for k in ['large breasts', 'big breasts', '大胸', '巨乳']):
+                body_features.append("large breasts")
+            if any(k in prompt_lower for k in ['curvy', '丰满']):
+                body_features.append("curvy figure")
+            if any(k in prompt_lower for k in ['slim', '苗条']):
+                body_features.append("slim figure")
+            
+            # ===== 构建提示词 =====
             prompt_parts = []
             
-            # 1. 性别
-            prompt_parts.append(gender)
+            # 1. 性别和人数
+            if is_couple or (is_man and is_woman):
+                prompt_parts.append("1man, 1woman")
+                prompt_parts.append("couple")
+                prompt_parts.append("two people")
+            elif is_man:
+                prompt_parts.append("1man")
+            elif is_woman:
+                prompt_parts.append("1woman")
+            else:
+                prompt_parts.append("1girl")
             
-            # 2. 保留人物特征（图生图）
-            prompt_parts.append("same person")
-            prompt_parts.append("same face")
-            prompt_parts.append("same pose")
+            # 2. 姿势（从文本中提取）
+            pose_keywords = {
+                'behind': 'from behind',
+                'front': 'from front',
+                'standing': 'standing',
+                'sit': 'sitting',
+                'lying': 'lying down',
+                'bed': 'on bed',
+                'embrace': 'embracing',
+                'hug': 'hugging',
+                'kiss': 'kissing',
+                'hold': 'holding',
+                'touch': 'touching',
+            }
             
-            # 3. 提取服装关键词
+            poses_found = []
+            for key, pose in pose_keywords.items():
+                if key in prompt_lower:
+                    poses_found.append(pose)
+            
+            if poses_found:
+                prompt_parts.extend(poses_found)
+            
+            # 3. 身体特征
+            if body_features:
+                prompt_parts.append("with " + ", ".join(body_features))
+            
+            # 4. 服装（如果有检测到）
             clothes_keywords = []
             clothes_map = {
                 '旗袍': 'qipao',
-                'qipao': 'qipao',
                 '汉服': 'hanfu',
                 '礼服': 'evening gown',
                 'dress': 'dress',
@@ -964,19 +1006,19 @@ class ChatTab(BaseTab):
                 '制服': 'uniform',
                 '泳衣': 'swimsuit',
                 '比基尼': 'bikini',
+                '内衣': 'lingerie',
+                '蕾丝': 'lace',
             }
             for cn, en in clothes_map.items():
-                if cn in prompt_text.lower():
+                if cn in prompt_lower:
                     if en not in clothes_keywords:
                         clothes_keywords.append(en)
             
             if clothes_keywords:
                 prompt_parts.append("wearing " + ", ".join(clothes_keywords))
-            else:
-                # 如果没有任何服装关键词，添加默认的 qipao
-                prompt_parts.append("wearing qipao")
+            # ⚠️ 不再强制添加 qipao，如果没有服装关键词就不加
             
-            # 4. 提取场景关键词
+            # 5. 场景（如果有检测到）
             scene_keywords = []
             scenes_map = {
                 '沙滩': 'beach',
@@ -989,15 +1031,17 @@ class ChatTab(BaseTab):
                 '浴室': 'bathroom',
                 '舞台': 'stage',
                 '宫殿': 'palace',
+                '日落': 'sunset',
+                '星空': 'starry sky',
             }
             for cn, en in scenes_map.items():
-                if cn in prompt_text.lower():
+                if cn in prompt_lower:
                     if en not in scene_keywords:
                         scene_keywords.append(en)
             if scene_keywords:
                 prompt_parts.extend(scene_keywords)
             
-            # 5. 提取风格关键词
+            # 6. 风格（如果有检测到）
             style_keywords = []
             styles_map = {
                 '现代': 'modern style',
@@ -1011,15 +1055,19 @@ class ChatTab(BaseTab):
                 '古风': 'traditional chinese style',
                 '东方': 'eastern style',
                 '中国风': 'chinese style',
+                '油画': 'oil painting style',
+                '水彩': 'watercolor style',
+                '动漫': 'anime style',
+                '写实': 'photorealistic style',
             }
             for cn, en in styles_map.items():
-                if cn in prompt_text.lower():
+                if cn in prompt_lower:
                     if en not in style_keywords:
                         style_keywords.append(en)
             if style_keywords:
                 prompt_parts.extend(style_keywords)
             
-            # 6. 质量词
+            # 7. 质量词
             prompt_parts.append("masterpiece")
             prompt_parts.append("best quality")
             prompt_parts.append("photorealistic")
@@ -1041,7 +1089,7 @@ class ChatTab(BaseTab):
             result['negative'] = self._negative_templates["default"]
         
         return result
-    
+
     def _enhance_prompt_with_context(self, base_prompt: str, keywords: dict) -> str:
         """使用上下文和关键词增强提示词"""
         
