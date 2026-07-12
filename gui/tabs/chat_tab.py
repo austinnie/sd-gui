@@ -287,6 +287,165 @@ class ChatTab(BaseTab):
             return None
 
 
+    def _build_preserve_parts_from_features(self, image_features: dict, user_text: str = "") -> list:
+        """
+        从原图特征构建保留词列表
+        
+        Args:
+            image_features: 原图特征字典
+            user_text: 用户输入文本，用于判断性别
+        
+        Returns:
+            preserve_parts: 保留词列表
+        """
+        preserve_parts = ["same person", "same face", "same identity"]
+        
+        # 1. 根据人脸数量确定人数指示词
+        face_count = image_features.get("face_count", 0)
+        has_multiple = image_features.get("has_multiple_subjects", False)
+        
+        if face_count == 1:
+            # 单人：根据用户输入判断性别
+            if user_text and any(k in user_text.lower() for k in ['男', '帅哥', '男孩', '男性', '小哥哥', '男神']):
+                preserve_parts.append("1boy")
+            else:
+                preserve_parts.append("1girl")  # 默认女性
+        elif face_count >= 2 or has_multiple:
+            # 多人：根据用户输入判断性别
+            if user_text and any(k in user_text.lower() for k in ['男', '帅哥', '男孩', '男性']):
+                preserve_parts.append("2boys")
+            else:
+                preserve_parts.append("2girls")  # 默认双女性
+        
+        # 2. 姿势
+        preserve_parts.append("same pose")
+        preserve_parts.append("same body language")
+        
+        # 3. 全身/半身
+        if image_features.get("is_full_body", True):
+            preserve_parts.append("full body")
+        else:
+            preserve_parts.append("half body")
+        
+        return preserve_parts
+
+    def _merge_llm_prompt_with_features(self, llm_prompt: str, preserve_parts: list) -> str:
+        """
+        合并 LLM 生成的提示词和原图特征保留词
+        
+        Args:
+            llm_prompt: LLM 生成的提示词
+            preserve_parts: 保留词列表
+        
+        Returns:
+            合并后的最终提示词
+        """
+        prompt_lower = llm_prompt.lower()
+        
+        # 1. 检查是否已有保留词
+        has_preserve = "same person" in prompt_lower and "same face" in prompt_lower
+        
+        # 2. 提取需要添加的保留词（去重）
+        parts_to_add = []
+        for part in preserve_parts:
+            if part.lower() not in prompt_lower:
+                parts_to_add.append(part)
+        
+        # 3. 合并
+        if has_preserve:
+            # LLM 已有保留词，只添加缺失的部分
+            if parts_to_add:
+                # 把性别词放在最前面
+                gender_parts = [p for p in parts_to_add if p in ["1girl", "1boy", "2girls", "2boys"]]
+                other_parts = [p for p in parts_to_add if p not in ["1girl", "1boy", "2girls", "2boys"]]
+                
+                result_parts = []
+                if gender_parts:
+                    result_parts.extend(gender_parts)
+                result_parts.append(llm_prompt)
+                if other_parts:
+                    result_parts.extend(other_parts)
+                
+                return ", ".join(result_parts)
+            else:
+                return llm_prompt
+        else:
+            # LLM 没有保留词，全部添加
+            # 把性别词放在最前面
+            gender_parts = [p for p in preserve_parts if p in ["1girl", "1boy", "2girls", "2boys"]]
+            other_parts = [p for p in preserve_parts if p not in ["1girl", "1boy", "2girls", "2boys"]]
+            
+            result_parts = []
+            if gender_parts:
+                result_parts.extend(gender_parts)
+            result_parts.extend(other_parts)
+            result_parts.append(llm_prompt)
+            
+            return ", ".join(result_parts)
+
+    def _enhance_prompt_with_features(self, prompt: str, intent: dict, image_features: dict) -> str:
+        """
+        使用原图特征增强提示词（主入口函数）
+        
+        Args:
+            prompt: 当前提示词
+            intent: 意图字典
+            image_features: 原图特征
+        
+        Returns:
+            增强后的提示词
+        """
+        user_text = intent.get("original_text", "")
+        
+        # 1. 从原图特征构建保留词
+        preserve_parts = self._build_preserve_parts_from_features(image_features, user_text)
+        
+        # 2. 检查 prompt 是否已经是自然语言（需要转换）
+        prompt_lower = prompt.lower()
+        sentence_indicators = ['maintain', 'exchange', 'retain', 'keep', 'change', 'feature', 'outfit', 'gown']
+        is_natural = any(ind in prompt_lower for ind in sentence_indicators)
+        
+        # ✅ 修复：同时检测中文
+        has_chinese = any('\u4e00' <= char <= '\u9fff' for char in prompt)
+        
+        if is_natural or has_chinese:
+            # 自然语言 → 需要重新构建
+            # 提取服装关键词
+            clothes = []
+            for kw in ['qipao', '旗袍', 'dress', 'gown', 'hanfu', '礼服']:
+                if kw in prompt_lower or kw in user_text.lower():
+                    if 'qipao' in kw or '旗袍' in kw:
+                        clothes.append('qipao')
+                    elif 'hanfu' in kw:
+                        clothes.append('hanfu')
+                    elif 'gown' in kw or '礼服' in kw:
+                        clothes.append('evening gown')
+                    elif 'dress' in kw:
+                        clothes.append('dress')
+            clothes_str = ", ".join(clothes) if clothes else "qipao"
+            
+            # 构建标准提示词
+            result_parts = []
+            # 性别
+            gender = next((p for p in preserve_parts if p in ["1girl", "1boy", "2girls", "2boys"]), "1girl")
+            result_parts.append(gender)
+            # 保留词（除了性别）
+            other_parts = [p for p in preserve_parts if p not in ["1girl", "1boy", "2girls", "2boys"]]
+            result_parts.extend(other_parts)
+            # 服装
+            result_parts.append("wearing " + clothes_str)
+            # 质量词
+            result_parts.append("masterpiece")
+            result_parts.append("best quality")
+            result_parts.append("photorealistic")
+            result_parts.append("8k")
+            result_parts.append("highly detailed")
+            
+            return ", ".join(result_parts)
+        else:
+            # 3. 标准 SD 提示词 → 合并保留词
+            return self._merge_llm_prompt_with_features(prompt, preserve_parts)
+            
     def debug_test_llm(self):
         """调试测试 LLM（在 UI 中调用）"""
         import requests
@@ -1783,6 +1942,14 @@ class ChatTab(BaseTab):
         prompt = intent["prompt"]
         keywords = intent.get("keywords", {})
 
+        # ===== 🚀 新增：分析原图特征并增强提示词 =====
+        image_features = self._analyze_image_features(self.uploaded_image_path)
+        enhanced_prompt = self._enhance_prompt_with_features(prompt, intent, image_features)
+        if enhanced_prompt != prompt:
+            prompt = enhanced_prompt
+            intent["prompt"] = prompt
+            print(f"   ✅ 已结合原图特征增强提示词: {prompt[:150]}...")
+        
         # ===== 如果 LLM 增强失败，使用备用方案 =====
         if not intent.get("llm_enhanced"):
             # 使用关键词构建更丰富的提示词
