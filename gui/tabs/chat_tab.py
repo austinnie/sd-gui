@@ -1288,74 +1288,49 @@ class ChatTab(BaseTab):
             self.send_btn.config(state=tk.NORMAL)
             self.cancel_btn.config(state=tk.DISABLED)
             self.progress_bar.config(value=0)
-    
+        
 
     def _analyze_intent(self, text: str) -> dict:
-        """分析用户意图"""
+        """智能分析用户意图 - 自动判断，无需关键词"""
         print("\n" + "=" * 60)
-        print("🔍 [意图分析调试]")
+        print("🔍 [智能意图分析]")
         print(f"   用户输入: {text}")
 
         text_lower = text.lower()
         has_image = self.uploaded_image is not None
         
+        # ===== 1. 智能分类 =====
+        classification = self._classify_intent(text, has_image)
+        intent_type = classification["type"]
+        print(f"   📋 意图分类: {intent_type} (置信度: {classification.get('confidence', 'medium')})")
+        
+        # ===== 2. 提取关键词 =====
         keywords = self._extract_keywords(text)
         print(f"   提取的关键词: {keywords}")
         
-        # 检测延续性指令
-        continuation_keywords = ['再来', '继续', '换一个', '换一张', '再生成', '再来一张', 'another', 'continue']
+        # ===== 3. 判断是否为延续性指令 =====
+        continuation_keywords = ['再来', '继续', '换一个', '换一张', '再生成', 'another', 'continue']
         is_continuation = any(k in text_lower for k in continuation_keywords)
         
-        # ===== 🚀 修复：判断是否为图生图 =====
-        # 在 _analyze_intent 中，edit_keywords 添加：
-        edit_keywords = ['修改', '改', '换', '变成', '改成', '做成', '转换为', '转化', '制作成', 
-                         'edit', 'change', 'modify', '替换', '去除', '去掉', 'turn into', 'make into',
-                         '穿上', '换上', '穿着', '穿', '换衣服', '换装',
-                         '服装', '衣服', '衣服改成', '换成服装', '裙子', '上衣', '外套', '裤子',  # ✅ 新增
-                         '蕾丝', 'lace', '旗袍', '汉服', '礼服', '制服']  # ✅ 新增
-
-        # ✅ 新增：服装关键词（有图片时触发图生图）
-        clothing_keywords = ['服装', '衣服', '蕾丝', 'lace', '旗袍', '汉服', '礼服', '制服', 
-                             '裙子', '上衣', '外套', '裤子', '泳衣', '比基尼', '穿着', '穿上']
-                             
-        # ✅ 新增：姿势/动作关键词（如果有图片，这些词也应触发图生图）
-        pose_keywords = ['站立', '坐', '躺', '蹲', '跪', '弯腰', '回头', '侧身', '趴', '睡', 
-                         '奔跑', '走路', '跳舞', '拥抱', '接吻', '仰头', '低头', '托腮', '叉腰', '比心',
-                         'standing', 'sitting', 'lying', 'running', 'walking', 'dancing', 'pose',
-                         '服装', '衣服', '穿着', '蕾丝', 'lace']  # ✅ 新增
-        
-        # 判断是否有修改意图
-        has_edit_intent = any(k in text_lower for k in edit_keywords)
-        has_clothing_intent = has_image and any(k in text_lower for k in clothing_keywords)  # ✅ 新增
-        has_pose_intent = has_image and any(k in text_lower for k in pose_keywords)
-        
-        is_img2img = has_image and (has_edit_intent or has_clothing_intent or has_pose_intent)  # ✅ 包含服装意图
-        
-        # ===== 调用 LLM =====
+        # ===== 4. 调用 LLM 增强提示词 =====
         use_llm = self.llm_enabled.get() and self.llm_available
+        is_img2img = intent_type == "image_to_image"
         
         llm_result = None
         if use_llm:
             print("   🧠 正在调用 LLM 增强...")
-            self._append_message("system", "🧠 正在使用 LLM 增强提示词...")
+            self._append_message("system", "🧠 正在智能分析需求...")
             
             llm_result = self._llm_enhance_prompt(text, is_img2img)
             if llm_result:
                 print(f"   ✅ LLM 增强成功")
                 print(f"   📝 增强后提示词: {llm_result.get('prompt', '')[:100]}...")
-                if llm_result.get('negative'):
-                    print(f"   📝 负面提示词: {llm_result.get('negative', '')[:50]}...")
                 self._append_message("system", f"🧠 LLM 增强完成")
-                if llm_result.get('style'):
-                    self._append_message("system", f"🎨 风格: {llm_result['style']}")
-            else:
-                print("   ⚠️ LLM 增强失败，使用备用方案")
         
-        # ===== 构建最终提示词 =====
+        # ===== 5. 构建最终提示词 =====
         if llm_result and llm_result.get('prompt'):
             smart_prompt = llm_result['prompt']
-            negative_prompt = llm_result.get('negative', self._negative_templates["default"])
-            self._last_negative = negative_prompt
+            self._last_negative = llm_result.get('negative', self._negative_templates["default"])
             print(f"   ✅ 使用 LLM 生成的提示词")
         elif is_continuation and self.last_prompt:
             smart_prompt = self.last_prompt
@@ -1366,35 +1341,43 @@ class ChatTab(BaseTab):
             self._last_negative = self._negative_templates["default"]
             print(f"   📝 使用关键词构建提示词")
         
-        # ===== 判断意图类型 =====
-        gen_keywords = ['生成', '画', '创建', 'create', 'generate', '画一张', '生成一张']
+        # ===== 6. 智能参数优化 =====
+        image_features = None
+        if has_image and self.uploaded_image_path:
+            image_features = self._analyze_image_features(self.uploaded_image_path)
         
-        is_gen = any(k in text_lower for k in gen_keywords)
-        is_edit = any(k in text_lower for k in edit_keywords)
+        params = self._optimize_parameters(smart_prompt, intent_type, image_features)
+        print(f"   ⚙️ 优化参数: 步数={params['steps']}, CFG={params['cfg']}, 强度={params.get('strength', 'N/A')}")
         
-        # ===== 图生图处理（包含姿势意图） =====
-        if has_image and (is_edit or (not is_gen and has_pose_intent)):
-            actions = keywords.get("actions", [])
-            
-            if not llm_result or not llm_result.get('prompt'):
-                gender = keywords.get("genders", ["1girl"])[0]
+        # ===== 7. 图生图特殊处理 =====
+        if intent_type == "image_to_image":
+            # ✅ 修复：如果 LLM 已经生成了提示词，直接使用，不覆盖
+            if llm_result and llm_result.get('prompt'):
+                # LLM 已生成，直接使用
+                smart_prompt = llm_result['prompt']
+                print(f"   ✅ 保留 LLM 生成的提示词（不覆盖）")
+            else:
+                # 只有 LLM 失败时，才用关键词构建
+                actions = keywords.get("actions", [])
+                genders = keywords.get("genders", [])
+                gender = genders[0] if genders else "1woman"
                 
-                if "remove_clothes" in actions:
-                    smart_prompt = f"same person, same face, same pose, {gender}, nude, naked, bare skin, no clothes, without clothes, artistic nude, (masterpiece:1.2), (best quality:1.2)"
-                    self._last_negative = self._negative_templates["nude"]
-                    self._append_message("system", f"👗 检测到去衣指令")
-                elif "change_clothes" in actions and keywords.get("clothes"):
+                if "change_clothes" in actions and keywords.get("clothes"):
                     clothes_str = ", ".join(keywords["clothes"])
-                    smart_prompt = f"same person, same face, same pose, {gender}, wearing {clothes_str}, (masterpiece:1.2), (best quality:1.2)"
-                    self._append_message("system", f"👗 检测到换衣指令: {clothes_str}")
-                elif "change_background" in actions and keywords.get("scenes"):
-                    scene_str = ", ".join(keywords["scenes"])
-                    smart_prompt = f"same person, same face, same pose, {gender}, {scene_str} background, (masterpiece:1.2), (best quality:1.2)"
-                    self._append_message("system", f"🏠 检测到换背景指令: {scene_str}")
+                    smart_prompt = f"same person, same face, same pose, {gender}, wearing {clothes_str}"
+                    self._append_message("system", f"👗 检测到换装指令: {clothes_str}")
                 elif keywords.get("poses"):
                     pose_str = ", ".join(keywords["poses"])
-                    smart_prompt = f"same person, same face, {gender}, {pose_str} pose, (masterpiece:1.2), (best quality:1.2)"
+                    smart_prompt = f"same person, same face, {gender}, {pose_str} pose"
                     self._append_message("system", f"🧍 检测到姿势指令: {pose_str}")
+                elif "change_background" in actions and keywords.get("scenes"):
+                    scene_str = ", ".join(keywords["scenes"])
+                    smart_prompt = f"same person, same face, same pose, {gender}, {scene_str} background"
+                    self._append_message("system", f"🏠 检测到换背景指令: {scene_str}")
+                elif "change_style" in actions or any(k in text_lower for k in ['风格', '油画', '水彩', '动漫']):
+                    style = self._detect_style_from_text(text)
+                    smart_prompt = f"same person, same face, same pose, {gender}, {style} style"
+                    self._append_message("system", f"🎨 检测到风格转换: {style}")
                 else:
                     smart_prompt = f"same person, same face, same pose, {gender}, {smart_prompt}"
             
@@ -1404,32 +1387,40 @@ class ChatTab(BaseTab):
                 "keywords": keywords,
                 "original_text": text,
                 "is_continuation": is_continuation,
-                "llm_enhanced": llm_result is not None
+                "llm_enhanced": llm_result is not None,
+                "params": params,
             }
             print(f"   分析结果: {result['type']}")
             print(f"   提示词: {result['prompt'][:150]}...")
             print(f"   LLM增强: {result['llm_enhanced']}")
             print("=" * 60 + "\n")
             return result
+        
+        # ===== 8. 文生图处理 =====
+        elif intent_type == "text_to_image":
+            quality_prefix = "masterpiece, best quality"
+            if "photorealistic" not in smart_prompt:
+                quality_prefix += ", photorealistic"
+            smart_prompt = f"{quality_prefix}, {smart_prompt}"
             
-        elif is_gen or (not is_edit and len(text) > 10):
             result = {
                 "type": "text_to_image",
                 "prompt": smart_prompt,
                 "keywords": keywords,
                 "original_text": text,
                 "is_continuation": is_continuation,
-                "llm_enhanced": llm_result is not None
+                "llm_enhanced": llm_result is not None,
+                "params": params,
             }
             print(f"   分析结果: {result['type']}")
             print(f"   提示词: {result['prompt'][:150]}...")
             print(f"   LLM增强: {result['llm_enhanced']}")
             print("=" * 60 + "\n")
             return result
-            
+        
+        # ===== 9. 对话 =====
         else:
-            # 对话
-            if self.llm_enabled.get() and self.llm_available:
+            if use_llm:
                 reply = self._call_ollama(f"用户说：{text}\n请简短友好地回复（一句话）：", timeout=15, max_tokens=128)
                 if reply:
                     result = {
@@ -1437,19 +1428,170 @@ class ChatTab(BaseTab):
                         "original_text": text,
                         "llm_reply": reply
                     }
-                    print(f"   分析结果: {result['type']}")
-                    print(f"   LLM回复: {reply}")
-                    print("=" * 60 + "\n")
                     return result
             
             result = {
                 "type": "chat",
                 "original_text": text
             }
-            print(f"   分析结果: {result['type']}")
-            print("=" * 60 + "\n")
             return result
         
+        
+    def _detect_style_from_text(self, text: str) -> str:
+        """从文本中检测风格"""
+        text_lower = text.lower()
+        
+        style_map = {
+            '油画': 'oil painting',
+            '水彩': 'watercolor',
+            '素描': 'sketch',
+            '动漫': 'anime',
+            '卡通': 'cartoon',
+            '写实': 'photorealistic',
+            '国风': 'chinese traditional',
+            '古风': 'ancient chinese',
+            '赛博朋克': 'cyberpunk',
+            '蒸汽朋克': 'steampunk',
+            '哥特': 'gothic',
+            '暗黑': 'dark',
+            '唯美': 'aesthetic',
+            '梦幻': 'dreamy',
+            '复古': 'vintage',
+            '现代': 'modern',
+            '抽象': 'abstract',
+        }
+        
+        for cn, en in style_map.items():
+            if cn in text_lower:
+                return en
+        
+        return "realistic"  # 默认
+    
+    def _classify_intent(self, text: str, has_image: bool) -> dict:
+        """
+        智能意图分类 - 无需用户说"生成"/"换成"等关键词
+        自动判断用户想要什么
+        """
+        text_lower = text.lower()
+        
+        # ===== 1. 检测是否包含图片描述（文生图） =====
+        # 如果用户描述了一个场景/物体/人物，但没有明确说"生成"
+        image_descriptors = [
+            # 场景词
+            '在沙滩', '在海边', '在花园', '在森林', '在城市', '在街道', '在卧室', '在浴室',
+            '在舞台', '在宫殿', '在城堡', '在雨中', '在雪地', '在日落', '在星空下',
+            # 动作词
+            '站着', '坐着', '躺着', '蹲着', '跪着', '弯腰', '回头', '侧身',
+            '奔跑', '走路', '跳舞', '拥抱', '接吻', '睡觉',
+            # 风格词
+            '动漫风格', '油画风格', '水彩风格', '写实风格', '赛博朋克', '古风', '复古',
+            # 服装词
+            '穿着', '戴着', '披着', '身着', '礼服', '婚纱', '旗袍', '汉服',
+            # 情感/氛围
+            '微笑', '严肃', '忧郁', '诱惑', '可爱', '性感', '优雅', '梦幻',
+        ]
+        
+        # ===== 2. 检测是否是修改指令（图生图） =====
+        edit_indicators = [
+            '变成', '改为', '换成', '改成', '换', '改', '修改', '调整',
+            '穿', '戴上', '脱下', '去掉', '去除',
+            '更', '更加', '多一点', '少一点',
+        ]
+        
+        # ===== 3. 检测是否是风格转换 =====
+        style_indicators = [
+            '风格', '画风', '质感', '样式', 'styl',
+            '油画', '水彩', '素描', '动漫', '写实', '国风', '卡通',
+            '赛博朋克', '蒸汽朋克', '哥特', '暗黑', '唯美',
+        ]
+        
+        has_edit = any(k in text_lower for k in edit_indicators)
+        has_style = any(k in text_lower for k in style_indicators)
+        has_description = any(k in text_lower for k in image_descriptors)
+        
+        # 如果包含"生成""画""创建"等明确指令，直接文生图
+        explicit_gen = any(k in text_lower for k in ['生成', '画', '创建', 'create', 'generate', 'draw'])
+        
+        # 如果有图片且包含编辑词，或包含风格词，或包含服装/姿势修改 → 图生图
+        if has_image and (has_edit or has_style):
+            return {"type": "image_to_image", "confidence": "high"}
+        
+        # 如果有图片且包含描述词（用户可能想换装/换姿势）
+        if has_image and has_description:
+            return {"type": "image_to_image", "confidence": "medium"}
+        
+        # 如果包含明确生成指令或描述词 → 文生图
+        if explicit_gen or has_description or len(text) > 5:
+            return {"type": "text_to_image", "confidence": "high"}
+        
+        # 其他 → 对话
+        return {"type": "chat", "confidence": "low"}
+    
+    def _optimize_parameters(self, prompt: str, intent_type: str, image_features: dict = None) -> dict:
+        """
+        智能参数优化 - 自动根据内容调整参数
+        """
+        prompt_lower = prompt.lower()
+        params = {}
+        
+        # ===== 1. 自动判断步数 =====
+        if any(k in prompt_lower for k in ['快速', '快', '预览', '草稿']):
+            params["steps"] = 8
+        elif any(k in prompt_lower for k in ['高质量', '精美', '细致', '大师', '杰作']):
+            params["steps"] = 30
+        elif any(k in prompt_lower for k in ['动漫', '卡通', '二次元']):
+            params["steps"] = 16
+        elif any(k in prompt_lower for k in ['写实', '真实', '照片']):
+            params["steps"] = 24
+        else:
+            params["steps"] = 20  # 默认
+        
+        # ===== 2. 自动判断 CFG =====
+        if any(k in prompt_lower for k in ['抽象', '梦幻', '随意']):
+            params["cfg"] = 5.0
+        elif any(k in prompt_lower for k in ['写实', '真实', '照片']):
+            params["cfg"] = 8.0
+        elif any(k in prompt_lower for k in ['动漫', '卡通']):
+            params["cfg"] = 6.5
+        else:
+            params["cfg"] = 7.5  # 默认
+        
+        # ===== 3. 自动判断尺寸 =====
+        if any(k in prompt_lower for k in ['肖像', '头像', '特写', '脸部']):
+            params["width"], params["height"] = 512, 640
+            params["size_msg"] = "肖像模式（竖图）"
+        elif any(k in prompt_lower for k in ['全身', '站立', '整体']):
+            params["width"], params["height"] = 512, 768
+            params["size_msg"] = "全身照（竖图）"
+        elif any(k in prompt_lower for k in ['风景', '场景', '全景', '横']):
+            params["width"], params["height"] = 896, 512
+            params["size_msg"] = "风景模式（横图）"
+        elif any(k in prompt_lower for k in ['双人', '多人', '情侣']):
+            params["width"], params["height"] = 640, 896
+            params["size_msg"] = "双人照（竖图）"
+        else:
+            params["width"], params["height"] = 512, 768
+            params["size_msg"] = "默认竖图"
+        
+        # ===== 4. 图生图强度自动调整 =====
+        if intent_type == "image_to_image":
+            if any(k in prompt_lower for k in ['微调', '轻微', '稍微']):
+                params["strength"] = 0.25
+            elif any(k in prompt_lower for k in ['大幅', '完全', '改变']):
+                params["strength"] = 0.55
+            elif any(k in prompt_lower for k in ['风格', '风格转换']):
+                params["strength"] = 0.50
+            elif any(k in prompt_lower for k in ['换装', '换衣服', '换背景']):
+                params["strength"] = 0.35
+            else:
+                params["strength"] = 0.40  # 默认
+            
+            # 如果有面部，限制强度
+            if image_features and image_features.get("has_face"):
+                params["strength"] = min(params["strength"], 0.35)
+        
+        return params
+    
     def _extract_keywords(self, text: str) -> dict:
         """提取关键词（增强版）"""
         text_lower = text.lower()
@@ -1989,6 +2131,25 @@ class ChatTab(BaseTab):
             return
         
         prompt = intent["prompt"]
+        # ===== ✅ 先获取 image_features =====
+        image_features = self._analyze_image_features(self.uploaded_image_path)
+        
+        # ===== ✅ 然后使用 params =====
+        params = intent.get("params", {})        
+        if not params:
+            params = self._optimize_parameters(prompt, "image_to_image", image_features)
+
+        # 使用 params 中的值
+        steps = params.get("steps", 20)
+        cfg = params.get("cfg", 7.5)
+        strength = params.get("strength", 0.35)
+        
+        # 尺寸
+        width = params.get("width", 512)
+        height = params.get("height", 768)
+        
+        self._append_message("system", f"⚙️ 自动参数: 步数={steps}, CFG={cfg}, 强度={strength}")
+        
         # 如果 LLM 生成了太多风格词，精简它
         if intent.get("llm_enhanced"):
             # 移除可能导致风格变化的词
@@ -2001,10 +2162,7 @@ class ChatTab(BaseTab):
             intent["prompt"] = prompt
             print(f"   ✂️ 精简风格词后: {prompt[:100]}...")
         
-        keywords = intent.get("keywords", {})
 
-        # ===== 🚀 新增：分析原图特征并增强提示词 =====
-        image_features = self._analyze_image_features(self.uploaded_image_path)
         enhanced_prompt = self._enhance_prompt_with_features(prompt, intent, image_features)
         if enhanced_prompt != prompt:
             prompt = enhanced_prompt
@@ -2019,6 +2177,12 @@ class ChatTab(BaseTab):
                 prompt = enhanced_prompt
                 print(f"   📝 使用备用增强提示词: {prompt[:150]}...")
             
+        
+        keywords = intent.get("keywords", {})
+
+        # ===== 🚀 新增：分析原图特征并增强提示词 =====
+        #image_features = self._analyze_image_features(self.uploaded_image_path)
+        
         # 检测材质转换
         if keywords.get("is_statue") or "transform_material" in keywords.get("actions", []):
             materials = keywords.get("materials", [])
