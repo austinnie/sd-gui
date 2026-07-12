@@ -335,82 +335,49 @@ class ChatTab(BaseTab):
             self._append_message("system", f"❌ 测试失败: {e}")
         
     def _llm_enhance_prompt(self, text: str, is_img2img: bool = False) -> dict:
-        """
-        🚀 使用 LLM 全面增强提示词
-        返回: {
-            "prompt": 增强后的提示词,
-            "negative": 负面提示词,
-            "style": 检测到的风格,
-            "quality": 质量词
-        }
-        """
+        """使用 LLM 增强提示词"""
         if not self.llm_available or not self.llm_enabled.get():
             return None
         
-        # 检查缓存
         cache_key = f"{text}_{is_img2img}"
         if cache_key in self._enhanced_prompt_cache:
-            print(f"   📦 使用缓存的 LLM 结果")
             return self._enhanced_prompt_cache[cache_key]
         
-        # ✅ 构建更详细的提示词模板 - 针对图生图优化
+        # ✅ 更严格的提示词模板
         if is_img2img:
             prompt_template = """你是一个专业的 Stable Diffusion 提示词专家。用户想修改一张图片，请生成高质量的图生图提示词。
 
     用户需求：{text}
 
-    【重要规则】
-    1. 必须保留原始人物的核心特征：same person, same face, same pose, same identity
-    2. 根据用户需求精确修改（换衣服、换背景、改风格等）
-    3. 添加详细的质量词和风格词
-    4. 只输出提示词，不要解释
-    5. 提示词要具体、详细、有画面感
+    【严格规则 - 必须遵守】
+    1. 只输出英文提示词，用英文逗号分隔，不要有任何中文
+    2. 必须包含：same person, same face, same pose
+    3. 必须包含质量词：masterpiece, best quality, photorealistic, 8k, highly detailed
+    4. 根据用户需求添加具体描述（服装、场景、风格等）
+    5. 不要有任何解释、说明或完整句子，只输出提示词列表
+    6. 提示词示例格式：1girl, masterpiece, best quality, photorealistic, wearing qipao, elegant, traditional chinese
 
     【输出格式】
     正面提示词：xxx
     负面提示词：xxx
     风格：xxx"""
-        else:
-            prompt_template = """你是一个专业的 Stable Diffusion 提示词专家。请根据用户描述生成高质量的文生图提示词。
-
-    用户描述：{text}
-
-    【重要规则】
-    1. 生成详细、具体、有画面感的提示词
-    2. 包含：主体描述、场景、光线、风格、构图、色彩、情绪
-    3. 添加高质量修饰词
-    4. 提示词用英文，用逗号分隔
-    5. 只输出提示词，不要解释
-
-    【输出格式】
-    正面提示词：xxx
-    负面提示词：xxx
-    风格：xxx
-    质量：xxx"""
 
         prompt = prompt_template.format(text=text)
-        print(f"   📤 发送到 LLM: {prompt[:100]}...")
-        
-        result = self._call_ollama(prompt, timeout=25, max_tokens=512)
+        result = self._call_ollama(prompt, timeout=30, max_tokens=256)
         
         if not result:
-            print(f"   ❌ LLM 返回空结果")
             return None
         
-        print(f"   📥 LLM 原始响应: {result[:200]}...")
-        
-        # ✅ 解析 LLM 输出
         parsed = self._parse_llm_response(result)
         
         if parsed and parsed.get('prompt'):
-            # 缓存结果
             self._enhanced_prompt_cache[cache_key] = parsed
-            print(f"   ✅ 解析成功")
             return parsed
         
-        print(f"   ❌ 解析失败")
         return None
-    
+
+
+
     def _parse_llm_response(self, response: str) -> dict:
         """解析 LLM 返回的结构化提示词"""
         lines = response.strip().split('\n')
@@ -467,7 +434,125 @@ class ChatTab(BaseTab):
             else:
                 return None
         
-        # ✅ 确保有质量词
+        # ===== 🚀 新增：检测自然语言并转换为 SD 格式 =====
+        prompt_text = result['prompt']
+        
+        # 检测是否是自然语言（包含完整句子的特征）
+        sentence_indicators = [
+            'maintain', 'exchange', 'retain', 'keep', 'change', 
+            'feature', 'outfit', 'formal', 'gown', 'the woman',
+            'the man', 'the person', 'the image', 'the picture'
+        ]
+        is_natural_language = any(ind in prompt_text.lower() for ind in sentence_indicators)
+        
+        # 检测是否包含中文（也是自然语言的特征）
+        has_chinese = any('\u4e00' <= char <= '\u9fff' for char in prompt_text)
+        
+        if is_natural_language or has_chinese:
+            print(f"   ⚠️ 检测到自然语言格式，正在转换为 SD 提示词...")
+            print(f"   📝 原始: {prompt_text[:100]}...")
+            
+            # 提取性别
+            gender = "1girl"
+            if "woman" in prompt_text.lower() or "female" in prompt_text.lower() or "her" in prompt_text.lower():
+                gender = "1girl"
+            elif "man" in prompt_text.lower() or "male" in prompt_text.lower() or "him" in prompt_text.lower():
+                gender = "1boy"
+            
+            # ✅ 修复：定义 prompt_parts 列表
+            prompt_parts = []
+            
+            # 1. 性别
+            prompt_parts.append(gender)
+            
+            # 2. 保留人物特征（图生图）
+            prompt_parts.append("same person")
+            prompt_parts.append("same face")
+            prompt_parts.append("same pose")
+            
+            # 3. 提取服装关键词
+            clothes_keywords = []
+            clothes_map = {
+                '旗袍': 'qipao',
+                'qipao': 'qipao',
+                '汉服': 'hanfu',
+                '礼服': 'evening gown',
+                'dress': 'dress',
+                'gown': 'evening gown',
+                '裙子': 'dress',
+                '西装': 'suit',
+                '制服': 'uniform',
+                '泳衣': 'swimsuit',
+                '比基尼': 'bikini',
+            }
+            for cn, en in clothes_map.items():
+                if cn in prompt_text.lower():
+                    if en not in clothes_keywords:
+                        clothes_keywords.append(en)
+            
+            if clothes_keywords:
+                prompt_parts.append("wearing " + ", ".join(clothes_keywords))
+            else:
+                # 如果没有任何服装关键词，添加默认的 qipao
+                prompt_parts.append("wearing qipao")
+            
+            # 4. 提取场景关键词
+            scene_keywords = []
+            scenes_map = {
+                '沙滩': 'beach',
+                '海滩': 'beach',
+                '海边': 'ocean',
+                '花园': 'garden',
+                '森林': 'forest',
+                '城市': 'city',
+                '卧室': 'bedroom',
+                '浴室': 'bathroom',
+                '舞台': 'stage',
+                '宫殿': 'palace',
+            }
+            for cn, en in scenes_map.items():
+                if cn in prompt_text.lower():
+                    if en not in scene_keywords:
+                        scene_keywords.append(en)
+            if scene_keywords:
+                prompt_parts.extend(scene_keywords)
+            
+            # 5. 提取风格关键词
+            style_keywords = []
+            styles_map = {
+                '现代': 'modern style',
+                '传统': 'traditional style',
+                '复古': 'vintage style',
+                '优雅': 'elegant style',
+                '性感': 'sexy style',
+                '可爱': 'cute style',
+                '梦幻': 'dreamy style',
+                '暗黑': 'dark style',
+                '古风': 'traditional chinese style',
+                '东方': 'eastern style',
+                '中国风': 'chinese style',
+            }
+            for cn, en in styles_map.items():
+                if cn in prompt_text.lower():
+                    if en not in style_keywords:
+                        style_keywords.append(en)
+            if style_keywords:
+                prompt_parts.extend(style_keywords)
+            
+            # 6. 质量词
+            prompt_parts.append("masterpiece")
+            prompt_parts.append("best quality")
+            prompt_parts.append("photorealistic")
+            prompt_parts.append("8k")
+            prompt_parts.append("highly detailed")
+            
+            # 组合成最终提示词
+            new_prompt = ", ".join(prompt_parts)
+            result['prompt'] = new_prompt
+            
+            print(f"   ✅ 转换后提示词: {new_prompt}")
+        
+        # ✅ 确保有质量词（如果还没有）
         if 'masterpiece' not in result['prompt'].lower() and 'best quality' not in result['prompt'].lower():
             result['prompt'] = f"masterpiece, best quality, photorealistic, 8k, highly detailed, {result['prompt']}"
         
@@ -476,7 +561,7 @@ class ChatTab(BaseTab):
             result['negative'] = self._negative_templates["default"]
         
         return result
-
+    
     def _enhance_prompt_with_context(self, base_prompt: str, keywords: dict) -> str:
         """使用上下文和关键词增强提示词"""
         
@@ -510,8 +595,9 @@ class ChatTab(BaseTab):
             prompt_parts = genders + prompt_parts
         
         # 4. ✅ 修复：加入 base_prompt 中的核心描述
-        # 如果 base_prompt 不是空的，且不包含在已构建的提示词中，加入它
-        if base_prompt and base_prompt not in ", ".join(prompt_parts):
+        # 将 prompt_parts 转为字符串检查
+        current_prompt = ", ".join(prompt_parts)
+        if base_prompt and base_prompt not in current_prompt:
             prompt_parts.append(base_prompt)
         
         # 5. 风格
@@ -549,7 +635,6 @@ class ChatTab(BaseTab):
                 full_prompt += f", {style} style"
         
         return full_prompt
-    
     
     # ==================== UI 设置 ====================
     
@@ -1082,23 +1167,28 @@ class ChatTab(BaseTab):
         
         # ===== 图生图处理 =====
         if has_image and is_edit:
-            # 检查特殊指令
             actions = keywords.get("actions", [])
             
             # ✅ 如果 LLM 已经生成了提示词，不要覆盖
             if not llm_result or not llm_result.get('prompt'):
+                # ✅ 确保有性别词
+                gender = keywords.get("genders", ["1girl"])[0]
+                
                 if "remove_clothes" in actions:
-                    smart_prompt = f"same person, same face, same pose, nude, naked, bare skin, no clothes, without clothes, artistic nude, (masterpiece:1.2), (best quality:1.2)"
+                    smart_prompt = f"same person, same face, same pose, {gender}, nude, naked, bare skin, no clothes, without clothes, artistic nude, (masterpiece:1.2), (best quality:1.2)"
                     self._last_negative = self._negative_templates["nude"]
                     self._append_message("system", f"👗 检测到去衣指令")
                 elif "change_clothes" in actions and keywords.get("clothes"):
                     clothes_str = ", ".join(keywords["clothes"])
-                    smart_prompt = f"same person, same face, same pose, wearing {clothes_str}, (masterpiece:1.2), (best quality:1.2)"
+                    smart_prompt = f"same person, same face, same pose, {gender}, wearing {clothes_str}, (masterpiece:1.2), (best quality:1.2)"
                     self._append_message("system", f"👗 检测到换衣指令: {clothes_str}")
                 elif "change_background" in actions and keywords.get("scenes"):
                     scene_str = ", ".join(keywords["scenes"])
-                    smart_prompt = f"same person, same face, same pose, {scene_str} background, (masterpiece:1.2), (best quality:1.2)"
+                    smart_prompt = f"same person, same face, same pose, {gender}, {scene_str} background, (masterpiece:1.2), (best quality:1.2)"
                     self._append_message("system", f"🏠 检测到换背景指令: {scene_str}")
+                else:
+                    # ✅ 默认也加上性别
+                    smart_prompt = f"same person, same face, same pose, {gender}, {smart_prompt}"
             
             result = {
                 "type": "image_to_image",
