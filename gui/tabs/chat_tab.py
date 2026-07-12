@@ -15,8 +15,7 @@ from datetime import datetime
 from PIL import Image, ImageTk
 import torch
 
-# ===== 🚀 方案2：设置 Hugging Face 缓存环境变量 =====
-# ✅ 使用统一的缓存目录 E:\hf_cache\.cache（与 run_marble.py 保持一致）
+# ===== Hugging Face 缓存配置 =====
 CACHE_ROOT = r"E:\hf_cache\.cache"
 os.makedirs(CACHE_ROOT, exist_ok=True)
 
@@ -25,17 +24,16 @@ os.environ["HF_HUB_CACHE"] = os.path.join(CACHE_ROOT, "hub")
 os.environ["U2NET_HOME"] = os.path.join(CACHE_ROOT, "u2net")
 os.environ["DEEPFACE_HOME"] = os.path.join(CACHE_ROOT, "deepface")
 
-# 确保所有目录存在
 for env_var in ['HF_HOME', 'HF_HUB_CACHE', 'U2NET_HOME', 'DEEPFACE_HOME']:
     path = os.environ.get(env_var)
     if path:
         os.makedirs(path, exist_ok=True)
         print(f"   ✅ {env_var} = {path}")
 
-
 from .base_tab import BaseTab
 from gui.components.memory_monitor import force_memory_cleanup
 import tempfile
+
 
 class ChatTab(BaseTab):
     """智能会话标签页"""
@@ -47,7 +45,7 @@ class ChatTab(BaseTab):
         "boobs.safetensors",
         "chunli.safetensors",
     ]
-    
+
     def __init__(self, parent, app):
         super().__init__(parent, app)
         self.params = app.params_panel
@@ -56,33 +54,31 @@ class ChatTab(BaseTab):
 
         # ✅ 延迟加载 LoRA（等待模型就绪）
         self.app.root.after(2000, self._auto_load_default_lora)
-        
-        # ✅ 延迟检测 LLM（给程序启动留时间）
+
+        # ✅ 延迟检测 LLM
         self.app.root.after(3000, self._check_ollama)
-    
+
         self._append_message("assistant", "👋 你好！我是智能生图助手\n\n我可以帮你：\n• 📝 文生图 - 输入描述生成图片\n• 🖼️ 图生图 - 上传图片并修改\n• 💬 自由对话 - 回答你的问题\n\n试试输入：\"生成一张美女在沙滩上的图片\"")
-        
+
         # 绑定快捷键
         self.input_text.bind("<Control-Return>", self._on_send)
         self.input_text.bind("<Return>", self._on_send_shift_check)
-    
+
     def _init_vars(self):
         """初始化变量"""
         self.is_generating = False
         self.cancel_generation = False
-        
-        self.uploaded_image_paths = []  # ✅ 改为列表，支持多张
-        self.uploaded_images = []       # ✅ 多张图片        
-        self.uploaded_image = None      # ✅ 保留兼容性（第一张）
-        self.uploaded_image_path = None # ✅ 保留兼容性（第一张路径）
-        
-        self.messages = []  # 对话历史
-        
-        self.chat_context = {}  # 上下文信息
+
+        self.uploaded_image_paths = []
+        self.uploaded_images = []
+        self.uploaded_image = None
+        self.uploaded_image_path = None
+
+        self.messages = []
+        self.chat_context = {}
         self._is_loading_model = False
-        # 会话生图参数
-        self.chat_steps_var = tk.IntVar(value=20)  # 默认 20 步，提高质量
-        self.chat_cfg_var = tk.DoubleVar(value=7.5)  
+        self.chat_steps_var = tk.IntVar(value=20)
+        self.chat_cfg_var = tk.DoubleVar(value=7.5)
         self._last_negative = None
         self._pending_intent = None
 
@@ -95,7 +91,7 @@ class ChatTab(BaseTab):
             "style": None,
             "scene": None,
             "gender": None,
-            "quality": "high",  # 新增：质量偏好
+            "quality": "high",
         }
 
         # 本地 LLM 配置
@@ -111,17 +107,18 @@ class ChatTab(BaseTab):
         self.lora_paths = {}
         self.current_lora_path = None
         self.lora_loaded = False
-        
-        # ✅ 新增：缓存增强后的提示词
+
+        # 缓存
         self._enhanced_prompt_cache = {}
-        
-        # ✅ 新增：负面提示词模板
+
+        # 负面提示词模板
         self._negative_templates = {
             "default": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, watermark, text, extra limbs, bad proportions, bad hands, missing fingers, extra fingers",
             "portrait": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, watermark, text, extra limbs, bad proportions, bad hands, bad face, distorted face",
             "landscape": "worst quality, low quality, ugly, deformed, blurry, watermark, text, bad composition, cluttered",
             "nude": "clothes, fabric, dress, shirt, pants, underwear, bra, panties, bikini, swimsuit, covering, censorship, mosaic",
         }
+
     # ==================== LoRA 管理 ====================
 
     def _scan_lora_files(self):
@@ -265,1081 +262,22 @@ class ChatTab(BaseTab):
             name = os.path.basename(self.current_lora_path)
             self.lora_status_label.config(text=f"🟢 {name}", foreground="green")
         else:
-            self.lora_status_label.config(text="🔴 未加载", foreground="red")        
-     
+            self.lora_status_label.config(text="🔴 未加载", foreground="red")
 
-    def _detect_couple_intent(self, text: str) -> bool:
-        """检测是否想要合成双人图"""
-        keywords = ['和', '与', '一起', '两人', '双人', '情侣', 'couple', 'together',
-                    '拥抱', '牵手', '接吻', '依偎', '并肩', '合成', '合并', '合并成一张']
-        return any(k in text for k in keywords)
-
-    def _detect_action_from_text(self, text: str) -> str:
-        """从文本中检测动作"""
-        action_map = {
-            '拥抱': 'hugging each other',
-            '牵手': 'holding hands',
-            '接吻': 'kissing',
-            '依偎': 'cuddling',
-            '并肩': 'standing side by side',
-            '背靠背': 'back to back',
-            '跳舞': 'dancing together',
-            '对视': 'looking at each other',
-        }
-        text_lower = text.lower()
-        for cn, en in action_map.items():
-            if cn in text_lower:
-                return en
-        return "standing together"
-
-    def _handle_couple_generation(self, intent: dict):
-        """处理双人合成"""
-        if len(self.uploaded_images) < 2:
-            self._append_message("assistant", "❌ 请上传两张图片（一男一女）")
-            return
-        
-        self._append_message("system", "👫 正在合成双人图片...")
-        
-        try:
-            prompt = intent["prompt"]
-            action = intent.get("action", "standing together")
-            
-            # ===== 1. 提取两个人的姿态 =====
-            pose_image = self._extract_couple_pose(
-                self.uploaded_image_paths[0],
-                self.uploaded_image_paths[1]
-            )
-            
-            if pose_image:
-                self._append_message("system", "🦴 已提取双人姿态图")
-                # 使用 ControlNet 生成
-                params = intent.get("params", {})
-                self._handle_controlnet_generation(prompt, pose_image, intent, params)
-                return
-            else:
-                self._append_message("system", "⚠️ 姿态提取失败，使用普通图生图")
-                # 降级到普通图生图
-                self._handle_couple_img2img(intent)
-                
-        except Exception as e:
-            self._append_message("assistant", f"❌ 双人合成失败: {str(e)}")
-            import traceback
-            traceback.print_exc()
-        
-
-    def _extract_couple_pose(self, img1_path: str, img2_path: str) -> Image.Image:
-        """提取双人姿态图"""
-        try:
-            import cv2
-            import numpy as np
-            from PIL import Image
-            
-            # ===== 方案1：使用 OpenPose 检测双人 =====
-            try:
-                from controlnet_aux import OpenPoseDetector
-                detector = OpenPoseDetector.from_pretrained("lllyasviel/ControlNet")
-                
-                # 分别检测两个人的骨骼
-                img1 = cv2.imread(img1_path)
-                img2 = cv2.imread(img2_path)
-                
-                # 检测第一个人
-                pose1 = detector(img1, output_type="pil")
-                # 检测第二个人
-                pose2 = detector(img2, output_type="pil")
-                
-                # 合并两张姿态图
-                combined = self._merge_pose_images(pose1, pose2)
-                return combined
-                
-            except ImportError:
-                print("   ⚠️ controlnet_aux 未安装，使用备用方案")
-                pass
-            
-            # ===== 方案2：使用 MediaPipe 检测双人 =====
-            try:
-                import mediapipe as mp
-                
-                img1 = cv2.imread(img1_path)
-                img2 = cv2.imread(img2_path)
-                h, w = img1.shape[:2]
-                
-                mp_pose = mp.solutions.pose
-                with mp_pose.Pose(static_image_mode=True) as pose:
-                    # 检测第一个人
-                    results1 = pose.process(cv2.cvtColor(img1, cv2.COLOR_BGR2RGB))
-                    # 检测第二个人
-                    results2 = pose.process(cv2.cvtColor(img2, cv2.COLOR_BGR2RGB))
-                    
-                    # 创建空白画布
-                    combined_img = np.zeros((h, w * 2, 3), dtype=np.uint8)
-                    
-                    # 绘制第一个人（左半部分）
-                    if results1.pose_landmarks:
-                        # 绘制骨骼...
-                        pass
-                    
-                    # 绘制第二个人（右半部分）
-                    if results2.pose_landmarks:
-                        # 绘制骨骼...
-                        pass
-                    
-                    return Image.fromarray(combined_img)
-                    
-            except ImportError:
-                print("   ⚠️ mediapipe 未安装")
-                pass
-            
-            # ===== 方案3：最简备用 - 边缘检测 =====
-            img1 = cv2.imread(img1_path)
-            img2 = cv2.imread(img2_path)
-            
-            gray1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
-            gray2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
-            
-            edges1 = cv2.Canny(gray1, 50, 150)
-            edges2 = cv2.Canny(gray2, 50, 150)
-            
-            # 水平拼接
-            combined_edges = np.hstack([edges1, edges2])
-            return Image.fromarray(combined_edges)
-            
-        except Exception as e:
-            print(f"⚠️ 双人姿态提取失败: {e}")
-            return None
-
-    def _merge_pose_images(self, pose1: Image.Image, pose2: Image.Image) -> Image.Image:
-        """合并两张姿态图"""
-        import numpy as np
-        from PIL import Image
-        
-        # 确保尺寸一致
-        w1, h1 = pose1.size
-        w2, h2 = pose2.size
-        
-        # 缩放使高度一致
-        if h1 != h2:
-            if h1 > h2:
-                pose2 = pose2.resize((int(w2 * h1 / h2), h1))
-            else:
-                pose1 = pose1.resize((int(w1 * h2 / h1), h2))
-        
-        # 水平拼接
-        combined = Image.new('RGB', (pose1.width + pose2.width, pose1.height))
-        combined.paste(pose1, (0, 0))
-        combined.paste(pose2, (pose1.width, 0))
-        
-        return combined
-
-    def _handle_couple_img2img(self, intent: dict):
-        """备用方案：普通双人图生图"""
-        try:
-            from utils.pipeline_pool import pipeline_pool
-            from datetime import datetime
-            import random
-            
-            prompt = intent["prompt"]
-            params = intent.get("params", {})
-            
-            # 获取模型
-            model_name = self.app.model_var.get()
-            model_path = self.app._get_model_path(model_name)
-            
-            # 获取 LoRA
-            lora_path = None
-            lora_weight = 1.0
-            if hasattr(self.app, 'lora_var') and hasattr(self.app, 'lora_paths'):
-                lora_display = self.app.lora_var.get()
-                if lora_display:
-                    lora_path = self.app.lora_paths.get(lora_display)
-                    lora_weight = self.app.lora_weight_var.get()
-            
-            task_id = f"couple_{datetime.now().strftime('%H%M%S')}"
-            
-            pipe, is_new = pipeline_pool.get_pipeline(
-                model_path=model_path,
-                model_name=model_name,
-                lora_path=lora_path,
-                lora_weight=lora_weight,
-                task_id=task_id
-            )
-            
-            if pipe is None:
-                self._append_message("assistant", "❌ 无法获取 Pipeline")
-                return
-            
-            # 准备双人输入图
-            # 将两张图水平拼接作为输入
-            img1 = self.uploaded_images[0].convert('RGB')
-            img2 = self.uploaded_images[1].convert('RGB')
-            
-            # 缩放使高度一致
-            h1, w1 = img1.size
-            h2, w2 = img2.size
-            target_h = min(h1, h2, 512)
-            
-            img1 = img1.resize((int(w1 * target_h / h1), target_h))
-            img2 = img2.resize((int(w2 * target_h / h2), target_h))
-            
-            # 水平拼接
-            combined_img = Image.new('RGB', (img1.width + img2.width, target_h))
-            combined_img.paste(img1, (0, 0))
-            combined_img.paste(img2, (img1.width, 0))
-            
-            # 生成
-            steps = params.get("steps", 20)
-            cfg = params.get("cfg", 7.5)
-            strength = 0.5  # 双人合成用稍高强度
-            
-            seed = random.randint(1, 2**32 - 1)
-            generator = torch.Generator("cpu").manual_seed(seed)
-            
-            result = pipe(
-                prompt=prompt,
-                negative_prompt=self._negative_templates["default"],
-                image=combined_img,
-                strength=strength,
-                num_inference_steps=steps,
-                guidance_scale=cfg,
-                generator=generator,
-                num_images_per_prompt=1
-            )
-            
-            # 保存图片
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"{timestamp}_couple_{intent.get('action', 'together')}.png"
-            
-            from config.app_config import app_config
-            output_dir = app_config.paths.output_dir
-            os.makedirs(output_dir, exist_ok=True)
-            filepath = os.path.join(output_dir, filename)
-            result.images[0].save(filepath)
-            
-            self._append_image_result(filepath)
-            self._append_message("assistant", f"✅ 双人合成完成！\n📁 {os.path.basename(filepath)}")
-            self.app.add_to_preview(filepath, result.images[0])
-            
-        except Exception as e:
-            self._append_message("assistant", f"❌ 双人合成失败: {str(e)}")
-            import traceback
-            traceback.print_exc()
-        
-    def _check_ollama_installed(self) -> bool:
-        """检查 Ollama 是否已安装"""
-        import subprocess
-        try:
-            result = subprocess.run(["ollama", "--version"], capture_output=True, text=True, timeout=5)
-            return result.returncode == 0
-        except:
-            return False
-
-    def _check_ollama_running(self) -> bool:
-        """检查 Ollama 服务是否运行"""
-        try:
-            import requests
-            response = requests.get("http://localhost:11434/api/tags", timeout=3)
-            return response.status_code == 200
-        except:
-            return False
-
-    def _check_model_available(self, model: str) -> bool:
-        """检查模型是否已下载"""
-        try:
-            import requests
-            response = requests.get("http://localhost:11434/api/tags", timeout=5)
-            if response.status_code == 200:
-                models = [m["name"] for m in response.json().get("models", [])]
-                return model in models or model.split(":")[0] in str(models)
-            return False
-        except:
-            return False
-
-    def _install_ollama(self):
-        """自动安装 Ollama (Windows) - 后台线程"""
-        import subprocess
-        
-        self.llm_installing = True
-        self.app.root.after(0, lambda: self._append_message("system", "📦 正在下载并安装 Ollama... (可能需要几分钟)"))
-        self.app.root.after(0, lambda: self._update_status("📦 安装 Ollama..."))
-        
-        def install_thread():
-            try:
-                cmd = 'powershell -Command "irm https://ollama.com/install.ps1 | iex"'
-                process = subprocess.Popen(
-                    cmd,
-                    shell=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                    creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0
-                )
-                
-                for line in process.stdout:
-                    if "Downloading" in line or "Installing" in line:
-                        self.app.root.after(0, lambda l=line: self._update_status(f"📦 {l.strip()[:50]}..."))
-                        print(line.strip())
-                
-                process.wait()
-                
-                if process.returncode == 0:
-                    self.app.root.after(0, lambda: self._append_message("system", "✅ Ollama 安装完成！正在启动..."))
-                    threading.Thread(target=self._start_ollama_service, daemon=True).start()
-                else:
-                    self.app.root.after(0, lambda: self._append_message("system", "❌ Ollama 安装失败，请手动安装"))
-                    self.llm_installing = False
-                    
-            except Exception as e:
-                self.app.root.after(0, lambda: self._append_message("system", f"❌ 安装失败: {e}"))
-                self.llm_installing = False
-        
-        threading.Thread(target=install_thread, daemon=True).start()
-    
-    def _start_ollama_service(self):
-        """启动 Ollama 服务（后台线程）"""
-        import subprocess
-        import time
-        
-        self._append_message("system", "🔄 正在启动 Ollama 服务...")
-        
-        try:
-            subprocess.Popen(
-                ["ollama", "serve"],
-                shell=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0
-            )
-            time.sleep(3)
-            
-            if self._check_ollama_running():
-                self.app.root.after(0, lambda: self._append_message("system", "✅ Ollama 服务已启动"))
-                threading.Thread(target=self._download_model, daemon=True).start()
-            else:
-                self.app.root.after(0, lambda: self._append_message("system", "⚠️ 服务启动失败，请手动运行: ollama serve"))
-                self.llm_installing = False
-        except Exception as e:
-            self.app.root.after(0, lambda: self._append_message("system", f"❌ 启动失败: {e}"))
-            self.llm_installing = False
-
-    def _download_model(self):
-        """下载 LLM 模型（后台线程）"""
-        import subprocess
-        
-        model = self.llm_model.get()
-        self.app.root.after(0, lambda: self._append_message("system", f"📦 正在下载模型: {model} (约 {self.llm_model_size})..."))
-        self.app.root.after(0, lambda: self._append_message("system", "⏳ 这可能需要 10-30 分钟，请耐心等待..."))
-        self.app.root.after(0, lambda: self._update_status(f"📦 下载模型 {model}..."))
-        
-        def download_thread():
-            try:
-                process = subprocess.Popen(
-                    ["ollama", "pull", model],
-                    shell=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                    bufsize=1,
-                    creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0
-                )
-                
-                for line in process.stdout:
-                    line = line.strip()
-                    if "downloading" in line.lower() or "downloading" in line:
-                        if "%" in line:
-                            self.app.root.after(0, lambda l=line: self._update_status(f"📦 {l[:60]}..."))
-                        print(line)
-                
-                process.wait()
-                
-                if process.returncode == 0:
-                    self.app.root.after(0, lambda: self._on_llm_ready())
-                else:
-                    self.app.root.after(0, lambda: self._append_message("system", f"❌ 模型下载失败"))
-                    self.app.root.after(0, lambda: self._append_message("system", f"💡 请手动下载: ollama pull {model}"))
-                    self.llm_installing = False
-                    
-            except Exception as e:
-                self.app.root.after(0, lambda: self._append_message("system", f"❌ 下载失败: {e}"))
-                self.llm_installing = False
-        
-        threading.Thread(target=download_thread, daemon=True).start()
-    
-    def _on_llm_ready(self):
-        """LLM 准备就绪"""
-        self.llm_available = True
-        self.llm_installing = False
-        self.llm_status.config(text="●", foreground="green")
-        self._append_message("system", f"✅ LLM 已就绪！模型: {self.llm_model.get()}")
-        self._append_message("assistant", "🧠 本地 LLM 已启用，可以智能理解你的需求了！")
-        self._update_status("✅ LLM 就绪", 1.0)
-
-    def _check_ollama(self):
-        """检测并自动设置 LLM（完整版）- 后台线程"""
-        if not self._check_ollama_installed():
-            self.llm_status.config(text="●", foreground="orange")
-            self._append_message("system", "⚠️ Ollama 未安装，点击「安装 LLM」按钮自动安装")
-            return
-        
-        if not self._check_ollama_running():
-            self.llm_status.config(text="●", foreground="orange")
-            self._append_message("system", "⏳ Ollama 服务未启动，正在自动启动...")
-            threading.Thread(target=self._start_ollama_service, daemon=True).start()
-            return
-        
-        model = self.llm_model.get()
-        if not self._check_model_available(model):
-            self.llm_status.config(text="●", foreground="orange")
-            self._append_message("system", f"📦 模型 {model} 未下载，正在自动下载...")
-            threading.Thread(target=self._download_model, daemon=True).start()
-            return
-        
-        self.llm_available = True
-        self.llm_status.config(text="●", foreground="green")
-        self._append_message("system", f"✅ LLM 已就绪 (模型: {model})")
-    
-    # ==================== 🚀 核心优化：LLM 提示词增强 ====================
-    
-    def _call_ollama(self, prompt: str, timeout: int = 30, max_tokens: int = 512) -> str:
-        """调用本地 Ollama（增强版）"""
-        if not self.llm_available:
-            return None
-        
-        try:
-            import requests
-            response = requests.post(
-                "http://localhost:11434/api/generate",
-                json={
-                    "model": self.llm_model.get(),
-                    "prompt": prompt,
-                    "temperature": 0.8,  # 提高温度增加创意
-                    "stream": False,
-                    "max_tokens": max_tokens,
-                    "top_p": 0.9,
-                },
-                timeout=timeout
-            )
-            if response.status_code == 200:
-                return response.json().get("response", "").strip()
-            return None
-        except requests.exceptions.Timeout:
-            print("⚠️ Ollama 超时")
-            return None
-        except Exception as e:
-            print(f"⚠️ Ollama 调用失败: {e}")
-            return None
-
-
-    def _build_preserve_parts_from_features(self, image_features: dict, user_text: str = "") -> list:
-        """
-        从原图特征构建保留词列表
-        
-        Args:
-            image_features: 原图特征字典
-            user_text: 用户输入文本，用于判断性别
-        
-        Returns:
-            preserve_parts: 保留词列表
-        """
-        preserve_parts = ["same person", "same face", "same identity"]
-        
-        # 1. 根据人脸数量确定人数指示词
-        face_count = image_features.get("face_count", 0)
-        has_multiple = image_features.get("has_multiple_subjects", False)
-
-        # ✅ 判断风格：从用户输入或原图文件名判断
-        # 如果原图是写实风格，用 woman；否则用 girl
-        is_realistic = image_features.get("is_realistic", True)  # 默认写实
-        
-        
-        
-        # 检查用户输入中是否有提示
-        if user_text and any(k in user_text.lower() for k in ['动漫', '二次元', 'anime', '卡通']):
-            is_realistic = False
-        
-        # 检查原图文件名（如果有提示）
-        if self.uploaded_image_path:
-            filename = os.path.basename(self.uploaded_image_path).lower()
-            if 'anime' in filename or 'cartoon' in filename or '动漫' in filename:
-                is_realistic = False
-            
-        if face_count == 1:
-            if user_text and any(k in user_text.lower() for k in ['男', '帅哥', '男孩', '男性', '小哥哥', '男神']):
-                preserve_parts.append("1boy" if is_realistic else "1boy")
-            else:
-                # ✅ 根据风格选择
-                if is_realistic:
-                    preserve_parts.append("1woman")  # 写实用 1woman
-                else:
-                    preserve_parts.append("1girl")   # 动漫用 1girl
-        elif face_count >= 2 or has_multiple:
-            if user_text and any(k in user_text.lower() for k in ['男', '帅哥', '男孩', '男性']):
-                preserve_parts.append("2boys")
-            else:
-                preserve_parts.append("2women" if is_realistic else "2girls")
-        
-        # 2. 姿势
-        preserve_parts.append("same pose")
-        preserve_parts.append("same body language")
-        
-        # 3. 全身/半身
-        if image_features.get("is_full_body", True):
-            preserve_parts.append("full body")
-        else:
-            preserve_parts.append("half body")
-        
-        return preserve_parts
-
-    def _merge_llm_prompt_with_features(self, llm_prompt: str, preserve_parts: list) -> str:
-        """合并 LLM 生成的提示词和原图特征保留词"""
-        prompt_lower = llm_prompt.lower()
-        
-        # 1. 检查是否已有保留词
-        has_preserve = "same person" in prompt_lower and "same face" in prompt_lower
-        
-        # ✅ 检查用户是否指定了姿势（从 preserve_parts 中检测）
-        # 注意：如果 preserve_parts 中没有 "same pose"，说明用户指定了新姿势
-        has_user_pose = "same pose" not in preserve_parts
-        
-        # 2. 提取需要添加的保留词（去重，并跳过 same pose）
-        parts_to_add = []
-        for part in preserve_parts:
-            if part.lower() not in prompt_lower:
-                # ✅ 如果用户指定了新姿势，不添加 "same pose"
-                if has_user_pose and part == "same pose":
-                    continue
-                parts_to_add.append(part)
-        
-        # 3. 合并
-        if has_preserve:
-            if parts_to_add:
-                gender_parts = [p for p in parts_to_add if p in ["1girl", "1boy", "2girls", "2boys"]]
-                other_parts = [p for p in parts_to_add if p not in ["1girl", "1boy", "2girls", "2boys"]]
-                result_parts = gender_parts + [llm_prompt] + other_parts
-                return ", ".join(result_parts)
-            return llm_prompt
-        else:
-            gender_parts = [p for p in preserve_parts if p in ["1girl", "1boy", "2girls", "2boys"]]
-            other_parts = [p for p in preserve_parts if p not in ["1girl", "1boy", "2girls", "2boys"]]
-            result_parts = gender_parts + other_parts + [llm_prompt]
-            return ", ".join(result_parts)
-            
-    def _enhance_prompt_with_features(self, prompt: str, intent: dict, image_features: dict) -> str:
-        """
-        使用原图特征增强提示词（主入口函数）
-        
-        Args:
-            prompt: 当前提示词
-            intent: 意图字典
-            image_features: 原图特征
-        
-        Returns:
-            增强后的提示词
-        """
-        user_text = intent.get("original_text", "")
-        keywords = intent.get("keywords", {})
-        user_poses = keywords.get("poses", [])  # ✅ 获取用户指定的姿势
-        
-        # 1. 从原图特征构建保留词
-        preserve_parts = self._build_preserve_parts_from_features(image_features, user_text)
-        
-        # ✅ 如果用户指定了姿势，移除 preserve_parts 中的 "same pose"
-        if user_poses:
-            preserve_parts = [p for p in preserve_parts if p != "same pose"]
-            print(f"   🧍 用户指定姿势: {user_poses}，已移除 'same pose'")
-        
-        # 2. 检查 prompt 是否是自然语言
-        prompt_lower = prompt.lower()
-        sentence_indicators = ['maintain', 'exchange', 'retain', 'keep', 'change', 'feature', 'outfit', 'gown']
-        is_natural = any(ind in prompt_lower for ind in sentence_indicators)
-        has_chinese = any('\u4e00' <= char <= '\u9fff' for char in prompt)
-        
-        # 3. 检查是否已有保留词
-        has_preserve = "same person" in prompt_lower and "same face" in prompt_lower
-        
-        # 4. 如果已有保留词，只补充缺失的
-        if has_preserve:
-            parts_to_add = [p for p in preserve_parts if p.lower() not in prompt_lower]
-            if parts_to_add:
-                return prompt + ", " + ", ".join(parts_to_add)
-            return prompt
-        
-        # 5. 如果是自然语言，重新构建
-        if is_natural or has_chinese:
-            # 提取服装关键词
-            clothes = []
-            clothes_map = {
-                '旗袍': 'qipao',
-                '汉服': 'hanfu',
-                '礼服': 'evening gown',
-                '裙子': 'dress',
-                '西装': 'suit',
-                '制服': 'uniform',
-                '泳衣': 'swimsuit',
-                '比基尼': 'bikini',
-                'dress': 'dress',
-                'gown': 'evening gown',
-                'qipao': 'qipao',
-            }
-            for cn, en in clothes_map.items():
-                if cn in prompt_lower or cn in user_text.lower():
-                    if en not in clothes:
-                        clothes.append(en)
-            
-            # 构建标准提示词
-            result_parts = []
-            # 性别
-            gender = next((p for p in preserve_parts if p in ["1girl", "1boy", "2girls", "2boys"]), "1girl")
-            result_parts.append(gender)
-            # 保留词（除了性别和姿势）
-            other_parts = [p for p in preserve_parts if p not in ["1girl", "1boy", "2girls", "2boys"]]
-            result_parts.extend(other_parts)
-            # ✅ 用户指定的姿势（如果有时）
-            if user_poses:
-                result_parts.append(" ".join(user_poses) + " pose")
-            # 服装
-            if clothes:
-                result_parts.append("wearing " + ", ".join(clothes))
-            # 质量词
-            result_parts.append("masterpiece")
-            result_parts.append("best quality")
-            result_parts.append("photorealistic")
-            result_parts.append("8k")
-            result_parts.append("highly detailed")
-            
-            return ", ".join(result_parts)
-        
-        # 6. 标准 SD 提示词 → 合并保留词
-        return self._merge_llm_prompt_with_features(prompt, preserve_parts)
-        
-    def debug_test_llm(self):
-        """调试测试 LLM（在 UI 中调用）"""
-        import requests
-        
-        self._append_message("system", "🔍 开始测试 LLM...")
-        
-        # 1. 检查服务
-        try:
-            response = requests.get("http://localhost:11434/api/tags", timeout=3)
-            if response.status_code == 200:
-                models = [m["name"] for m in response.json().get("models", [])]
-                self._append_message("system", f"✅ Ollama 运行中，已安装: {models}")
-            else:
-                self._append_message("system", f"❌ Ollama 异常: {response.status_code}")
-                return
-        except Exception as e:
-            self._append_message("system", f"❌ 连接失败: {e}")
-            return
-        
-        # 2. 测试推理
-        test_prompt = "请用一句话介绍你自己"
-        self._append_message("system", f"🧠 测试模型: {self.llm_model.get()}")
-        self._append_message("system", f"📝 提示词: {test_prompt}")
-        
-        try:
-            response = requests.post(
-                "http://localhost:11434/api/generate",
-                json={
-                    "model": self.llm_model.get(),
-                    "prompt": test_prompt,
-                    "temperature": 0.7,
-                    "stream": False,
-                    "max_tokens": 100
-                },
-                timeout=30
-            )
-            
-            if response.status_code == 200:
-                reply = response.json().get("response", "").strip()
-                self._append_message("assistant", f"🧠 LLM 回复: {reply}")
-                self._append_message("system", "✅ LLM 测试通过！")
-            else:
-                self._append_message("system", f"❌ 测试失败: {response.status_code}")
-                
-        except Exception as e:
-            self._append_message("system", f"❌ 测试失败: {e}")
-            
-            
-    def _llm_enhance_prompt(self, text: str, is_img2img: bool = False) -> dict:
-        """使用 LLM 增强提示词"""
-        if not self.llm_available or not self.llm_enabled.get():
-            return None
-        
-        cache_key = f"{text}_{is_img2img}"
-        if cache_key in self._enhanced_prompt_cache:
-            return self._enhanced_prompt_cache[cache_key]
-        
-        # ✅ 修复：在 if 外部定义 prompt_template
-        if is_img2img:
-            prompt_template = """你是一个专业的 Stable Diffusion 提示词专家。用户想修改一张图片，请生成高质量的图生图提示词。
-
-    用户需求：{text}
-
-    【重要规则】
-    1. 必须保留原始人物的核心特征：same person, same face, same pose, same identity
-    2. 必须保留原始图片的风格、光影和质感
-    3. 只修改用户明确要求的部分（如换衣服、换背景等）
-    4. 不要添加用户未提及的风格词（如 elegant, modern, professional 等）
-    5. 如果用户没有指定具体服装，用"changing outfit"代替具体服装名
-    6. 提示词要简洁，不要过度描述
-    7. 只输出提示词，不要解释
-
-    【输出格式】
-    正面提示词：xxx
-    负面提示词：xxx"""
-        else:
-            prompt_template = """你是一个专业的 Stable Diffusion 提示词专家。请根据用户描述生成高质量的文生图提示词。
-
-    用户描述：{text}
-
-    【重要规则】
-    1. 生成详细、具体、有画面感的提示词
-    2. 包含：主体描述、场景、光线、风格、构图、色彩、情绪
-    3. 添加高质量修饰词
-    4. 提示词用英文，用逗号分隔
-    5. 只输出提示词，不要解释
-
-    【输出格式】
-    正面提示词：xxx
-    负面提示词：xxx
-    风格：xxx
-    质量：xxx"""
-
-        prompt = prompt_template.format(text=text)
-        result = self._call_ollama(prompt, timeout=30, max_tokens=256)
-        
-        if not result:
-            return None
-        
-        parsed = self._parse_llm_response(result)
-        
-        if parsed and parsed.get('prompt'):
-            self._enhanced_prompt_cache[cache_key] = parsed
-            return parsed
-        
-        return None
-
-
-    def _parse_llm_response(self, response: str) -> dict:
-        """解析 LLM 返回的结构化提示词"""
-        lines = response.strip().split('\n')
-        
-        result = {
-            "prompt": "",
-            "negative": "",
-            "style": "",
-            "quality": "masterpiece, best quality, photorealistic, 8k, highly detailed",
-        }
-        
-        current_key = None
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
-            
-            # 检测关键词
-            if '正面提示词' in line or '正面' in line:
-                current_key = 'prompt'
-                content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
-                if content:
-                    result['prompt'] = content
-            elif '负面提示词' in line or '负面' in line:
-                current_key = 'negative'
-                content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
-                if content:
-                    result['negative'] = content
-            elif '风格' in line:
-                current_key = 'style'
-                content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
-                if content:
-                    result['style'] = content
-            elif '质量' in line:
-                current_key = 'quality'
-                content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
-                if content:
-                    result['quality'] = content
-            elif current_key and line:
-                # 续行
-                if current_key == 'prompt':
-                    result['prompt'] += ', ' + line if result['prompt'] else line
-                elif current_key == 'negative':
-                    result['negative'] += ', ' + line if result['negative'] else line
-        
-        # ✅ 如果解析失败，使用原始响应作为提示词
-        if not result['prompt']:
-            # 清理响应
-            cleaned = re.sub(r'^.*?：', '', response)
-            cleaned = re.sub(r'^.*?:', '', cleaned)
-            cleaned = cleaned.strip()
-            if cleaned:
-                result['prompt'] = cleaned
-            else:
-                return None
-        
-        # ===== 🚀 检测自然语言并转换为 SD 格式 =====
-        prompt_text = result['prompt']
-        prompt_lower = prompt_text.lower()
-        
-        # 检测是否是自然语言（包含完整句子的特征）
-        sentence_indicators = [
-            'maintain', 'exchange', 'retain', 'keep', 'change', 
-            'feature', 'outfit', 'formal', 'gown', 'the woman',
-            'the man', 'the person', 'the image', 'the picture',
-            'inserts', 'behind', 'engaging', 'intimate', 'activity',
-            'strong', 'muscular', 'large', 'big', 'enjoying',
-        ]
-        is_natural_language = any(ind in prompt_lower for ind in sentence_indicators)
-        
-        # 检测是否包含中文（也是自然语言的特征）
-        has_chinese = any('\u4e00' <= char <= '\u9fff' for char in prompt_text)
-        
-        if is_natural_language or has_chinese:
-            print(f"   ⚠️ 检测到自然语言格式，正在转换为 SD 提示词...")
-            print(f"   📝 原始: {prompt_text[:100]}...")
-            
-            # ===== 检测人物数量和性别 =====
-            is_man = any(k in prompt_lower for k in ['man', 'male', 'boy', 'him', 'he', 'his', '男人', '男孩', '男性', '帅哥'])
-            is_woman = any(k in prompt_lower for k in ['woman', 'female', 'girl', 'her', 'she', 'hers', '女人', '女孩', '女性', '美女'])
-            is_couple = any(k in prompt_lower for k in ['couple', 'together', 'both', 'two', '双人', '情侣', '两人', '一起'])
-            
-            # 提取身体特征
-            body_features = []
-            if any(k in prompt_lower for k in ['strong', 'muscular', '强壮', '肌肉']):
-                body_features.append("muscular")
-            if any(k in prompt_lower for k in ['large breasts', 'big breasts', '大胸', '巨乳']):
-                body_features.append("large breasts")
-            if any(k in prompt_lower for k in ['curvy', '丰满']):
-                body_features.append("curvy figure")
-            if any(k in prompt_lower for k in ['slim', '苗条']):
-                body_features.append("slim figure")
-            
-            # ===== 构建提示词 =====
-            prompt_parts = []
-            
-            # 1. 性别和人数
-            if is_couple or (is_man and is_woman):
-                prompt_parts.append("1man, 1woman")
-                prompt_parts.append("couple")
-                prompt_parts.append("two people")
-            elif is_man:
-                prompt_parts.append("1man")
-            elif is_woman:
-                prompt_parts.append("1woman")
-            else:
-                prompt_parts.append("1girl")
-            
-            # 2. 姿势（从文本中提取）
-            pose_keywords = {
-                'behind': 'from behind',
-                'front': 'from front',
-                'standing': 'standing',
-                'sit': 'sitting',
-                'lying': 'lying down',
-                'bed': 'on bed',
-                'embrace': 'embracing',
-                'hug': 'hugging',
-                'kiss': 'kissing',
-                'hold': 'holding',
-                'touch': 'touching',
-            }
-            
-            poses_found = []
-            for key, pose in pose_keywords.items():
-                if key in prompt_lower:
-                    poses_found.append(pose)
-            
-            if poses_found:
-                prompt_parts.extend(poses_found)
-            
-            # 3. 身体特征
-            if body_features:
-                prompt_parts.append("with " + ", ".join(body_features))
-            
-            # 4. 服装（如果有检测到）
-            clothes_keywords = []
-            clothes_map = {
-                '旗袍': 'qipao',
-                '汉服': 'hanfu',
-                '礼服': 'evening gown',
-                'dress': 'dress',
-                'gown': 'evening gown',
-                '裙子': 'dress',
-                '西装': 'suit',
-                '制服': 'uniform',
-                '泳衣': 'swimsuit',
-                '比基尼': 'bikini',
-                '内衣': 'lingerie',
-                '蕾丝': 'lace',
-            }
-            for cn, en in clothes_map.items():
-                if cn in prompt_lower:
-                    if en not in clothes_keywords:
-                        clothes_keywords.append(en)
-            
-            if clothes_keywords:
-                prompt_parts.append("wearing " + ", ".join(clothes_keywords))
-            # ⚠️ 不再强制添加 qipao，如果没有服装关键词就不加
-            
-            # 5. 场景（如果有检测到）
-            scene_keywords = []
-            scenes_map = {
-                '沙滩': 'beach',
-                '海滩': 'beach',
-                '海边': 'ocean',
-                '花园': 'garden',
-                '森林': 'forest',
-                '城市': 'city',
-                '卧室': 'bedroom',
-                '浴室': 'bathroom',
-                '舞台': 'stage',
-                '宫殿': 'palace',
-                '日落': 'sunset',
-                '星空': 'starry sky',
-            }
-            for cn, en in scenes_map.items():
-                if cn in prompt_lower:
-                    if en not in scene_keywords:
-                        scene_keywords.append(en)
-            if scene_keywords:
-                prompt_parts.extend(scene_keywords)
-            
-            # 6. 风格（如果有检测到）
-            style_keywords = []
-            styles_map = {
-                '现代': 'modern style',
-                '传统': 'traditional style',
-                '复古': 'vintage style',
-                '优雅': 'elegant style',
-                '性感': 'sexy style',
-                '可爱': 'cute style',
-                '梦幻': 'dreamy style',
-                '暗黑': 'dark style',
-                '古风': 'traditional chinese style',
-                '东方': 'eastern style',
-                '中国风': 'chinese style',
-                '油画': 'oil painting style',
-                '水彩': 'watercolor style',
-                '动漫': 'anime style',
-                '写实': 'photorealistic style',
-            }
-            for cn, en in styles_map.items():
-                if cn in prompt_lower:
-                    if en not in style_keywords:
-                        style_keywords.append(en)
-            if style_keywords:
-                prompt_parts.extend(style_keywords)
-            
-            # 7. 质量词
-            prompt_parts.append("masterpiece")
-            prompt_parts.append("best quality")
-            prompt_parts.append("photorealistic")
-            prompt_parts.append("8k")
-            prompt_parts.append("highly detailed")
-            
-            # 组合成最终提示词
-            new_prompt = ", ".join(prompt_parts)
-            result['prompt'] = new_prompt
-            
-            print(f"   ✅ 转换后提示词: {new_prompt}")
-        
-        # ✅ 确保有质量词（如果还没有）
-        if 'masterpiece' not in result['prompt'].lower() and 'best quality' not in result['prompt'].lower():
-            result['prompt'] = f"masterpiece, best quality, photorealistic, 8k, highly detailed, {result['prompt']}"
-        
-        # ✅ 确保有默认负面提示词
-        if not result['negative']:
-            result['negative'] = self._negative_templates["default"]
-        
-        return result
-
-    def _enhance_prompt_with_context(self, base_prompt: str, keywords: dict) -> str:
-        """使用上下文和关键词增强提示词"""
-        
-        # 1. 质量词
-        quality_parts = ["masterpiece", "best quality", "photorealistic", "8k", "highly detailed", "ultra detailed"]
-        prompt_parts = quality_parts.copy()
-        
-        # 2. 性别（确保有）
-        genders = keywords.get("genders", [])
-        if not genders:
-            if self.uploaded_image_path:
-                image_features = self._analyze_image_features(self.uploaded_image_path)
-                face_count = image_features.get("face_count", 0)
-                if face_count == 1:
-                    genders = ["1girl"]
-                elif face_count >= 2:
-                    genders = ["2girls"]
-                else:
-                    genders = ["1girl"]
-            else:
-                genders = ["1girl"]
-            keywords["genders"] = genders
-        
-        # 3. 添加性别（去重）
-        existing_genders = [p for p in prompt_parts if p in ["1girl", "1boy", "2girls", "2boys", "1girl, 1boy"]]
-        if not existing_genders:
-            prompt_parts = genders + prompt_parts
-        elif existing_genders and genders and existing_genders[0] != genders[0]:
-            for g in existing_genders:
-                prompt_parts.remove(g)
-            prompt_parts = genders + prompt_parts
-        
-        # 4. ✅ 修复：加入 base_prompt 中的核心描述
-        # 将 prompt_parts 转为字符串检查
-        current_prompt = ", ".join(prompt_parts)
-        if base_prompt and base_prompt not in current_prompt:
-            prompt_parts.append(base_prompt)
-        
-        # 5. 风格
-        if keywords.get("styles"):
-            for style in keywords["styles"]:
-                if style not in prompt_parts:
-                    prompt_parts.append(style)
-        
-        # 6. 主体描述（场景、光线、姿势等）
-        subject_parts = []
-        if keywords.get("scenes"):
-            subject_parts.append("background: " + ", ".join(keywords["scenes"]))
-        if keywords.get("lighting"):
-            subject_parts.append("lighting: " + ", ".join(keywords["lighting"]))
-        if keywords.get("poses"):
-            subject_parts.append("pose: " + ", ".join(keywords["poses"]))
-        if keywords.get("expressions"):
-            subject_parts.append("expression: " + ", ".join(keywords["expressions"]))
-        if keywords.get("body"):
-            subject_parts.extend(keywords["body"])
-        if keywords.get("clothes"):
-            subject_parts.append("wearing " + ", ".join(keywords["clothes"]))
-        if keywords.get("colors"):
-            subject_parts.append("with " + ", ".join(keywords["colors"]) + " color scheme")
-        
-        # 7. 组合
-        full_prompt = ", ".join(prompt_parts)
-        if subject_parts:
-            full_prompt += ", " + ", ".join(subject_parts)
-        
-        # 8. 用户偏好
-        if self.user_preferences.get("style"):
-            style = self.user_preferences["style"]
-            if style not in full_prompt:
-                full_prompt += f", {style} style"
-        
-        return full_prompt
-    
     # ==================== UI 设置 ====================
-        
+
     def setup_ui(self):
         """设置 UI"""
         frame = self.frame
-        
+
         # ===== 主容器 =====
         main_frame = ttk.Frame(frame)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-        
+
         # ===== 工具栏 =====
         toolbar = ttk.Frame(main_frame)
         toolbar.pack(fill=tk.X, pady=2)
-        
-        
+
         # ===== LoRA 控制区域 =====
         lora_frame = ttk.Frame(toolbar)
         lora_frame.pack(side=tk.LEFT, padx=5)
@@ -1386,26 +324,24 @@ class ChatTab(BaseTab):
 
         # 分隔线
         ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=5)
-        
-        # 在工具栏添加清除图片按钮
+
+        # ===== 原有工具栏控件 =====
         self.clear_images_btn = ttk.Button(
-            toolbar, 
-            text="🗑️ 清除图片", 
+            toolbar,
+            text="🗑️ 清除图片",
             command=self._clear_upload,
             width=10
         )
         self.clear_images_btn.pack(side=tk.LEFT, padx=2)
 
-        # 修改图片状态显示，显示数量
         self.image_status = ttk.Label(toolbar, text="", foreground="green")
         self.image_status.pack(side=tk.LEFT, padx=10)
-        
 
-        # ===== 🚀 新增：安全模式切换 =====
+        # 安全模式切换
         ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=5)
-        
-        self.safe_mode_var = tk.BooleanVar(value=True)  # 默认开启安全模式
-        
+
+        self.safe_mode_var = tk.BooleanVar(value=True)
+
         self.safe_mode_btn = tk.Button(
             toolbar,
             text="🛡️ 安全模式",
@@ -1417,8 +353,7 @@ class ChatTab(BaseTab):
             height=1
         )
         self.safe_mode_btn.pack(side=tk.LEFT, padx=5)
-        
-        # 安全模式状态标签
+
         self.safe_mode_label = ttk.Label(
             toolbar,
             text="🟢 已启用",
@@ -1426,33 +361,33 @@ class ChatTab(BaseTab):
             font=("", 8)
         )
         self.safe_mode_label.pack(side=tk.LEFT, padx=2)
-    
+
         ttk.Button(toolbar, text="🔧 测试 LLM", command=self.debug_test_llm, width=10).pack(side=tk.LEFT, padx=2)
         ttk.Button(toolbar, text="🗑️ 清除对话", command=self._clear_chat, width=12).pack(side=tk.LEFT, padx=2)
 
-        # ✅ 新增：ControlNet 缓存状态
+        # ControlNet 缓存状态
         if hasattr(self, '_check_controlnet_cached') and self._check_controlnet_cached():
             size = self._get_controlnet_size()
             cache_status = f"🦴 ControlNet 已缓存 ({size})"
             ttk.Label(toolbar, text=cache_status, foreground="green").pack(side=tk.LEFT, padx=10)
         else:
             ttk.Label(toolbar, text="🦴 ControlNet 未缓存", foreground="orange").pack(side=tk.LEFT, padx=10)
-        
+
         self.upload_btn = ttk.Button(toolbar, text="📎 上传图片", command=self._upload_image, width=12)
         self.upload_btn.pack(side=tk.LEFT, padx=2)
-        
+
         self.image_status = ttk.Label(toolbar, text="", foreground="green")
         self.image_status.pack(side=tk.LEFT, padx=10)
-        
+
         self.preview_label = ttk.Label(toolbar)
         self.preview_label.pack(side=tk.LEFT, padx=5)
 
         # ===== 参数控制栏 =====
         param_bar = ttk.Frame(main_frame)
         param_bar.pack(fill=tk.X, pady=2)
-        
+
         ttk.Label(param_bar, text="步数:").pack(side=tk.LEFT, padx=5)
-        
+
         self.steps_spinbox = ttk.Spinbox(
             param_bar,
             from_=4,
@@ -1462,7 +397,7 @@ class ChatTab(BaseTab):
             increment=1
         )
         self.steps_spinbox.pack(side=tk.LEFT, padx=2)
-        
+
         for steps in [8, 12, 20, 30]:
             btn = ttk.Button(
                 param_bar,
@@ -1471,9 +406,9 @@ class ChatTab(BaseTab):
                 command=lambda s=steps: self.chat_steps_var.set(s)
             )
             btn.pack(side=tk.LEFT, padx=1)
-        
+
         ttk.Label(param_bar, text="CFG:").pack(side=tk.LEFT, padx=15)
-        
+
         self.cfg_spinbox = ttk.Spinbox(
             param_bar,
             from_=1.0,
@@ -1483,7 +418,7 @@ class ChatTab(BaseTab):
             increment=0.5
         )
         self.cfg_spinbox.pack(side=tk.LEFT, padx=2)
-        
+
         for cfg in [5, 7, 7.5, 9]:
             btn = ttk.Button(
                 param_bar,
@@ -1492,22 +427,19 @@ class ChatTab(BaseTab):
                 command=lambda c=cfg: self.chat_cfg_var.set(c)
             )
             btn.pack(side=tk.LEFT, padx=1)
-        
+
         ttk.Label(param_bar, text="💡 步数越高质量越好", foreground="gray", font=("", 8)).pack(side=tk.LEFT, padx=15)
 
-        # ===== 🚀 新增：速度/质量模式切换 =====
+        # ===== 速度/质量模式切换 =====
         ttk.Separator(param_bar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=10)
-        
-        # 创建变量存储模式
+
         self.quality_mode_var = tk.StringVar(value="快速")
-        
-        # 模式选项
+
         mode_frame = ttk.Frame(param_bar)
         mode_frame.pack(side=tk.LEFT, padx=5)
-        
+
         ttk.Label(mode_frame, text="模式:", font=("", 9)).pack(side=tk.LEFT)
-        
-        # 快速模式按钮
+
         self.fast_btn = tk.Button(
             mode_frame,
             text="⚡ 快速",
@@ -1519,8 +451,7 @@ class ChatTab(BaseTab):
             height=1
         )
         self.fast_btn.pack(side=tk.LEFT, padx=2)
-        
-        # 平衡模式按钮
+
         self.balance_btn = tk.Button(
             mode_frame,
             text="⚖️ 平衡",
@@ -1532,8 +463,7 @@ class ChatTab(BaseTab):
             height=1
         )
         self.balance_btn.pack(side=tk.LEFT, padx=2)
-        
-        # 高质量模式按钮
+
         self.quality_btn = tk.Button(
             mode_frame,
             text="🌟 高质量",
@@ -1545,8 +475,7 @@ class ChatTab(BaseTab):
             height=1
         )
         self.quality_btn.pack(side=tk.LEFT, padx=2)
-        
-        # 在 setup_ui 的模式按钮中添加
+
         self.ultra_btn = tk.Button(
             mode_frame,
             text="🌟 超高质量",
@@ -1558,14 +487,13 @@ class ChatTab(BaseTab):
             height=1
         )
         self.ultra_btn.pack(side=tk.LEFT, padx=2)
-        
-        # 模式提示
+
         self.mode_hint = ttk.Label(param_bar, text="⚡ 快速模式", foreground="green", font=("", 8))
         self.mode_hint.pack(side=tk.LEFT, padx=10)
 
         # LLM 开关
         ttk.Separator(param_bar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=10)
-        
+
         self.llm_check = ttk.Checkbutton(
             param_bar,
             text="🧠 LLM增强",
@@ -1581,7 +509,7 @@ class ChatTab(BaseTab):
             width=10
         )
         self.llm_install_btn.pack(side=tk.LEFT, padx=5)
-        
+
         self.llm_status = ttk.Label(
             param_bar,
             text="●",
@@ -1611,11 +539,11 @@ class ChatTab(BaseTab):
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
         self.chat_text.config(state=tk.DISABLED)
-        
+
         # ===== 底部输入区 =====
         input_frame = ttk.Frame(main_frame)
         input_frame.pack(fill=tk.X, pady=5)
-        
+
         self.input_text = tk.Text(
             input_frame,
             height=4,
@@ -1625,7 +553,7 @@ class ChatTab(BaseTab):
             borderwidth=1
         )
         self.input_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
-        
+
         btn_frame = ttk.Frame(input_frame)
         btn_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=5)
 
@@ -1652,17 +580,17 @@ class ChatTab(BaseTab):
             font=("微软雅黑", 9)
         )
         self.cancel_btn.pack(side=tk.TOP, pady=2)
-        
+
         # ===== 状态栏 =====
         status_frame = ttk.Frame(main_frame)
         status_frame.pack(fill=tk.X, pady=2)
-        
+
         self.status_var = tk.StringVar(value="就绪")
         ttk.Label(status_frame, textvariable=self.status_var, foreground="blue").pack(side=tk.LEFT)
-        
+
         self.progress_bar = ttk.Progressbar(status_frame, length=200, mode='determinate')
         self.progress_bar.pack(side=tk.RIGHT, padx=5)
-        
+
     def _refresh_lora_list(self):
         """刷新 LoRA 列表"""
         lora_files = self._scan_lora_files()
@@ -1671,12 +599,927 @@ class ChatTab(BaseTab):
             # 如果当前没有选择，默认选第一个（默认 LoRA）
             self.lora_var.set(lora_files[0])
         self._append_message("system", f"🔄 LoRA 列表已刷新 ({len(lora_files)} 个)")
-        
+
+    # ==================== 原有方法（保持不变） ====================
+
+    def _detect_couple_intent(self, text: str) -> bool:
+        keywords = ['和', '与', '一起', '两人', '双人', '情侣', 'couple', 'together',
+                    '拥抱', '牵手', '接吻', '依偎', '并肩', '合成', '合并', '合并成一张']
+        return any(k in text for k in keywords)
+
+    def _detect_action_from_text(self, text: str) -> str:
+        action_map = {
+            '拥抱': 'hugging each other',
+            '牵手': 'holding hands',
+            '接吻': 'kissing',
+            '依偎': 'cuddling',
+            '并肩': 'standing side by side',
+            '背靠背': 'back to back',
+            '跳舞': 'dancing together',
+            '对视': 'looking at each other',
+        }
+        text_lower = text.lower()
+        for cn, en in action_map.items():
+            if cn in text_lower:
+                return en
+        return "standing together"
+
+    def _handle_couple_generation(self, intent: dict):
+        if len(self.uploaded_images) < 2:
+            self._append_message("assistant", "❌ 请上传两张图片（一男一女）")
+            return
+
+        self._append_message("system", "👫 正在合成双人图片...")
+
+        try:
+            prompt = intent["prompt"]
+            action = intent.get("action", "standing together")
+
+            pose_image = self._extract_couple_pose(
+                self.uploaded_image_paths[0],
+                self.uploaded_image_paths[1]
+            )
+
+            if pose_image:
+                self._append_message("system", "🦴 已提取双人姿态图")
+                params = intent.get("params", {})
+                self._handle_controlnet_generation(prompt, pose_image, intent, params)
+                return
+            else:
+                self._append_message("system", "⚠️ 姿态提取失败，使用普通图生图")
+                self._handle_couple_img2img(intent)
+
+        except Exception as e:
+            self._append_message("assistant", f"❌ 双人合成失败: {str(e)}")
+            import traceback
+            traceback.print_exc()
+
+    def _extract_couple_pose(self, img1_path: str, img2_path: str) -> Image.Image:
+        try:
+            import cv2
+            import numpy as np
+            from PIL import Image
+
+            try:
+                from controlnet_aux import OpenPoseDetector
+                detector = OpenPoseDetector.from_pretrained("lllyasviel/ControlNet")
+
+                img1 = cv2.imread(img1_path)
+                img2 = cv2.imread(img2_path)
+
+                pose1 = detector(img1, output_type="pil")
+                pose2 = detector(img2, output_type="pil")
+
+                combined = self._merge_pose_images(pose1, pose2)
+                return combined
+
+            except ImportError:
+                print("   ⚠️ controlnet_aux 未安装，使用备用方案")
+                pass
+
+            try:
+                import mediapipe as mp
+
+                img1 = cv2.imread(img1_path)
+                img2 = cv2.imread(img2_path)
+                h, w = img1.shape[:2]
+
+                mp_pose = mp.solutions.pose
+                with mp_pose.Pose(static_image_mode=True) as pose:
+                    results1 = pose.process(cv2.cvtColor(img1, cv2.COLOR_BGR2RGB))
+                    results2 = pose.process(cv2.cvtColor(img2, cv2.COLOR_BGR2RGB))
+
+                    combined_img = np.zeros((h, w * 2, 3), dtype=np.uint8)
+
+                    if results1.pose_landmarks:
+                        pass
+                    if results2.pose_landmarks:
+                        pass
+
+                    return Image.fromarray(combined_img)
+
+            except ImportError:
+                print("   ⚠️ mediapipe 未安装")
+                pass
+
+            img1 = cv2.imread(img1_path)
+            img2 = cv2.imread(img2_path)
+
+            gray1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
+            gray2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+
+            edges1 = cv2.Canny(gray1, 50, 150)
+            edges2 = cv2.Canny(gray2, 50, 150)
+
+            combined_edges = np.hstack([edges1, edges2])
+            return Image.fromarray(combined_edges)
+
+        except Exception as e:
+            print(f"⚠️ 双人姿态提取失败: {e}")
+            return None
+
+    def _merge_pose_images(self, pose1: Image.Image, pose2: Image.Image) -> Image.Image:
+        import numpy as np
+        from PIL import Image
+
+        w1, h1 = pose1.size
+        w2, h2 = pose2.size
+
+        if h1 != h2:
+            if h1 > h2:
+                pose2 = pose2.resize((int(w2 * h1 / h2), h1))
+            else:
+                pose1 = pose1.resize((int(w1 * h2 / h1), h2))
+
+        combined = Image.new('RGB', (pose1.width + pose2.width, pose1.height))
+        combined.paste(pose1, (0, 0))
+        combined.paste(pose2, (pose1.width, 0))
+
+        return combined
+
+    def _handle_couple_img2img(self, intent: dict):
+        try:
+            from utils.pipeline_pool import pipeline_pool
+            from datetime import datetime
+            import random
+
+            prompt = intent["prompt"]
+            params = intent.get("params", {})
+
+            model_name = self.app.model_var.get()
+            model_path = self.app._get_model_path(model_name)
+
+            # 获取 LoRA
+            lora_path = self.current_lora_path if self.lora_loaded else None
+            lora_weight = 1.0
+
+            task_id = f"couple_{datetime.now().strftime('%H%M%S')}"
+
+            pipe, is_new = pipeline_pool.get_pipeline(
+                model_path=model_path,
+                model_name=model_name,
+                lora_path=lora_path,
+                lora_weight=lora_weight,
+                task_id=task_id
+            )
+
+            if pipe is None:
+                self._append_message("assistant", "❌ 无法获取 Pipeline")
+                return
+
+            img1 = self.uploaded_images[0].convert('RGB')
+            img2 = self.uploaded_images[1].convert('RGB')
+
+            h1, w1 = img1.size
+            h2, w2 = img2.size
+            target_h = min(h1, h2, 512)
+
+            img1 = img1.resize((int(w1 * target_h / h1), target_h))
+            img2 = img2.resize((int(w2 * target_h / h2), target_h))
+
+            combined_img = Image.new('RGB', (img1.width + img2.width, target_h))
+            combined_img.paste(img1, (0, 0))
+            combined_img.paste(img2, (img1.width, 0))
+
+            steps = params.get("steps", 20)
+            cfg = params.get("cfg", 7.5)
+            strength = 0.5
+
+            seed = random.randint(1, 2**32 - 1)
+            generator = torch.Generator("cpu").manual_seed(seed)
+
+            result = pipe(
+                prompt=prompt,
+                negative_prompt=self._negative_templates["default"],
+                image=combined_img,
+                strength=strength,
+                num_inference_steps=steps,
+                guidance_scale=cfg,
+                generator=generator,
+                num_images_per_prompt=1
+            )
+
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"{timestamp}_couple_{intent.get('action', 'together')}.png"
+
+            from config.app_config import app_config
+            output_dir = app_config.paths.output_dir
+            os.makedirs(output_dir, exist_ok=True)
+            filepath = os.path.join(output_dir, filename)
+            result.images[0].save(filepath)
+
+            self._append_image_result(filepath)
+            self._append_message("assistant", f"✅ 双人合成完成！\n📁 {os.path.basename(filepath)}")
+            self.app.add_to_preview(filepath, result.images[0])
+
+        except Exception as e:
+            self._append_message("assistant", f"❌ 双人合成失败: {str(e)}")
+            import traceback
+            traceback.print_exc()
+
+    def _check_ollama_installed(self) -> bool:
+        import subprocess
+        try:
+            result = subprocess.run(["ollama", "--version"], capture_output=True, text=True, timeout=5)
+            return result.returncode == 0
+        except:
+            return False
+
+    def _check_ollama_running(self) -> bool:
+        try:
+            import requests
+            response = requests.get("http://localhost:11434/api/tags", timeout=3)
+            return response.status_code == 200
+        except:
+            return False
+
+    def _check_model_available(self, model: str) -> bool:
+        try:
+            import requests
+            response = requests.get("http://localhost:11434/api/tags", timeout=5)
+            if response.status_code == 200:
+                models = [m["name"] for m in response.json().get("models", [])]
+                return model in models or model.split(":")[0] in str(models)
+            return False
+        except:
+            return False
+
+    def _install_ollama(self):
+        import subprocess
+
+        self.llm_installing = True
+        self.app.root.after(0, lambda: self._append_message("system", "📦 正在下载并安装 Ollama... (可能需要几分钟)"))
+        self.app.root.after(0, lambda: self._update_status("📦 安装 Ollama..."))
+
+        def install_thread():
+            try:
+                cmd = 'powershell -Command "irm https://ollama.com/install.ps1 | iex"'
+                process = subprocess.Popen(
+                    cmd,
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0                )
+
+                for line in process.stdout:
+                    if "Downloading" in line or "Installing" in line:
+                        self.app.root.after(0, lambda l=line: self._update_status(f"📦 {l.strip()[:50]}..."))
+                        print(line.strip())
+
+                process.wait()
+
+                if process.returncode == 0:
+                    self.app.root.after(0, lambda: self._append_message("system", "✅ Ollama 安装完成！正在启动..."))
+                    threading.Thread(target=self._start_ollama_service, daemon=True).start()
+                else:
+                    self.app.root.after(0, lambda: self._append_message("system", "❌ Ollama 安装失败，请手动安装"))
+                    self.llm_installing = False
+
+            except Exception as e:
+                self.app.root.after(0, lambda: self._append_message("system", f"❌ 安装失败: {e}"))
+                self.llm_installing = False
+
+        threading.Thread(target=install_thread, daemon=True).start()
+
+    def _start_ollama_service(self):
+        import subprocess
+        import time
+
+        self._append_message("system", "🔄 正在启动 Ollama 服务...")
+
+        try:
+            subprocess.Popen(
+                ["ollama", "serve"],
+                shell=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0
+            )
+            time.sleep(3)
+
+            if self._check_ollama_running():
+                self.app.root.after(0, lambda: self._append_message("system", "✅ Ollama 服务已启动"))
+                threading.Thread(target=self._download_model, daemon=True).start()
+            else:
+                self.app.root.after(0, lambda: self._append_message("system", "⚠️ 服务启动失败，请手动运行: ollama serve"))
+                self.llm_installing = False
+        except Exception as e:
+            self.app.root.after(0, lambda: self._append_message("system", f"❌ 启动失败: {e}"))
+            self.llm_installing = False
+
+    def _download_model(self):
+        import subprocess
+
+        model = self.llm_model.get()
+        self.app.root.after(0, lambda: self._append_message("system", f"📦 正在下载模型: {model} (约 {self.llm_model_size})..."))
+        self.app.root.after(0, lambda: self._append_message("system", "⏳ 这可能需要 10-30 分钟，请耐心等待..."))
+        self.app.root.after(0, lambda: self._update_status(f"📦 下载模型 {model}..."))
+
+        def download_thread():
+            try:
+                process = subprocess.Popen(
+                    ["ollama", "pull", model],
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    bufsize=1,
+                    creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0
+                )
+
+                for line in process.stdout:
+                    line = line.strip()
+                    if "downloading" in line.lower() or "downloading" in line:
+                        if "%" in line:
+                            self.app.root.after(0, lambda l=line: self._update_status(f"📦 {l[:60]}..."))
+                        print(line)
+
+                process.wait()
+
+                if process.returncode == 0:
+                    self.app.root.after(0, lambda: self._on_llm_ready())
+                else:
+                    self.app.root.after(0, lambda: self._append_message("system", f"❌ 模型下载失败"))
+                    self.app.root.after(0, lambda: self._append_message("system", f"💡 请手动下载: ollama pull {model}"))
+                    self.llm_installing = False
+
+            except Exception as e:
+                self.app.root.after(0, lambda: self._append_message("system", f"❌ 下载失败: {e}"))
+                self.llm_installing = False
+
+        threading.Thread(target=download_thread, daemon=True).start()
+
+    def _on_llm_ready(self):
+        self.llm_available = True
+        self.llm_installing = False
+        self.llm_status.config(text="●", foreground="green")
+        self._append_message("system", f"✅ LLM 已就绪！模型: {self.llm_model.get()}")
+        self._append_message("assistant", "🧠 本地 LLM 已启用，可以智能理解你的需求了！")
+        self._update_status("✅ LLM 就绪", 1.0)
+
+    def _check_ollama(self):
+        if not self._check_ollama_installed():
+            self.llm_status.config(text="●", foreground="orange")
+            self._append_message("system", "⚠️ Ollama 未安装，点击「安装 LLM」按钮自动安装")
+            return
+
+        if not self._check_ollama_running():
+            self.llm_status.config(text="●", foreground="orange")
+            self._append_message("system", "⏳ Ollama 服务未启动，正在自动启动...")
+            threading.Thread(target=self._start_ollama_service, daemon=True).start()
+            return
+
+        model = self.llm_model.get()
+        if not self._check_model_available(model):
+            self.llm_status.config(text="●", foreground="orange")
+            self._append_message("system", f"📦 模型 {model} 未下载，正在自动下载...")
+            threading.Thread(target=self._download_model, daemon=True).start()
+            return
+
+        self.llm_available = True
+        self.llm_status.config(text="●", foreground="green")
+        self._append_message("system", f"✅ LLM 已就绪 (模型: {model})")
+
+    # ==================== LLM 提示词增强 ====================
+
+    def _call_ollama(self, prompt: str, timeout: int = 30, max_tokens: int = 512) -> str:
+        if not self.llm_available:
+            return None
+
+        try:
+            import requests
+            response = requests.post(
+                "http://localhost:11434/api/generate",
+                json={
+                    "model": self.llm_model.get(),
+                    "prompt": prompt,
+                    "temperature": 0.8,
+                    "stream": False,
+                    "max_tokens": max_tokens,
+                    "top_p": 0.9,
+                },
+                timeout=timeout
+            )
+            if response.status_code == 200:
+                return response.json().get("response", "").strip()
+            return None
+        except requests.exceptions.Timeout:
+            print("⚠️ Ollama 超时")
+            return None
+        except Exception as e:
+            print(f"⚠️ Ollama 调用失败: {e}")
+            return None
+
+    def _build_preserve_parts_from_features(self, image_features: dict, user_text: str = "") -> list:
+        preserve_parts = ["same person", "same face", "same identity"]
+
+        face_count = image_features.get("face_count", 0)
+        has_multiple = image_features.get("has_multiple_subjects", False)
+
+        is_realistic = image_features.get("is_realistic", True)
+
+        if user_text and any(k in user_text.lower() for k in ['动漫', '二次元', 'anime', '卡通']):
+            is_realistic = False
+
+        if self.uploaded_image_path:
+            filename = os.path.basename(self.uploaded_image_path).lower()
+            if 'anime' in filename or 'cartoon' in filename or '动漫' in filename:
+                is_realistic = False
+
+        if face_count == 1:
+            if user_text and any(k in user_text.lower() for k in ['男', '帅哥', '男孩', '男性', '小哥哥', '男神']):
+                preserve_parts.append("1boy" if is_realistic else "1boy")
+            else:
+                if is_realistic:
+                    preserve_parts.append("1woman")
+                else:
+                    preserve_parts.append("1girl")
+        elif face_count >= 2 or has_multiple:
+            if user_text and any(k in user_text.lower() for k in ['男', '帅哥', '男孩', '男性']):
+                preserve_parts.append("2boys")
+            else:
+                preserve_parts.append("2women" if is_realistic else "2girls")
+
+        preserve_parts.append("same pose")
+        preserve_parts.append("same body language")
+
+        if image_features.get("is_full_body", True):
+            preserve_parts.append("full body")
+        else:
+            preserve_parts.append("half body")
+
+        return preserve_parts
+
+    def _merge_llm_prompt_with_features(self, llm_prompt: str, preserve_parts: list) -> str:
+        prompt_lower = llm_prompt.lower()
+
+        has_preserve = "same person" in prompt_lower and "same face" in prompt_lower
+        has_user_pose = "same pose" not in preserve_parts
+
+        parts_to_add = []
+        for part in preserve_parts:
+            if part.lower() not in prompt_lower:
+                if has_user_pose and part == "same pose":
+                    continue
+                parts_to_add.append(part)
+
+        if has_preserve:
+            if parts_to_add:
+                gender_parts = [p for p in parts_to_add if p in ["1girl", "1boy", "2girls", "2boys"]]
+                other_parts = [p for p in parts_to_add if p not in ["1girl", "1boy", "2girls", "2boys"]]
+                result_parts = gender_parts + [llm_prompt] + other_parts
+                return ", ".join(result_parts)
+            return llm_prompt
+        else:
+            gender_parts = [p for p in preserve_parts if p in ["1girl", "1boy", "2girls", "2boys"]]
+            other_parts = [p for p in preserve_parts if p not in ["1girl", "1boy", "2girls", "2boys"]]
+            result_parts = gender_parts + other_parts + [llm_prompt]
+            return ", ".join(result_parts)
+
+    def _enhance_prompt_with_features(self, prompt: str, intent: dict, image_features: dict) -> str:
+        user_text = intent.get("original_text", "")
+        keywords = intent.get("keywords", {})
+        user_poses = keywords.get("poses", [])
+
+        preserve_parts = self._build_preserve_parts_from_features(image_features, user_text)
+
+        if user_poses:
+            preserve_parts = [p for p in preserve_parts if p != "same pose"]
+            print(f"   🧍 用户指定姿势: {user_poses}，已移除 'same pose'")
+
+        prompt_lower = prompt.lower()
+        sentence_indicators = ['maintain', 'exchange', 'retain', 'keep', 'change', 'feature', 'outfit', 'gown']
+        is_natural = any(ind in prompt_lower for ind in sentence_indicators)
+        has_chinese = any('\u4e00' <= char <= '\u9fff' for char in prompt)
+
+        has_preserve = "same person" in prompt_lower and "same face" in prompt_lower
+
+        if has_preserve:
+            parts_to_add = [p for p in preserve_parts if p.lower() not in prompt_lower]
+            if parts_to_add:
+                return prompt + ", " + ", ".join(parts_to_add)
+            return prompt
+
+        if is_natural or has_chinese:
+            clothes = []
+            clothes_map = {
+                '旗袍': 'qipao',
+                '汉服': 'hanfu',
+                '礼服': 'evening gown',
+                '裙子': 'dress',
+                '西装': 'suit',
+                '制服': 'uniform',
+                '泳衣': 'swimsuit',
+                '比基尼': 'bikini',
+                'dress': 'dress',
+                'gown': 'evening gown',
+                'qipao': 'qipao',
+            }
+            for cn, en in clothes_map.items():
+                if cn in prompt_lower or cn in user_text.lower():
+                    if en not in clothes:
+                        clothes.append(en)
+
+            result_parts = []
+            gender = next((p for p in preserve_parts if p in ["1girl", "1boy", "2girls", "2boys"]), "1girl")
+            result_parts.append(gender)
+            other_parts = [p for p in preserve_parts if p not in ["1girl", "1boy", "2girls", "2boys"]]
+            result_parts.extend(other_parts)
+            if user_poses:
+                result_parts.append(" ".join(user_poses) + " pose")
+            if clothes:
+                result_parts.append("wearing " + ", ".join(clothes))
+            result_parts.append("masterpiece")
+            result_parts.append("best quality")
+            result_parts.append("photorealistic")
+            result_parts.append("8k")
+            result_parts.append("highly detailed")
+
+            return ", ".join(result_parts)
+
+        return self._merge_llm_prompt_with_features(prompt, preserve_parts)
+
+    def debug_test_llm(self):
+        import requests
+
+        self._append_message("system", "🔍 开始测试 LLM...")
+
+        try:
+            response = requests.get("http://localhost:11434/api/tags", timeout=3)
+            if response.status_code == 200:
+                models = [m["name"] for m in response.json().get("models", [])]
+                self._append_message("system", f"✅ Ollama 运行中，已安装: {models}")
+            else:
+                self._append_message("system", f"❌ Ollama 异常: {response.status_code}")
+                return
+        except Exception as e:
+            self._append_message("system", f"❌ 连接失败: {e}")
+            return
+
+        test_prompt = "请用一句话介绍你自己"
+        self._append_message("system", f"🧠 测试模型: {self.llm_model.get()}")
+        self._append_message("system", f"📝 提示词: {test_prompt}")
+
+        try:
+            response = requests.post(
+                "http://localhost:11434/api/generate",
+                json={
+                    "model": self.llm_model.get(),
+                    "prompt": test_prompt,
+                    "temperature": 0.7,
+                    "stream": False,
+                    "max_tokens": 100
+                },
+                timeout=30
+            )
+
+            if response.status_code == 200:
+                reply = response.json().get("response", "").strip()
+                self._append_message("assistant", f"🧠 LLM 回复: {reply}")
+                self._append_message("system", "✅ LLM 测试通过！")
+            else:
+                self._append_message("system", f"❌ 测试失败: {response.status_code}")
+
+        except Exception as e:
+            self._append_message("system", f"❌ 测试失败: {e}")
+
+    def _llm_enhance_prompt(self, text: str, is_img2img: bool = False) -> dict:
+        if not self.llm_available or not self.llm_enabled.get():
+            return None
+
+        cache_key = f"{text}_{is_img2img}"
+        if cache_key in self._enhanced_prompt_cache:
+            return self._enhanced_prompt_cache[cache_key]
+
+        if is_img2img:
+            prompt_template = """你是一个专业的 Stable Diffusion 提示词专家。用户想修改一张图片，请生成高质量的图生图提示词。
+
+    用户需求：{text}
+
+    【重要规则】
+    1. 必须保留原始人物的核心特征：same person, same face, same pose, same identity
+    2. 必须保留原始图片的风格、光影和质感
+    3. 只修改用户明确要求的部分（如换衣服、换背景等）
+    4. 不要添加用户未提及的风格词（如 elegant, modern, professional 等）
+    5. 如果用户没有指定具体服装，用"changing outfit"代替具体服装名
+    6. 提示词要简洁，不要过度描述
+    7. 只输出提示词，不要解释
+
+    【输出格式】
+    正面提示词：xxx
+    负面提示词：xxx"""
+        else:
+            prompt_template = """你是一个专业的 Stable Diffusion 提示词专家。请根据用户描述生成高质量的文生图提示词。
+
+    用户描述：{text}
+
+    【重要规则】
+    1. 生成详细、具体、有画面感的提示词
+    2. 包含：主体描述、场景、光线、风格、构图、色彩、情绪
+    3. 添加高质量修饰词
+    4. 提示词用英文，用逗号分隔
+    5. 只输出提示词，不要解释
+
+    【输出格式】
+    正面提示词：xxx
+    负面提示词：xxx
+    风格：xxx
+    质量：xxx"""
+
+        prompt = prompt_template.format(text=text)
+        result = self._call_ollama(prompt, timeout=30, max_tokens=256)
+
+        if not result:
+            return None
+
+        parsed = self._parse_llm_response(result)
+
+        if parsed and parsed.get('prompt'):
+            self._enhanced_prompt_cache[cache_key] = parsed
+            return parsed
+
+        return None
+
+    def _parse_llm_response(self, response: str) -> dict:
+        lines = response.strip().split('\n')
+
+        result = {
+            "prompt": "",
+            "negative": "",
+            "style": "",
+            "quality": "masterpiece, best quality, photorealistic, 8k, highly detailed",
+        }
+
+        current_key = None
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+
+            if '正面提示词' in line or '正面' in line:
+                current_key = 'prompt'
+                content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
+                if content:
+                    result['prompt'] = content
+            elif '负面提示词' in line or '负面' in line:
+                current_key = 'negative'
+                content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
+                if content:
+                    result['negative'] = content
+            elif '风格' in line:
+                current_key = 'style'
+                content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
+                if content:
+                    result['style'] = content
+            elif '质量' in line:
+                current_key = 'quality'
+                content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
+                if content:
+                    result['quality'] = content
+            elif current_key and line:
+                if current_key == 'prompt':
+                    result['prompt'] += ', ' + line if result['prompt'] else line
+                elif current_key == 'negative':
+                    result['negative'] += ', ' + line if result['negative'] else line
+
+        if not result['prompt']:
+            cleaned = re.sub(r'^.*?：', '', response)
+            cleaned = re.sub(r'^.*?:', '', cleaned)
+            cleaned = cleaned.strip()
+            if cleaned:
+                result['prompt'] = cleaned
+            else:
+                return None
+
+        prompt_text = result['prompt']
+        prompt_lower = prompt_text.lower()
+
+        sentence_indicators = [
+            'maintain', 'exchange', 'retain', 'keep', 'change',
+            'feature', 'outfit', 'formal', 'gown', 'the woman',
+            'the man', 'the person', 'the image', 'the picture',
+            'inserts', 'behind', 'engaging', 'intimate', 'activity',
+            'strong', 'muscular', 'large', 'big', 'enjoying',
+        ]
+        is_natural_language = any(ind in prompt_lower for ind in sentence_indicators)
+
+        has_chinese = any('\u4e00' <= char <= '\u9fff' for char in prompt_text)
+
+        if is_natural_language or has_chinese:
+            print(f"   ⚠️ 检测到自然语言格式，正在转换为 SD 提示词...")
+            print(f"   📝 原始: {prompt_text[:100]}...")
+
+            is_man = any(k in prompt_lower for k in ['man', 'male', 'boy', 'him', 'he', 'his', '男人', '男孩', '男性', '帅哥'])
+            is_woman = any(k in prompt_lower for k in ['woman', 'female', 'girl', 'her', 'she', 'hers', '女人', '女孩', '女性', '美女'])
+            is_couple = any(k in prompt_lower for k in ['couple', 'together', 'both', 'two', '双人', '情侣', '两人', '一起'])
+
+            body_features = []
+            if any(k in prompt_lower for k in ['strong', 'muscular', '强壮', '肌肉']):
+                body_features.append("muscular")
+            if any(k in prompt_lower for k in ['large breasts', 'big breasts', '大胸', '巨乳']):
+                body_features.append("large breasts")
+            if any(k in prompt_lower for k in ['curvy', '丰满']):
+                body_features.append("curvy figure")
+            if any(k in prompt_lower for k in ['slim', '苗条']):
+                body_features.append("slim figure")
+
+            prompt_parts = []
+
+            if is_couple or (is_man and is_woman):
+                prompt_parts.append("1man, 1woman")
+                prompt_parts.append("couple")
+                prompt_parts.append("two people")
+            elif is_man:
+                prompt_parts.append("1man")
+            elif is_woman:
+                prompt_parts.append("1woman")
+            else:
+                prompt_parts.append("1girl")
+
+            pose_keywords = {
+                'behind': 'from behind',
+                'front': 'from front',
+                'standing': 'standing',
+                'sit': 'sitting',
+                'lying': 'lying down',
+                'bed': 'on bed',
+                'embrace': 'embracing',
+                'hug': 'hugging',
+                'kiss': 'kissing',
+                'hold': 'holding',
+                'touch': 'touching',
+            }
+
+            poses_found = []
+            for key, pose in pose_keywords.items():
+                if key in prompt_lower:
+                    poses_found.append(pose)
+
+            if poses_found:
+                prompt_parts.extend(poses_found)
+
+            if body_features:
+                prompt_parts.append("with " + ", ".join(body_features))
+
+            clothes_keywords = []
+            clothes_map = {
+                '旗袍': 'qipao',
+                '汉服': 'hanfu',
+                '礼服': 'evening gown',
+                'dress': 'dress',
+                'gown': 'evening gown',
+                '裙子': 'dress',
+                '西装': 'suit',
+                '制服': 'uniform',
+                '泳衣': 'swimsuit',
+                '比基尼': 'bikini',
+                '内衣': 'lingerie',
+                '蕾丝': 'lace',
+            }
+            for cn, en in clothes_map.items():
+                if cn in prompt_lower:
+                    if en not in clothes_keywords:
+                        clothes_keywords.append(en)
+
+            if clothes_keywords:
+                prompt_parts.append("wearing " + ", ".join(clothes_keywords))
+
+            scene_keywords = []
+            scenes_map = {
+                '沙滩': 'beach',
+                '海滩': 'beach',
+                '海边': 'ocean',
+                '花园': 'garden',
+                '森林': 'forest',
+                '城市': 'city',
+                '卧室': 'bedroom',
+                '浴室': 'bathroom',
+                '舞台': 'stage',
+                '宫殿': 'palace',
+                '日落': 'sunset',
+                '星空': 'starry sky',
+            }
+            for cn, en in scenes_map.items():
+                if cn in prompt_lower:
+                    if en not in scene_keywords:
+                        scene_keywords.append(en)
+            if scene_keywords:
+                prompt_parts.extend(scene_keywords)
+
+            style_keywords = []
+            styles_map = {
+                '现代': 'modern style',
+                '传统': 'traditional style',
+                '复古': 'vintage style',
+                '优雅': 'elegant style',
+                '性感': 'sexy style',
+                '可爱': 'cute style',
+                '梦幻': 'dreamy style',
+                '暗黑': 'dark style',
+                '古风': 'traditional chinese style',
+                '东方': 'eastern style',
+                '中国风': 'chinese style',
+                '油画': 'oil painting style',
+                '水彩': 'watercolor style',
+                '动漫': 'anime style',
+                '写实': 'photorealistic style',
+            }
+            for cn, en in styles_map.items():
+                if cn in prompt_lower:
+                    if en not in style_keywords:
+                        style_keywords.append(en)
+            if style_keywords:
+                prompt_parts.extend(style_keywords)
+
+            prompt_parts.append("masterpiece")
+            prompt_parts.append("best quality")
+            prompt_parts.append("photorealistic")
+            prompt_parts.append("8k")
+            prompt_parts.append("highly detailed")
+
+            new_prompt = ", ".join(prompt_parts)
+            result['prompt'] = new_prompt
+
+            print(f"   ✅ 转换后提示词: {new_prompt}")
+
+        if 'masterpiece' not in result['prompt'].lower() and 'best quality' not in result['prompt'].lower():
+            result['prompt'] = f"masterpiece, best quality, photorealistic, 8k, highly detailed, {result['prompt']}"
+
+        if not result['negative']:
+            result['negative'] = self._negative_templates["default"]
+
+        return result
+
+    def _enhance_prompt_with_context(self, base_prompt: str, keywords: dict) -> str:
+        quality_parts = ["masterpiece", "best quality", "photorealistic", "8k", "highly detailed", "ultra detailed"]
+        prompt_parts = quality_parts.copy()
+
+        genders = keywords.get("genders", [])
+        if not genders:
+            if self.uploaded_image_path:
+                image_features = self._analyze_image_features(self.uploaded_image_path)
+                face_count = image_features.get("face_count", 0)
+                if face_count == 1:
+                    genders = ["1girl"]
+                elif face_count >= 2:
+                    genders = ["2girls"]
+                else:
+                    genders = ["1girl"]
+            else:
+                genders = ["1girl"]
+            keywords["genders"] = genders
+
+        existing_genders = [p for p in prompt_parts if p in ["1girl", "1boy", "2girls", "2boys", "1girl, 1boy"]]
+        if not existing_genders:
+            prompt_parts = genders + prompt_parts
+        elif existing_genders and genders and existing_genders[0] != genders[0]:
+            for g in existing_genders:
+                prompt_parts.remove(g)
+            prompt_parts = genders + prompt_parts
+
+        current_prompt = ", ".join(prompt_parts)
+        if base_prompt and base_prompt not in current_prompt:
+            prompt_parts.append(base_prompt)
+
+        if keywords.get("styles"):
+            for style in keywords["styles"]:
+                if style not in prompt_parts:
+                    prompt_parts.append(style)
+
+        subject_parts = []
+        if keywords.get("scenes"):
+            subject_parts.append("background: " + ", ".join(keywords["scenes"]))
+        if keywords.get("lighting"):
+            subject_parts.append("lighting: " + ", ".join(keywords["lighting"]))
+        if keywords.get("poses"):
+            subject_parts.append("pose: " + ", ".join(keywords["poses"]))
+        if keywords.get("expressions"):
+            subject_parts.append("expression: " + ", ".join(keywords["expressions"]))
+        if keywords.get("body"):
+            subject_parts.extend(keywords["body"])
+        if keywords.get("clothes"):
+            subject_parts.append("wearing " + ", ".join(keywords["clothes"]))
+        if keywords.get("colors"):
+            subject_parts.append("with " + ", ".join(keywords["colors"]) + " color scheme")
+
+        full_prompt = ", ".join(prompt_parts)
+        if subject_parts:
+            full_prompt += ", " + ", ".join(subject_parts)
+
+        if self.user_preferences.get("style"):
+            style = self.user_preferences["style"]
+            if style not in full_prompt:
+                full_prompt += f", {style} style"
+
+        return full_prompt
+
+    # ==================== UI 事件处理 ====================
+
     def _toggle_safe_mode(self):
-        """切换安全模式"""
         current = self.safe_mode_var.get()
         self.safe_mode_var.set(not current)
-        
+
         if self.safe_mode_var.get():
             self.safe_mode_btn.config(
                 relief="sunken",
@@ -1693,9 +1536,8 @@ class ChatTab(BaseTab):
             )
             self.safe_mode_label.config(text="🔴 已禁用", foreground="red")
             self._append_message("system", "⚠️ 安全模式已禁用 - 内容不受限制")
-        
+
     def _update_safe_mode_status(self):
-        """更新安全模式状态显示"""
         if self.safe_mode_var.get():
             self.safe_mode_label.config(text="🟢 已启用", foreground="green")
             self.safe_mode_btn.config(
@@ -1710,43 +1552,31 @@ class ChatTab(BaseTab):
                 bg="#ffebee",
                 text="⚠️ 自由模式"
             )
-        
+
     def _check_unsafe_content(self, text: str) -> tuple:
-        """
-        检测不当内容
-        返回: (是否不安全, 匹配的关键词列表)
-        """
-        # 性行为相关关键词（中英文）
         unsafe_keywords = [
-            # 中文
             '阴茎', '阴道', '插入', '性交', '做爱', '操', '干', '肏',
             '射精', '高潮', '精液', '阴蒂', '口交', '肛交', '自慰',
             '手淫', '淫荡', '色情', '全裸', '一丝不挂',
             '乳交', '足交', '性虐', 'sm', '捆绑', '性爱', '性行为',
-            # 英文
             'penis', 'vagina', 'insert', 'intercourse', 'sexual', 'fuck',
             'sperm', 'ejaculate', 'orgasm', 'clitoris', 'oral sex',
             'anal sex', 'masturbate', 'porn', 'naked', 'nude',
             'hardcore', 'explicit', 'xxx', 'sex scene', 'sex',
         ]
-        
+
         text_lower = text.lower()
         matched = []
-        
+
         for keyword in unsafe_keywords:
             if keyword in text_lower:
                 matched.append(keyword)
-        
+
         return len(matched) > 0, matched
 
     def _get_safe_alternatives(self, text: str) -> list:
-        """
-        根据输入文本生成安全的替代提示词
-        """
-        # 检测文本中的关键词，选择相关的替代方案
         text_lower = text.lower()
-        
-        # 基础替代方案（按亲密程度分级）
+
         alternatives = {
             "romantic": [
                 "couple hugging in sunset, romantic atmosphere, artistic photography, masterpiece, best quality",
@@ -1769,8 +1599,7 @@ class ChatTab(BaseTab):
                 "romantic portrait, affectionate couple, beautiful bokeh, professional photography"
             ]
         }
-        
-        # 根据输入选择相关类别
+
         if '拥抱' in text_lower or 'hug' in text_lower:
             category = "romantic"
         elif '接吻' in text_lower or 'kiss' in text_lower:
@@ -1780,13 +1609,11 @@ class ChatTab(BaseTab):
         elif '肖像' in text_lower or 'portrait' in text_lower:
             category = "portrait"
         else:
-            # 默认混合
             category = "romantic"
-        
+
         return alternatives.get(category, alternatives["romantic"])
-    
+
     def _clear_upload(self):
-        """清除上传的图片"""
         self.uploaded_images = []
         self.uploaded_image_paths = []
         self.uploaded_image = None
@@ -1795,53 +1622,49 @@ class ChatTab(BaseTab):
         self.preview_label.config(image="")
         self.preview_label.image = None
         self._append_message("system", "🗑️ 已清除所有图片")
-    
+
     def _set_quality_mode(self, mode: str):
-        """切换质量模式"""
         self.quality_mode_var.set(mode)
-        
-        # 更新按钮样式
+
         buttons = {
             "快速": self.fast_btn,
             "平衡": self.balance_btn,
             "高质量": self.quality_btn,
         }
-        
+
         colors = {
             "快速": {"bg": "#e8f5e9", "hint": "⚡ 快速模式 (8步, 小尺寸)", "fg": "green"},
             "平衡": {"bg": "#e3f2fd", "hint": "⚖️ 平衡模式 (12步, 中等尺寸)", "fg": "blue"},
             "高质量": {"bg": "#fff3e0", "hint": "🌟 高质量模式 (20步, 大尺寸)", "fg": "orange"},
             "超高质量": {"bg": "#fce4ec", "hint": "✨ 超高质量模式 (30步, 超大尺寸, 建议16GB+内存)", "fg": "red"},
         }
-        
+
         for name, btn in buttons.items():
             if name == mode:
                 btn.config(relief="sunken", bg=colors[name]["bg"])
             else:
                 btn.config(relief="raised", bg="#f5f5f5")
-        
+
         self.mode_hint.config(text=colors[mode]["hint"], foreground=colors[mode]["fg"])
-        
-        # 根据模式自动调整步数
+
         if mode == "快速":
             self.chat_steps_var.set(8)
         elif mode == "平衡":
             self.chat_steps_var.set(12)
-        else:  # 高质量
+        else:
             self.chat_steps_var.set(20)
-        
+
         self._append_message("system", f"📊 切换到 {mode} 模式")
-    
+
     def _manual_install_llm(self):
-        """手动安装 LLM"""
         if self.llm_installing:
             self._append_message("system", "⏳ 正在安装中...")
             return
-        
+
         if self.llm_available:
             self._append_message("system", "✅ LLM 已就绪")
             return
-        
+
         if messagebox.askyesno("安装 LLM",
             "将自动安装 Ollama 并下载模型。\n\n"
             f"1. 下载 Ollama (约 100MB)\n"
@@ -1850,19 +1673,18 @@ class ChatTab(BaseTab):
             "整个过程可能需要 10-30 分钟，确定继续吗？"
         ):
             threading.Thread(target=self._install_ollama, daemon=True).start()
-            
+
     def _on_llm_toggle(self):
-        """LLM 开关切换"""
         if self.llm_enabled.get():
             if self.llm_installing:
                 self._append_message("system", "⏳ 正在安装中，请稍候...")
                 return
-            
+
             if not self.llm_available:
                 self._append_message("system", "🔍 正在检测 LLM 环境...")
-                
+
                 if not self._check_ollama_installed():
-                    if messagebox.askyesno("安装 LLM", 
+                    if messagebox.askyesno("安装 LLM",
                         "检测到 Ollama 未安装。\n"
                         "是否自动下载并安装 Ollama？\n\n"
                         f"下载大小: ~{self.llm_model_size}\n"
@@ -1873,7 +1695,7 @@ class ChatTab(BaseTab):
                         self.llm_enabled.set(False)
                         self.llm_status.config(text="●", foreground="gray")
                     return
-                
+
                 self._check_ollama()
             else:
                 self.llm_status.config(text="●", foreground="green")
@@ -1881,15 +1703,14 @@ class ChatTab(BaseTab):
         else:
             self._append_message("system", "🧠 LLM 增强已禁用")
             self.llm_status.config(text="●", foreground="gray")
-        
+
     def _update_context(self, intent: dict, result: dict = None):
-        """更新上下文"""
         self.last_intent_type = intent.get("type")
         self.last_prompt = intent.get("prompt")
-        
+
         if result and result.get("image_path"):
             self.last_generated_image = result.get("image_path")
-        
+
         keywords = intent.get("keywords", {})
         if keywords.get("styles"):
             self.user_preferences["style"] = keywords["styles"][0]
@@ -1901,7 +1722,7 @@ class ChatTab(BaseTab):
                 self.user_preferences["gender"] = "女性"
             elif "boy" in gender:
                 self.user_preferences["gender"] = "男性"
-        
+
         self.conversation_history.append({
             "timestamp": datetime.now().isoformat(),
             "intent": intent,
@@ -1909,12 +1730,11 @@ class ChatTab(BaseTab):
         })
 
     def _get_context_summary(self) -> str:
-        """获取上下文摘要"""
         if not self.conversation_history:
             return ""
-        
+
         summary_parts = []
-        
+
         prefs = []
         if self.user_preferences.get("style"):
             prefs.append(f"风格偏好: {self.user_preferences['style']}")
@@ -1922,88 +1742,77 @@ class ChatTab(BaseTab):
             prefs.append(f"场景偏好: {self.user_preferences['scene']}")
         if self.user_preferences.get("gender"):
             prefs.append(f"性别偏好: {self.user_preferences['gender']}")
-        
+
         if prefs:
             summary_parts.append("📌 用户偏好: " + ", ".join(prefs))
-        
+
         if self.last_prompt:
             summary_parts.append(f"📝 上次提示词: {self.last_prompt[:50]}...")
-        
+
         user_msgs = [m for m in self.messages if m.get("role") == "user"]
         if user_msgs:
             summary_parts.append(f"💬 已对话 {len(user_msgs)} 轮")
-        
+
         return "\n".join(summary_parts) if summary_parts else "无上下文"
 
     def _has_context(self) -> bool:
-        """检查是否有上下文"""
         return len(self.conversation_history) > 0 or self.last_prompt is not None
-        
+
     def _on_send_shift_check(self, event):
-        """检查是否按了 Shift+Enter"""
         if event.state & 0x1:
             return
         self._on_send()
         return "break"
-    
+
     def _on_send(self, event=None):
-        """发送消息"""
         if self.is_generating:
             return
-        
+
         user_input = self.input_text.get("1.0", tk.END).strip()
         if not user_input:
             return
-        
+
         self.input_text.delete("1.0", tk.END)
         self._append_message("user", user_input)
-        
+
         threading.Thread(target=self._process_message, args=(user_input,), daemon=True).start()
-    
+
     def _upload_image(self):
-        """上传图片（支持多张）"""
         file = filedialog.askopenfilename(
             title="选择图片",
             filetypes=[("图片文件", "*.png *.jpg *.jpeg *.bmp *.gif *.webp"), ("所有文件", "*.*")]
         )
         if file:
-            # ✅ 添加到列表
             self.uploaded_image_paths.append(file)
             img = Image.open(file)
             self.uploaded_images.append(img)
-            
-            # ✅ 保留兼容性（第一张）
+
             if not self.uploaded_image:
                 self.uploaded_image = img
                 self.uploaded_image_path = file
-            
-            # ✅ 更新状态显示
+
             count = len(self.uploaded_images)
             self.image_status.config(text=f"📎 {count} 张图片")
-            
-            # ✅ 显示缩略图（显示第一张或拼图）
+
             thumb = img.copy()
             thumb.thumbnail((40, 40))
             photo = ImageTk.PhotoImage(thumb)
             self.preview_label.config(image=photo)
             self.preview_label.image = photo
-            
+
             self._append_message("system", f"📎 已上传图片 ({count}/2): {os.path.basename(file)}")
-            
-            # ✅ 如果已有2张，提示可以合成
+
             if count >= 2:
                 self._append_message("system", "✅ 已上传2张图片！输入 '合成'、'在一起'、'拥抱' 等指令生成双人图")
-                
+
     def _cancel_generation(self):
-        """取消生成"""
         self.cancel_generation = True
         self.is_generating = False
         self.cancel_btn.config(state=tk.DISABLED)
         self.send_btn.config(state=tk.NORMAL)
         self.status_var.set("⏹️ 已取消")
-    
+
     def _clear_chat(self):
-        """清除对话"""
         self.chat_text.config(state=tk.NORMAL)
         self.chat_text.delete("1.0", tk.END)
         self.chat_text.config(state=tk.DISABLED)
@@ -2014,15 +1823,14 @@ class ChatTab(BaseTab):
         self.image_status.config(text="")
         self.preview_label.config(image="")
         self.preview_label.image = None
-        self._enhanced_prompt_cache = {}  # 清除缓存
+        self._enhanced_prompt_cache = {}
         self._append_message("assistant", "🗑️ 对话已清空，有什么可以帮你的？")
-    
+
     def _append_message(self, role: str, content: str):
-        """添加消息到对话"""
         self.chat_text.config(state=tk.NORMAL)
-        
+
         timestamp = datetime.now().strftime("%H:%M")
-        
+
         if role == "user":
             prefix = f"👤 你 ({timestamp})\n"
             tag = "user_msg"
@@ -2043,76 +1851,68 @@ class ChatTab(BaseTab):
             prefix = f"📝 ({timestamp})\n"
             tag = "normal_msg"
             bg = "#ffffff"
-        
+
         self.chat_text.insert(tk.END, f"\n{prefix}", f"{tag}_prefix")
         self.chat_text.insert(tk.END, f"{content}\n", tag)
-        
+
         self.chat_text.tag_config(f"{tag}_prefix", foreground="gray", font=("", 8))
         self.chat_text.tag_config(tag, background=bg, font=("微软雅黑", 10), spacing1=2, spacing2=2, lmargin1=10, lmargin2=10, rmargin=10)
-        
+
         self.chat_text.see(tk.END)
         self.chat_text.config(state=tk.DISABLED)
-        
+
         self.messages.append({"role": role, "content": content, "timestamp": timestamp})
-    
+
     def _append_image_result(self, filepath: str):
-        """添加图片生成结果"""
         self.chat_text.config(state=tk.NORMAL)
         timestamp = datetime.now().strftime("%H:%M")
-        
+
         try:
             img = Image.open(filepath)
             img.thumbnail((300, 300))
             photo = ImageTk.PhotoImage(img)
-            
+
             self.chat_text.insert(tk.END, f"\n🖼️ 生成 ({timestamp})\n", "image_prefix")
             self.chat_text.image_create(tk.END, image=photo)
             self.chat_text.insert(tk.END, f"\n📁 {os.path.basename(filepath)}\n", "image_info")
-            
+
             if not hasattr(self, '_image_refs'):
                 self._image_refs = []
             self._image_refs.append(photo)
-            
+
             self.chat_text.tag_config("image_prefix", foreground="gray", font=("", 8))
             self.chat_text.tag_config("image_info", foreground="blue", font=("", 8))
-            
+
         except Exception as e:
             self.chat_text.insert(tk.END, f"\n🖼️ 生成 ({timestamp})\n", "image_prefix")
             self.chat_text.insert(tk.END, f"✅ 已保存: {filepath}\n", "image_info")
-        
+
         self.chat_text.see(tk.END)
         self.chat_text.config(state=tk.DISABLED)
-    
+
     def _update_status(self, msg: str, progress: float = None):
-        """更新状态"""
         self.status_var.set(msg)
         if progress is not None:
             self.progress_bar.config(value=progress * 100)
-    
+
     # ==================== 消息处理 ====================
-    
+
     def _process_message(self, user_input: str):
-        """处理用户消息"""
         self.is_generating = True
         self.cancel_generation = False
         self.send_btn.config(state=tk.DISABLED)
         self.cancel_btn.config(state=tk.NORMAL)
-        
+
         try:
-            # 1. 分析意图
             intent = self._analyze_intent(user_input)
-            
+
             self._append_message("system", f"🔍 分析意图: {intent['type']}")
 
-            # ===== 检测是否超高质量模式 =====
             mode = self.quality_mode_var.get() if hasattr(self, 'quality_mode_var') else "平衡"
             is_ultra = mode == "超高质量"
-        
-            # 2. 执行对应操作
-            # ===== 🚀 新增：双人合成路由 =====
+
             if intent["type"] == "text_to_image" and is_ultra:
-                # ✅ 超高质量模式使用大尺度生成
-                self._handle_large_scale_generation(intent)            
+                self._handle_large_scale_generation(intent)
             elif intent["type"] == "couple_generation":
                 self._handle_couple_generation(intent)
             elif intent["type"] == "text_to_image":
@@ -2123,7 +1923,7 @@ class ChatTab(BaseTab):
                 self._handle_chat(intent)
             else:
                 self._append_message("assistant", "❌ 抱歉，我没理解你的意思。请试试：\n• \"生成一张...\"\n• \"把这张图改成...\"\n• 直接和我聊天")
-            
+
         except Exception as e:
             self._append_message("assistant", f"❌ 处理失败: {str(e)}")
             import traceback
@@ -2133,27 +1933,25 @@ class ChatTab(BaseTab):
             self.send_btn.config(state=tk.NORMAL)
             self.cancel_btn.config(state=tk.DISABLED)
             self.progress_bar.config(value=0)
-        
-    # 在 chat_tab.py 中添加 ControlNet 相关方法
+
+    # ==================== ControlNet 相关 ====================
+
     def _setup_controlnet(self):
-        """初始化 ControlNet（懒加载）- 使用统一缓存"""
         if hasattr(self, 'controlnet_available') and self.controlnet_available:
             print("✅ ControlNet 已就绪（使用缓存）")
             return
-        
+
         try:
             from diffusers import ControlNetModel, StableDiffusionControlNetPipeline
-            
+
             print("📦 正在加载 ControlNet...")
-            
-            # ===== 获取缓存目录 =====
+
             hf_cache_dir = os.environ.get("HF_HOME", r"E:\hf_cache\.cache")
             controlnet_cache_dir = os.path.join(hf_cache_dir, "hub")
             os.makedirs(controlnet_cache_dir, exist_ok=True)
-            
+
             print(f"   📁 缓存目录: {controlnet_cache_dir}")
-            
-            # ===== 加载 ControlNet =====
+
             model_path = os.path.join(controlnet_cache_dir, "models--lllyasviel--sd-controlnet-openpose")
             if os.path.exists(model_path):
                 print(f"   ✅ 找到本地缓存")
@@ -2174,33 +1972,25 @@ class ChatTab(BaseTab):
                     resume_download=True,
                 )
                 print("   ✅ 下载完成，已缓存到本地")
-            
-            # ===== ✅ 修复：从 pipeline_pool 获取 pipeline =====
+
             from utils.pipeline_pool import pipeline_pool
-            
-            # 获取当前使用的模型
+
             model_name = self.app.model_var.get() if hasattr(self.app, 'model_var') else None
             if not model_name:
                 print("   ⚠️ 未选择模型")
                 self.controlnet_available = False
                 return
-            
+
             model_path = self.app._get_model_path(model_name)
             if not model_path:
                 print(f"   ⚠️ 找不到模型: {model_name}")
                 self.controlnet_available = False
                 return
-            
-            # 获取 LoRA 信息
-            lora_path = None
+
+            # 获取 LoRA
+            lora_path = self.current_lora_path if self.lora_loaded else None
             lora_weight = 1.0
-            if hasattr(self.app, 'lora_var') and hasattr(self.app, 'lora_paths'):
-                lora_display = self.app.lora_var.get()
-                if lora_display:
-                    lora_path = self.app.lora_paths.get(lora_display)
-                    lora_weight = self.app.lora_weight_var.get() if hasattr(self.app, 'lora_weight_var') else 1.0
-            
-            # 从 pipeline_pool 获取 pipeline
+
             task_id = f"controlnet_{datetime.now().strftime('%H%M%S')}"
             pipe, is_new = pipeline_pool.get_pipeline(
                 model_path=model_path,
@@ -2209,9 +1999,8 @@ class ChatTab(BaseTab):
                 lora_weight=lora_weight,
                 task_id=task_id
             )
-            
+
             if pipe:
-                # 创建 ControlNet pipeline
                 self.controlnet_pipe = StableDiffusionControlNetPipeline(
                     vae=pipe.vae,
                     text_encoder=pipe.text_encoder,
@@ -2228,61 +2017,49 @@ class ChatTab(BaseTab):
             else:
                 print("⚠️ 无法获取 Pipeline，ControlNet 加载失败")
                 self.controlnet_available = False
-                
+
         except Exception as e:
             print(f"⚠️ ControlNet 加载失败: {e}")
             self.controlnet_available = False
-            
-
 
     def _check_controlnet_cached(self) -> bool:
-        """检查 ControlNet 是否已缓存"""
         hf_cache_dir = os.environ.get("HF_HOME", r"E:\hf_cache\.cache")
         controlnet_cache_dir = os.path.join(hf_cache_dir, "hub")
         model_path = os.path.join(controlnet_cache_dir, "models--lllyasviel--sd-controlnet-openpose")
         return os.path.exists(model_path)
 
     def _get_controlnet_size(self) -> str:
-        """获取 ControlNet 缓存大小"""
         hf_cache_dir = os.environ.get("HF_HOME", r"E:\hf_cache\.cache")
         controlnet_cache_dir = os.path.join(hf_cache_dir, "hub")
         if not os.path.exists(controlnet_cache_dir):
             return "未缓存"
-        
+
         total_size = 0
         for dirpath, dirnames, filenames in os.walk(controlnet_cache_dir):
             for f in filenames:
                 fp = os.path.join(dirpath, f)
                 if os.path.exists(fp):
                     total_size += os.path.getsize(fp)
-        
+
         if total_size > 1024**3:
             return f"{total_size / 1024**3:.1f} GB"
         elif total_size > 1024**2:
             return f"{total_size / 1024**2:.1f} MB"
         else:
             return f"{total_size / 1024:.1f} KB"
-        
+
     def _extract_pose_from_image(self, image_path: str) -> Image.Image:
-        """
-        从图片中提取骨骼姿态图（OpenPose）
-        用于 ControlNet 控制
-        """
         try:
             import cv2
             import numpy as np
             from PIL import Image
-            
-            # 方法1：使用 OpenPose（需要安装）
-            # 这里简化处理，用 OpenCV 检测人体轮廓
-            
+
             img = cv2.imread(image_path)
             if img is None:
                 return None
-            
+
             h, w = img.shape[:2]
-            
-            # 使用 OpenPose（如果有）
+
             try:
                 from controlnet_aux import OpenPoseDetector
                 detector = OpenPoseDetector.from_pretrained("lllyasviel/ControlNet")
@@ -2290,32 +2067,27 @@ class ChatTab(BaseTab):
                 return pose_img
             except:
                 pass
-            
-            # 备用：使用 MediaPipe
+
             try:
                 import mediapipe as mp
                 mp_pose = mp.solutions.pose
                 with mp_pose.Pose(static_image_mode=True) as pose:
                     results = pose.process(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
                     if results.pose_landmarks:
-                        # 绘制骨骼
                         pose_img = np.zeros_like(img)
-                        # ... 绘制骨骼点
                         return Image.fromarray(pose_img)
             except:
                 pass
-            
-            # 最简备用：返回边缘检测图
+
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             edges = cv2.Canny(gray, 50, 150)
             return Image.fromarray(edges)
-            
+
         except Exception as e:
             print(f"⚠️ 姿态提取失败: {e}")
             return None
-            
+
     def _analyze_intent(self, text: str) -> dict:
-        """智能分析用户意图 - 自动判断，无需关键词"""
         print("\n" + "=" * 60)
         print("🔍 [智能意图分析]")
         print(f"   用户输入: {text}")
@@ -2324,22 +2096,19 @@ class ChatTab(BaseTab):
         has_image = self.uploaded_image is not None
         has_multiple_images = len(self.uploaded_images) >= 2
 
-        # ===== 🚀 内容安全检测 =====
         is_unsafe, unsafe_keywords = self._check_unsafe_content(text)
-        
+
         if is_unsafe:
-            # 获取安全的替代提示词
             safe_alternatives = self._get_safe_alternatives(text)
-            
+
             if self.safe_mode_var.get():
-                # 安全模式：自动替换并提示
                 self._append_message("system", f"🛡️ 检测到不当内容: {', '.join(unsafe_keywords[:3])}")
-                self._append_message("assistant", 
+                self._append_message("assistant",
                     f"💡 建议使用更艺术的表达方式：\n\n"
                     f"📝 已替换为：\n{safe_alternatives[0]}\n\n"
                     f"💡 如需生成原内容，请关闭安全模式"
                 )
-                
+
                 return {
                     "type": "text_to_image",
                     "prompt": safe_alternatives[0],
@@ -2349,12 +2118,11 @@ class ChatTab(BaseTab):
                     "llm_enhanced": False,
                     "params": self._optimize_parameters(safe_alternatives[0], "text_to_image", None),
                     "content_filtered": True,
-                    "safe_alternatives": safe_alternatives,  # 保存所有替代方案
+                    "safe_alternatives": safe_alternatives,
                 }
             else:
-                # 自由模式：提示但不替换，但给出建议
                 self._append_message("system", f"⚠️ 检测到敏感内容: {', '.join(unsafe_keywords[:3])}")
-                self._append_message("assistant", 
+                self._append_message("assistant",
                     f"⚠️ 当前为自由模式，将尝试生成您的请求。\n\n"
                     f"💡 建议使用更艺术的表达方式：\n"
                     f"• {safe_alternatives[0]}\n"
@@ -2362,46 +2130,37 @@ class ChatTab(BaseTab):
                     f"• {safe_alternatives[2]}\n\n"
                     f"🛡️ 点击「安全模式」启用自动过滤"
                 )
-                # 继续原有的处理流程
-                # 但记录标记
                 self._unsafe_content_detected = True
-            
-        # ===== 🚀 新增：检测双人合成意图 =====
+
         is_couple_intent = has_multiple_images and self._detect_couple_intent(text)
-        
+
         if is_couple_intent:
             print(f"   👫 检测到双人合成意图")
             action = self._detect_action_from_text(text)
             print(f"   🎬 动作: {action}")
-            
-            # 提取两个人物的性别
+
             genders = []
             for img in self.uploaded_images[:2]:
-                # 分析每张图片的特征
-                # 这里简化处理，实际可以用更精确的方法
                 pass
-            
-            # 构建双人提示词
-            gender1 = "1woman"  # 默认
-            gender2 = "1man"    # 默认
-            
-            # 从关键词检测性别
+
+            gender1 = "1woman"
+            gender2 = "1man"
+
             if any(k in text_lower for k in ['男', '帅哥', '男孩', '男性', 'man', 'boy']):
                 gender2 = "1man"
             if any(k in text_lower for k in ['女', '美女', '女孩', '女性', 'woman', 'girl']):
                 gender1 = "1woman"
-            
+
             smart_prompt = f"{gender1} and {gender2}, {action}, couple, romantic, masterpiece, best quality, photorealistic"
-            
-            # 使用 LLM 增强
+
             use_llm = self.llm_enabled.get() and self.llm_available
             if use_llm:
                 llm_result = self._llm_enhance_prompt(text, is_img2img=True)
                 if llm_result and llm_result.get('prompt'):
                     smart_prompt = llm_result['prompt']
-            
+
             result = {
-                "type": "couple_generation",  # ✅ 新类型
+                "type": "couple_generation",
                 "prompt": smart_prompt,
                 "action": action,
                 "keywords": self._extract_keywords(text),
@@ -2414,36 +2173,31 @@ class ChatTab(BaseTab):
             print(f"   提示词: {result['prompt'][:150]}...")
             print("=" * 60 + "\n")
             return result
-        
-        # ===== 1. 智能分类 =====
+
         classification = self._classify_intent(text, has_image)
         intent_type = classification["type"]
         print(f"   📋 意图分类: {intent_type} (置信度: {classification.get('confidence', 'medium')})")
-        
-        # ===== 2. 提取关键词 =====
+
         keywords = self._extract_keywords(text)
         print(f"   提取的关键词: {keywords}")
-        
-        # ===== 3. 判断是否为延续性指令 =====
+
         continuation_keywords = ['再来', '继续', '换一个', '换一张', '再生成', 'another', 'continue']
         is_continuation = any(k in text_lower for k in continuation_keywords)
-        
-        # ===== 4. 调用 LLM 增强提示词 =====
+
         use_llm = self.llm_enabled.get() and self.llm_available
         is_img2img = intent_type == "image_to_image"
-        
+
         llm_result = None
         if use_llm:
             print("   🧠 正在调用 LLM 增强...")
             self._append_message("system", "🧠 正在智能分析需求...")
-            
+
             llm_result = self._llm_enhance_prompt(text, is_img2img)
             if llm_result:
                 print(f"   ✅ LLM 增强成功")
                 print(f"   📝 增强后提示词: {llm_result.get('prompt', '')[:100]}...")
                 self._append_message("system", f"🧠 LLM 增强完成")
-        
-        # ===== 5. 构建最终提示词 =====
+
         if llm_result and llm_result.get('prompt'):
             smart_prompt = llm_result['prompt']
             self._last_negative = llm_result.get('negative', self._negative_templates["default"])
@@ -2456,28 +2210,23 @@ class ChatTab(BaseTab):
             smart_prompt = self._enhance_prompt_with_context(text, keywords)
             self._last_negative = self._negative_templates["default"]
             print(f"   📝 使用关键词构建提示词")
-        
-        # ===== 6. 智能参数优化 =====
+
         image_features = None
         if has_image and self.uploaded_image_path:
             image_features = self._analyze_image_features(self.uploaded_image_path)
-        
+
         params = self._optimize_parameters(smart_prompt, intent_type, image_features)
         print(f"   ⚙️ 优化参数: 步数={params['steps']}, CFG={params['cfg']}, 强度={params.get('strength', 'N/A')}")
-        
-        # ===== 7. 图生图特殊处理 =====
+
         if intent_type == "image_to_image":
-            # ✅ 修复：如果 LLM 已经生成了提示词，直接使用，不覆盖
             if llm_result and llm_result.get('prompt'):
-                # LLM 已生成，直接使用
                 smart_prompt = llm_result['prompt']
                 print(f"   ✅ 保留 LLM 生成的提示词（不覆盖）")
             else:
-                # 只有 LLM 失败时，才用关键词构建
                 actions = keywords.get("actions", [])
                 genders = keywords.get("genders", [])
                 gender = genders[0] if genders else "1woman"
-                
+
                 if "change_clothes" in actions and keywords.get("clothes"):
                     clothes_str = ", ".join(keywords["clothes"])
                     smart_prompt = f"same person, same face, same pose, {gender}, wearing {clothes_str}"
@@ -2496,7 +2245,7 @@ class ChatTab(BaseTab):
                     self._append_message("system", f"🎨 检测到风格转换: {style}")
                 else:
                     smart_prompt = f"same person, same face, same pose, {gender}, {smart_prompt}"
-            
+
             result = {
                 "type": "image_to_image",
                 "prompt": smart_prompt,
@@ -2511,14 +2260,13 @@ class ChatTab(BaseTab):
             print(f"   LLM增强: {result['llm_enhanced']}")
             print("=" * 60 + "\n")
             return result
-        
-        # ===== 8. 文生图处理 =====
+
         elif intent_type == "text_to_image":
             quality_prefix = "masterpiece, best quality"
             if "photorealistic" not in smart_prompt:
                 quality_prefix += ", photorealistic"
             smart_prompt = f"{quality_prefix}, {smart_prompt}"
-            
+
             result = {
                 "type": "text_to_image",
                 "prompt": smart_prompt,
@@ -2533,8 +2281,7 @@ class ChatTab(BaseTab):
             print(f"   LLM增强: {result['llm_enhanced']}")
             print("=" * 60 + "\n")
             return result
-        
-        # ===== 9. 对话 =====
+
         else:
             if use_llm:
                 reply = self._call_ollama(f"用户说：{text}\n请简短友好地回复（一句话）：", timeout=15, max_tokens=128)
@@ -2545,18 +2292,16 @@ class ChatTab(BaseTab):
                         "llm_reply": reply
                     }
                     return result
-            
+
             result = {
                 "type": "chat",
                 "original_text": text
             }
             return result
-        
-        
+
     def _detect_style_from_text(self, text: str) -> str:
-        """从文本中检测风格"""
         text_lower = text.lower()
-        
+
         style_map = {
             '油画': 'oil painting',
             '水彩': 'watercolor',
@@ -2576,81 +2321,59 @@ class ChatTab(BaseTab):
             '现代': 'modern',
             '抽象': 'abstract',
         }
-        
+
         for cn, en in style_map.items():
             if cn in text_lower:
                 return en
-        
-        return "realistic"  # 默认
-    
+
+        return "realistic"
+
     def _classify_intent(self, text: str, has_image: bool) -> dict:
-        """
-        智能意图分类 - 无需用户说"生成"/"换成"等关键词
-        自动判断用户想要什么
-        """
         text_lower = text.lower()
-        
-        # ===== 1. 检测是否包含图片描述（文生图） =====
-        # 如果用户描述了一个场景/物体/人物，但没有明确说"生成"
+
         image_descriptors = [
-            # 场景词
             '在沙滩', '在海边', '在花园', '在森林', '在城市', '在街道', '在卧室', '在浴室',
             '在舞台', '在宫殿', '在城堡', '在雨中', '在雪地', '在日落', '在星空下',
-            # 动作词
             '站着', '坐着', '躺着', '蹲着', '跪着', '弯腰', '回头', '侧身',
             '奔跑', '走路', '跳舞', '拥抱', '接吻', '睡觉',
-            # 风格词
             '动漫风格', '油画风格', '水彩风格', '写实风格', '赛博朋克', '古风', '复古',
-            # 服装词
             '穿着', '戴着', '披着', '身着', '礼服', '婚纱', '旗袍', '汉服',
-            # 情感/氛围
             '微笑', '严肃', '忧郁', '诱惑', '可爱', '性感', '优雅', '梦幻',
         ]
-        
-        # ===== 2. 检测是否是修改指令（图生图） =====
+
         edit_indicators = [
             '变成', '改为', '换成', '改成', '换', '改', '修改', '调整',
             '穿', '戴上', '脱下', '去掉', '去除',
             '更', '更加', '多一点', '少一点',
         ]
-        
-        # ===== 3. 检测是否是风格转换 =====
+
         style_indicators = [
             '风格', '画风', '质感', '样式', 'styl',
             '油画', '水彩', '素描', '动漫', '写实', '国风', '卡通',
             '赛博朋克', '蒸汽朋克', '哥特', '暗黑', '唯美',
         ]
-        
+
         has_edit = any(k in text_lower for k in edit_indicators)
         has_style = any(k in text_lower for k in style_indicators)
         has_description = any(k in text_lower for k in image_descriptors)
-        
-        # 如果包含"生成""画""创建"等明确指令，直接文生图
+
         explicit_gen = any(k in text_lower for k in ['生成', '画', '创建', 'create', 'generate', 'draw'])
-        
-        # 如果有图片且包含编辑词，或包含风格词，或包含服装/姿势修改 → 图生图
+
         if has_image and (has_edit or has_style):
             return {"type": "image_to_image", "confidence": "high"}
-        
-        # 如果有图片且包含描述词（用户可能想换装/换姿势）
+
         if has_image and has_description:
             return {"type": "image_to_image", "confidence": "medium"}
-        
-        # 如果包含明确生成指令或描述词 → 文生图
+
         if explicit_gen or has_description or len(text) > 5:
             return {"type": "text_to_image", "confidence": "high"}
-        
-        # 其他 → 对话
+
         return {"type": "chat", "confidence": "low"}
-    
+
     def _optimize_parameters(self, prompt: str, intent_type: str, image_features: dict = None) -> dict:
-        """
-        智能参数优化 - 自动根据内容调整参数
-        """
         prompt_lower = prompt.lower()
         params = {}
-        
-        # ===== 1. 自动判断步数 =====
+
         if any(k in prompt_lower for k in ['快速', '快', '预览', '草稿']):
             params["steps"] = 8
         elif any(k in prompt_lower for k in ['高质量', '精美', '细致', '大师', '杰作']):
@@ -2660,9 +2383,8 @@ class ChatTab(BaseTab):
         elif any(k in prompt_lower for k in ['写实', '真实', '照片']):
             params["steps"] = 24
         else:
-            params["steps"] = 12  # 默认
-        
-        # ===== 2. 自动判断 CFG =====
+            params["steps"] = 12
+
         if any(k in prompt_lower for k in ['抽象', '梦幻', '随意']):
             params["cfg"] = 5.0
         elif any(k in prompt_lower for k in ['写实', '真实', '照片']):
@@ -2670,9 +2392,8 @@ class ChatTab(BaseTab):
         elif any(k in prompt_lower for k in ['动漫', '卡通']):
             params["cfg"] = 6.5
         else:
-            params["cfg"] = 7.5  # 默认
-        
-        # ===== 3. 自动判断尺寸 =====
+            params["cfg"] = 7.5
+
         if any(k in prompt_lower for k in ['肖像', '头像', '特写', '脸部']):
             params["width"], params["height"] = 512, 640
             params["size_msg"] = "肖像模式（竖图）"
@@ -2688,8 +2409,7 @@ class ChatTab(BaseTab):
         else:
             params["width"], params["height"] = 512, 768
             params["size_msg"] = "默认竖图"
-        
-        # ===== 4. 图生图强度自动调整 =====
+
         if intent_type == "image_to_image":
             if any(k in prompt_lower for k in ['微调', '轻微', '稍微']):
                 params["strength"] = 0.25
@@ -2700,19 +2420,16 @@ class ChatTab(BaseTab):
             elif any(k in prompt_lower for k in ['换装', '换衣服', '换背景']):
                 params["strength"] = 0.35
             else:
-                params["strength"] = 0.40  # 默认
-            
-            # 如果有面部，限制强度
+                params["strength"] = 0.40
+
             if image_features and image_features.get("has_face"):
                 params["strength"] = min(params["strength"], 0.35)
-        
+
         return params
-    
+
     def _extract_keywords(self, text: str) -> dict:
-        """提取关键词（增强版）"""
         text_lower = text.lower()
-        
-        # 性别
+
         genders = []
         if any(k in text_lower for k in ['女', '美女', '女孩', '女性', '姑娘', '小姐姐', '女神']):
             genders.append("1girl")
@@ -2720,8 +2437,7 @@ class ChatTab(BaseTab):
             genders.append("1boy")
         elif any(k in text_lower for k in ['情侣', '双人', '两人', '夫妻', 'couple', '恋人']):
             genders.append("1girl, 1boy")
-        
-        # 服装（扩充）
+
         clothes_map = {
             '裙子': 'dress',
             '连衣裙': 'dress',
@@ -2756,8 +2472,7 @@ class ChatTab(BaseTab):
         for cn, en in clothes_map.items():
             if cn in text_lower:
                 clothes.append(en)
-        
-        # 颜色（扩充）
+
         colors_map = {
             '白色': 'white',
             '黑色': 'black',
@@ -2781,8 +2496,7 @@ class ChatTab(BaseTab):
         for cn, en in colors_map.items():
             if cn in text_lower:
                 colors.append(en)
-        
-        # 场景（扩充）
+
         scenes_map = {
             '沙滩': 'beach',
             '海滩': 'beach',
@@ -2812,8 +2526,7 @@ class ChatTab(BaseTab):
         for cn, en in scenes_map.items():
             if cn in text_lower:
                 scenes.append(en)
-        
-        # 风格（扩充）
+
         styles_map = {
             '动漫': 'anime style',
             '油画': 'oil painting style',
@@ -2841,8 +2554,7 @@ class ChatTab(BaseTab):
         for cn, en in styles_map.items():
             if cn in text_lower:
                 styles.append(en)
-        
-        # 姿势（扩充）
+
         poses_map = {
             '站立': 'standing',
             '坐': 'sitting',
@@ -2869,8 +2581,7 @@ class ChatTab(BaseTab):
         for cn, en in poses_map.items():
             if cn in text_lower:
                 poses.append(en)
-        
-        # 表情（扩充）
+
         expressions_map = {
             '微笑': 'smiling',
             '大笑': 'laughing',
@@ -2892,8 +2603,7 @@ class ChatTab(BaseTab):
         for cn, en in expressions_map.items():
             if cn in text_lower:
                 expressions.append(en)
-        
-        # 身体特征
+
         body_map = {
             '大胸': 'large breasts',
             '巨乳': 'huge breasts',
@@ -2909,8 +2619,7 @@ class ChatTab(BaseTab):
         for cn, en in body_map.items():
             if cn in text_lower:
                 body.append(en)
-        
-        # 光线（扩充）
+
         lighting_map = {
             '自然光': 'natural lighting',
             '暖光': 'warm lighting',
@@ -2932,7 +2641,6 @@ class ChatTab(BaseTab):
             if cn in text_lower:
                 lighting.append(en)
 
-        # 材质
         materials_map = {
             '大理石': 'marble',
             '石膏': 'plaster',
@@ -2965,12 +2673,11 @@ class ChatTab(BaseTab):
         for cn, en in materials_map.items():
             if cn in text_lower:
                 materials.append(en)
-        
+
         is_statue = any(k in text_lower for k in ['雕像', '雕塑', '石刻', '石像', '塑像', 'statue', 'sculpture'])
         if is_statue and not materials:
             materials.append('marble')
-        
-        # 操作指令
+
         actions = []
         if any(k in text_lower for k in ['去掉衣服', '脱衣服', '脱光', '去衣', '裸体', 'nude', 'naked']):
             actions.append("remove_clothes")
@@ -2984,7 +2691,7 @@ class ChatTab(BaseTab):
             actions.append("change_style")
         if any(k in text_lower for k in ['做成', '变成', '转换为', '转化', '制作', 'turn into', 'convert to']):
             actions.append("transform_material")
-        
+
         return {
             "genders": genders,
             "clothes": clothes,
@@ -3001,10 +2708,8 @@ class ChatTab(BaseTab):
         }
 
     def _estimate_params(self, prompt: str, is_image: bool = False) -> dict:
-        """根据提示词估算参数（支持质量模式）"""
         prompt_lower = prompt.lower()
-        
-        # 检测场景
+
         is_portrait = any(k in prompt_lower for k in ['portrait', 'headshot', 'close up', 'face', '头像', '特写', '自拍'])
         is_full_body = any(k in prompt_lower for k in ['full body', 'standing', '全身', '站立', 'full-length'])
         is_half_body = any(k in prompt_lower for k in ['half body', '半身', 'from waist up', 'upper body'])
@@ -3012,13 +2717,9 @@ class ChatTab(BaseTab):
         is_couple = any(k in prompt_lower for k in ['couple', 'two people', '双人', '情侣', '两人'])
         is_group = any(k in prompt_lower for k in ['group', 'three people', '多人', '三人', '人群'])
         is_square = any(k in prompt_lower for k in ['square', '1:1', '方图'])
-        
-        # ===== 获取质量模式 =====
-        mode = getattr(self, 'quality_mode_var', tk.StringVar(value="平衡")).get()
-        
-        # ===== 根据模式定义尺寸 =====
 
-        # ✅ 新增：超高质量模式
+        mode = getattr(self, 'quality_mode_var', tk.StringVar(value="平衡")).get()
+
         if mode == "超高质量":
             size_config = {
                 "portrait": (768, 1024),
@@ -3031,10 +2732,9 @@ class ChatTab(BaseTab):
                 "default": (768, 1024),
             }
             steps_override = 30
-            max_size = 1536  # ✅ 允许更大
-        
+            max_size = 1536
+
         elif mode == "快速":
-            # 快速模式：小尺寸
             size_config = {
                 "portrait": (256, 384),
                 "full_body": (256, 384),
@@ -3048,7 +2748,6 @@ class ChatTab(BaseTab):
             steps_override = 8
             size_suffix = "（快速模式）"
         elif mode == "平衡":
-            # 平衡模式：中等尺寸（推荐）
             size_config = {
                 "portrait": (384, 512),
                 "full_body": (384, 576),
@@ -3061,8 +2760,7 @@ class ChatTab(BaseTab):
             }
             steps_override = 12
             size_suffix = "（平衡模式）"
-        else:  # 高质量
-            # 高质量模式：大尺寸
+        else:
             size_config = {
                 "portrait": (512, 640),
                 "full_body": (512, 768),
@@ -3075,41 +2773,38 @@ class ChatTab(BaseTab):
             }
             steps_override = 20
             size_suffix = "（高质量模式）"
-        
-        # ===== 图生图：使用原图尺寸（优化版） =====
+
         if is_image and self.uploaded_image_path:
             try:
                 from PIL import Image
                 img = Image.open(self.uploaded_image_path)
                 w, h = img.size
-                
-                # 根据模式限制最大尺寸
+
                 max_size = {
                     "快速": 384,
                     "平衡": 512,
                     "高质量": 768,
                 }.get(mode, 512)
-                
+
                 if max(w, h) > max_size:
                     scale = max_size / max(w, h)
                     w = int(w * scale)
                     h = int(h * scale)
-                
+
                 width = ((w + 31) // 64) * 64
                 height = ((h + 31) // 64) * 64
-                
+
                 if width < 256:
                     width = 256
                 if height < 256:
                     height = 256
-                
+
                 steps = self.chat_steps_var.get()
-                # 如果用户没有手动改步数，使用模式默认值
                 if steps > 30:
                     steps = steps_override
-                
+
                 cfg = self.chat_cfg_var.get()
-                
+
                 return {
                     "width": width,
                     "height": height,
@@ -3121,8 +2816,7 @@ class ChatTab(BaseTab):
                 }
             except:
                 pass
-        
-        # ===== 文生图尺寸判断 =====
+
         if is_portrait:
             width, height = size_config["portrait"]
         elif is_full_body:
@@ -3139,10 +2833,10 @@ class ChatTab(BaseTab):
             width, height = size_config["square"]
         else:
             width, height = size_config["default"]
-        
+
         steps = self.chat_steps_var.get()
         cfg = self.chat_cfg_var.get()
-        
+
         return {
             "width": width,
             "height": height,
@@ -3152,40 +2846,32 @@ class ChatTab(BaseTab):
             "num_images": 1,
             "mode": mode,
         }
-    
+
     # ==================== 文生图处理 ====================
+
     def _handle_large_scale_generation(self, intent: dict):
-        """
-        大尺度图片生成（两阶段：文生图 + 超分辨率）
-        适用于需要生成 1536x1536 以上大图的场景
-        """
         try:
             prompt = intent.get("prompt", "")
             original_text = intent.get("original_text", "")
             params = intent.get("params", {})
-            
+
             self._append_message("system", "📐 正在生成大尺度图片（两阶段）...")
-            
-            # ===== 阶段1：生成 512x768 小图 =====
+
             self._append_message("system", "📝 阶段1: 生成预览图...")
-            
+
             from utils.pipeline_pool import pipeline_pool
             import random
             from datetime import datetime
-            
+
             model_name = self.app.model_var.get()
             model_path = self.app._get_model_path(model_name)
-            
-            lora_path = None
+
+            # 获取 LoRA
+            lora_path = self.current_lora_path if self.lora_loaded else None
             lora_weight = 1.0
-            if hasattr(self.app, 'lora_var') and hasattr(self.app, 'lora_paths'):
-                lora_display = self.app.lora_var.get()
-                if lora_display:
-                    lora_path = self.app.lora_paths.get(lora_display)
-                    lora_weight = self.app.lora_weight_var.get()
-            
+
             task_id = f"large_scale_{datetime.now().strftime('%H%M%S')}"
-            
+
             pipe, is_new = pipeline_pool.get_pipeline(
                 model_path=model_path,
                 model_name=model_name,
@@ -3193,15 +2879,14 @@ class ChatTab(BaseTab):
                 lora_weight=lora_weight,
                 task_id=task_id
             )
-            
+
             if pipe is None:
                 self._append_message("assistant", "❌ 无法获取 Pipeline")
                 return
-            
-            # 生成小图
+
             seed = random.randint(1, 2**32 - 1)
             generator = torch.Generator("cpu").manual_seed(seed)
-            
+
             small_result = pipe(
                 prompt=prompt,
                 negative_prompt=self._negative_templates["default"],
@@ -3212,20 +2897,17 @@ class ChatTab(BaseTab):
                 generator=generator,
                 num_images_per_prompt=1
             )
-            
-            # 保存小图
+
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             temp_path = os.path.join(tempfile.gettempdir(), f"temp_{timestamp}_small.png")
             small_result.images[0].save(temp_path)
-            
+
             pipeline_pool.release_pipeline(model_path, lora_path, task_id)
-            
+
             self._append_message("system", "✅ 阶段1完成，正在放大...")
-            
-            # ===== 阶段2：使用 Real-ESRGAN 超分辨率 =====
+
             output_path = self._upscale_image(temp_path, scale=2)
-            
-            # 如果超分辨率失败，尝试用 PIL 简单放大
+
             if output_path == temp_path:
                 self._append_message("system", "⚠️ 使用 PIL 简单放大...")
                 img = Image.open(temp_path)
@@ -3235,48 +2917,40 @@ class ChatTab(BaseTab):
                 os.makedirs(output_dir, exist_ok=True)
                 output_path = os.path.join(output_dir, f"{timestamp}_large_{original_text[:20]}.png")
                 img.save(output_path)
-            
-            # 清理临时文件
+
             try:
                 os.remove(temp_path)
             except:
                 pass
-            
-            # 显示结果
+
             self._append_image_result(output_path)
             self._append_message("assistant", f"✅ 大尺度图片生成完成！\n📁 {os.path.basename(output_path)}\n📐 尺寸: {Image.open(output_path).size}")
             self.app.add_to_preview(output_path, Image.open(output_path))
-            
+
         except Exception as e:
             self._append_message("assistant", f"❌ 大尺度生成失败: {str(e)}")
             import traceback
             traceback.print_exc()
-        
+
     def _upscale_image(self, image_path: str, scale: int = 2) -> str:
-        """
-        超分辨率放大图片
-        支持 Real-ESRGAN，如果不可用则降级到 PIL LANCZOS
-        """
         from datetime import datetime
         from config.app_config import app_config
-        
+
         try:
-            # ===== 尝试使用 Real-ESRGAN =====
             try:
                 import cv2
                 from basicsr.archs.rrdbnet_arch import RRDBNet
                 from realesrgan import RealESRGANer
-                
+
                 img = cv2.imread(image_path)
                 if img is None:
                     return image_path
-                
-                # 检查模型文件是否存在
+
                 model_path = "models/realesrgan_x4plus.pth"
                 if not os.path.exists(model_path):
                     print(f"⚠️ Real-ESRGAN 模型不存在: {model_path}")
                     raise FileNotFoundError("模型文件不存在")
-                
+
                 model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=scale)
                 upsampler = RealESRGANer(
                     scale=scale,
@@ -3287,58 +2961,52 @@ class ChatTab(BaseTab):
                     pre_pad=0,
                     half=False
                 )
-                
+
                 output, _ = upsampler.enhance(img, outscale=scale)
-                
-                # 保存放大后的图片
+
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 output_dir = app_config.paths.output_dir
                 os.makedirs(output_dir, exist_ok=True)
                 output_path = os.path.join(output_dir, f"{timestamp}_upscaled_{scale}x.png")
                 cv2.imwrite(output_path, output)
-                
+
                 print(f"✅ 超分辨率完成: {output_path}")
                 return output_path
-                
+
             except ImportError as e:
                 print(f"⚠️ Real-ESRGAN 未安装: {e}")
-                
+
             except FileNotFoundError as e:
                 print(f"⚠️ {e}")
-            
-            # ===== 备用方案：PIL LANCZOS 放大 =====
+
             from PIL import Image
-            
+
             print("📦 使用 PIL LANCZOS 放大...")
             img = Image.open(image_path)
-            
-            # 计算新尺寸
+
             new_width = img.width * scale
             new_height = img.height * scale
-            
-            # 使用 LANCZOS 重采样（高质量）
+
             img_resized = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
-            
-            # 保存
+
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             output_dir = app_config.paths.output_dir
             os.makedirs(output_dir, exist_ok=True)
             output_path = os.path.join(output_dir, f"{timestamp}_upscaled_{scale}x_pil.png")
             img_resized.save(output_path)
-            
+
             print(f"✅ PIL 放大完成: {output_path}")
             return output_path
-            
+
         except Exception as e:
             print(f"⚠️ 超分辨率失败: {e}")
             return image_path
-        
+
     def _handle_text_to_image(self, intent: dict):
-        """处理文生图（优化版）"""
         if self._is_loading_model:
             self._append_message("assistant", "⏳ 模型正在加载中，请稍候...")
             return
-        
+
         if not self.app.model_manager.is_sd_loaded:
             self._append_message("assistant", "📦 正在自动加载模型...")
             self._pending_intent = intent
@@ -3346,10 +3014,10 @@ class ChatTab(BaseTab):
                 return
             self._append_message("assistant", "⏳ 模型加载中，请稍候再试...")
             return
-        
+
         prompt = intent["prompt"]
         original_text = intent.get("original_text", "")
-        
+
         print("\n" + "=" * 60)
         print("📊 [文生图调试]")
         print(f"   用户输入: {original_text}")
@@ -3357,37 +3025,32 @@ class ChatTab(BaseTab):
         if intent.get("llm_enhanced"):
             print(f"   🧠 已启用 LLM 增强")
         print("=" * 60 + "\n")
-        
+
         params = self._estimate_params(prompt)
-        
+
         self._append_message("system", f"⚙️ 参数: 步数={params['steps']}, CFG={params['cfg']}, 尺寸={params['width']}x{params['height']}")
-        
-        # 显示提示词摘要
+
         if intent.get("llm_enhanced"):
             self._append_message("system", f"🧠 已使用 LLM 增强提示词")
-        
+
         self._append_message("assistant", f"🎨 正在生成图片...\n\n📝 提示词:\n{prompt[:200]}{'...' if len(prompt) > 200 else ''}")
-        
+
         self._update_status(f"🎨 生成中... (尺寸: {params['width']}x{params['height']})", 0.1)
-        
+
         try:
             from utils.pipeline_pool import pipeline_pool
             from datetime import datetime
             import random
-            
+
             model_name = self.app.model_var.get()
             model_path = self.app._get_model_path(model_name)
-            
-            lora_path = None
+
+            # 获取 LoRA
+            lora_path = self.current_lora_path if self.lora_loaded else None
             lora_weight = 1.0
-            if hasattr(self.app, 'lora_var') and hasattr(self.app, 'lora_paths'):
-                lora_display = self.app.lora_var.get()
-                if lora_display:
-                    lora_path = self.app.lora_paths.get(lora_display)
-                    lora_weight = self.app.lora_weight_var.get()
-            
+
             task_id = f"chat_{datetime.now().strftime('%H%M%S')}"
-            
+
             pipe, is_new = pipeline_pool.get_pipeline(
                 model_path=model_path,
                 model_name=model_name,
@@ -3395,19 +3058,18 @@ class ChatTab(BaseTab):
                 lora_weight=lora_weight,
                 task_id=task_id
             )
-            
+
             if pipe is None:
                 self._append_message("assistant", "❌ 无法获取 Pipeline")
                 return
-            
+
             seed = random.randint(1, 2**32 - 1)
             generator = torch.Generator("cpu").manual_seed(seed)
-            
+
             self._update_status(f"🎨 生成中... 步骤: {params['steps']}", 0.3)
-            
-            # 使用负面提示词
+
             negative_prompt = getattr(self, '_last_negative', self._negative_templates["default"])
-            
+
             result = pipe(
                 prompt=prompt,
                 negative_prompt=negative_prompt,
@@ -3418,19 +3080,17 @@ class ChatTab(BaseTab):
                 generator=generator,
                 num_images_per_prompt=4
             )
-            
-            # 保存图片
+
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             prompt_preview = "".join(c for c in prompt[:30] if c.isalnum() or c in " _-") or "image"
             filename = f"{timestamp}_chat_{prompt_preview}.png"
-            
+
             from config.app_config import app_config
             output_dir = app_config.paths.output_dir
             os.makedirs(output_dir, exist_ok=True)
             filepath = os.path.join(output_dir, filename)
             result.images[0].save(filepath)
-            
-            # 图片后处理
+
             try:
                 from utils.image_post_processor import post_process_image
                 final_path = post_process_image(
@@ -3447,9 +3107,9 @@ class ChatTab(BaseTab):
                     filepath = final_path
             except:
                 pass
-            
+
             pipeline_pool.release_pipeline(model_path, lora_path, task_id)
-            
+
             self._append_image_result(filepath)
             self._append_message("assistant", f"✅ 图片已生成！\n📁 {os.path.basename(filepath)}\n\n💡 提示: 继续发送描述可以生成更多图片")
 
@@ -3457,26 +3117,25 @@ class ChatTab(BaseTab):
             self._update_status("✅ 生成完成", 1.0)
             self.app.add_to_preview(filepath, result.images[0])
             self._pending_intent = None
-            
+
         except Exception as e:
             self._append_message("assistant", f"❌ 生成失败: {str(e)}")
             self._update_status("❌ 生成失败", 0)
             import traceback
             traceback.print_exc()
             self._pending_intent = None
-    
+
     # ==================== 图生图处理 ====================
-        
+
     def _handle_image_to_image(self, intent: dict):
-        """处理图生图（优化版）"""
         if self.uploaded_image is None:
             self._append_message("assistant", "❌ 请先上传一张图片")
             return
-        
+
         if self._is_loading_model:
             self._append_message("assistant", "⏳ 模型正在加载中，请稍候...")
             return
-        
+
         if not self.app.model_manager.is_sd_loaded:
             self._append_message("assistant", "📦 正在自动加载模型...")
             self._pending_intent = intent
@@ -3484,100 +3143,74 @@ class ChatTab(BaseTab):
                 return
             self._append_message("assistant", "⏳ 模型加载中，请稍候再试...")
             return
-        
+
         prompt = intent["prompt"]
         image_features = self._analyze_image_features(self.uploaded_image_path)
 
-        # ===== 获取 params =====
         params = intent.get("params", {})
         if not params:
             params = self._optimize_parameters(prompt, "image_to_image", image_features)
-    
-        # ===== 🚀 新增：主动初始化 ControlNet =====
-        self._setup_controlnet()  # ✅ 添加这行
-    
-        # ===== 🚀 新增：检测是否需要姿态控制 =====
+
+        self._setup_controlnet()
+
         user_text = intent.get("original_text", "").lower()
-        pose_keywords = ['站立', '坐', '躺', '蹲', '跪', '弯腰', '回头', '侧身', 
+        pose_keywords = ['站立', '坐', '躺', '蹲', '跪', '弯腰', '回头', '侧身',
                          '奔跑', '走路', '跳舞', '拥抱', '接吻', '仰头', '低头']
         needs_pose_control = any(k in user_text for k in pose_keywords)
-        
-        # 获取用户指定的姿势
+
         keywords = intent.get("keywords", {})
         user_poses = keywords.get("poses", [])
-        
-        # ===== 🚀 如果用户指定了姿势，尝试使用 ControlNet =====
+
         use_controlnet = needs_pose_control and hasattr(self, 'controlnet_available') and self.controlnet_available
-        
+
         if use_controlnet and user_poses:
-            # 从原图提取姿态
             pose_image = self._extract_pose_from_image(self.uploaded_image_path)
             if pose_image:
                 self._append_message("system", "🦴 已提取姿态图，使用 ControlNet 控制")
-                # 使用 ControlNet 生成
                 self._handle_controlnet_generation(prompt, pose_image, intent, params)
                 return
             else:
                 self._append_message("system", "⚠️ 姿态提取失败，使用普通图生图")
 
-        # ===== 普通图生图 =====              
-        # ===== ✅ 然后使用 params =====
-        #params = intent.get("params", {})        
-        #if not params:
-        #    params = self._optimize_parameters(prompt, "image_to_image", image_features)
-
-        # 使用 params 中的值
         steps = params.get("steps", 20)
         cfg = params.get("cfg", 7.5)
         strength = params.get("strength", 0.35)
-        
-        # 尺寸
+
         width = params.get("width", 512)
         height = params.get("height", 768)
-        
+
         self._append_message("system", f"⚙️ 自动参数: 步数={steps}, CFG={cfg}, 强度={strength}")
-        
-        # 如果 LLM 生成了太多风格词，精简它
+
         if intent.get("llm_enhanced"):
-            # 移除可能导致风格变化的词
             style_removals = ['elegant', 'modern', 'professional', 'fashionable', 'professional style']
             for word in style_removals:
                 prompt = prompt.replace(word, '')
-            # 清理多余逗号
             prompt = re.sub(r',\s*,', ',', prompt)
             prompt = prompt.strip(', ')
             intent["prompt"] = prompt
             print(f"   ✂️ 精简风格词后: {prompt[:100]}...")
-        
 
         enhanced_prompt = self._enhance_prompt_with_features(prompt, intent, image_features)
         if enhanced_prompt != prompt:
             prompt = enhanced_prompt
             intent["prompt"] = prompt
             print(f"   ✅ 已结合原图特征增强提示词: {prompt[:150]}...")
-        
-        # ===== 如果 LLM 增强失败，使用备用方案 =====
+
         if not intent.get("llm_enhanced"):
-            # 使用关键词构建更丰富的提示词
             enhanced_prompt = self._enhance_prompt_with_context(prompt, keywords)
             if enhanced_prompt:
                 prompt = enhanced_prompt
                 print(f"   📝 使用备用增强提示词: {prompt[:150]}...")
-            
-        
+
         keywords = intent.get("keywords", {})
 
-        # ===== 🚀 新增：分析原图特征并增强提示词 =====
-        #image_features = self._analyze_image_features(self.uploaded_image_path)
-        
-        # 检测材质转换
         if keywords.get("is_statue") or "transform_material" in keywords.get("actions", []):
             materials = keywords.get("materials", [])
             if materials:
                 material = materials[0]
                 prompt = f"made of {material}, {material} statue, sculpture, {material} texture, polished, classical style, masterpiece, best quality"
                 self._append_message("system", f"🗿 检测到材质转换: {material}")
-        
+
         print("\n" + "=" * 60)
         print("📊 [图生图调试]")
         print(f"   用户输入: {intent.get('original_text', '')}")
@@ -3585,23 +3218,19 @@ class ChatTab(BaseTab):
         if intent.get("llm_enhanced"):
             print(f"   🧠 已启用 LLM 增强")
         print("=" * 60 + "\n")
-        
-        # ===== 🚀 修复：避免提示词重复 =====
-        # 检查 prompt 是否已经包含保留词
+
         prompt_lower = prompt.lower()
         has_preserve = "same person" in prompt_lower and "same face" in prompt_lower
-        
+
         if has_preserve:
-            # 如果 prompt 已经包含保留词，直接使用
             full_prompt = prompt
         else:
-            # 构建保留特征的提示词（不重复添加）
             preserve_parts = ["same person", "same face", "same identity"]
             face_count = image_features.get("face_count", 0)
-            
+
             user_text = intent.get("original_text", "").lower()
             mentioned_multiple = any(k in user_text for k in ['双人', '多人', '两人', '情侣', 'couple', 'two', 'group'])
-            
+
             if face_count >= 2 and mentioned_multiple:
                 preserve_parts.append("same two people")
                 preserve_parts.append("same couple")
@@ -3609,33 +3238,30 @@ class ChatTab(BaseTab):
             elif face_count >= 2 and not mentioned_multiple:
                 self._append_message("system", f"⚠️ 检测到 {face_count} 张人脸，但用户未提及多人，按单人处理")
                 face_count = 1
-            
+
             preserve_parts.append("same pose")
             preserve_parts.append("same body language")
-            
+
             if image_features.get("is_full_body", True):
                 preserve_parts.append("full body")
             else:
                 preserve_parts.append("half body")
-            
-            # 只添加一次保留词
+
             preserve_str = ", ".join(preserve_parts)
-            
-            # 如果 prompt 已经包含某些保留词，去重
+
             for part in preserve_parts:
                 if part in prompt_lower:
                     preserve_parts.remove(part)
-            
+
             if preserve_parts:
                 full_prompt = f"{', '.join(preserve_parts)}, {prompt}"
             else:
                 full_prompt = prompt
-        
+
         print(f"📝 [调试] 最终提示词: {full_prompt}")
-        
+
         self._append_message("system", f"📝 完整提示词:\n{full_prompt[:200]}{'...' if len(full_prompt) > 200 else ''}")
-        
-        
+
         params = self._estimate_params(prompt, is_image=True)
         orig_w = image_features.get("width", 512)
         orig_h = image_features.get("height", 768)
@@ -3645,8 +3271,8 @@ class ChatTab(BaseTab):
             params["width"] = 1024
         if params["height"] > 1024:
             params["height"] = 1024
-        
-        strength = 0.2  # 从 0.3 改为 0.2
+
+        strength = 0.2
         if image_features.get("is_bright"):
             strength = 0.18
         elif image_features.get("is_dark"):
@@ -3654,33 +3280,29 @@ class ChatTab(BaseTab):
         if image_features.get("has_face"):
             strength = min(strength, 0.2)
             self._append_message("system", f"🛡️ 检测到面部，降低强度保护面部: {strength:.2f}")
-            
+
         params["strength"] = strength
-        
+
         self._append_message("system", f"⚙️ 参数: 步数={params['steps']}, CFG={params['cfg']}, 强度={params['strength']}")
-        
+
         self._append_message("assistant", f"🔄 正在修改图片...\n\n📝 指令:\n{prompt[:100]}{'...' if len(prompt) > 100 else ''}")
-        
+
         self._update_status(f"🔄 修改中... (强度: {params['strength']})", 0.1)
-        
+
         try:
             from utils.pipeline_pool import pipeline_pool
             from datetime import datetime
             import random
-            
+
             model_name = self.app.model_var.get()
             model_path = self.app._get_model_path(model_name)
-            
-            lora_path = None
+
+            # 获取 LoRA
+            lora_path = self.current_lora_path if self.lora_loaded else None
             lora_weight = 1.0
-            if hasattr(self.app, 'lora_var') and hasattr(self.app, 'lora_paths'):
-                lora_display = self.app.lora_var.get()
-                if lora_display:
-                    lora_path = self.app.lora_paths.get(lora_display)
-                    lora_weight = self.app.lora_weight_var.get()
-            
+
             task_id = f"chat_img2img_{datetime.now().strftime('%H%M%S')}"
-            
+
             pipe, is_new = pipeline_pool.get_pipeline(
                 model_path=model_path,
                 model_name=model_name,
@@ -3688,19 +3310,19 @@ class ChatTab(BaseTab):
                 lora_weight=lora_weight,
                 task_id=task_id
             )
-            
+
             if pipe is None:
                 self._append_message("assistant", "❌ 无法获取 Pipeline")
                 return
-            
+
             init_image = self.uploaded_image.copy().convert('RGB')
             w, h = init_image.size
-            
+
             new_w = ((w + 31) // 64) * 64
             new_h = ((h + 31) // 64) * 64
             if new_w != w or new_h != h:
                 init_image = init_image.resize((new_w, new_h))
-            
+
             max_size = 1024
             if max(new_w, new_h) > max_size:
                 scale = max_size / max(new_w, new_h)
@@ -3709,14 +3331,14 @@ class ChatTab(BaseTab):
                 new_w = ((new_w + 31) // 64) * 64
                 new_h = ((new_h + 31) // 64) * 64
                 init_image = init_image.resize((new_w, new_h))
-            
+
             self._update_status(f"🔄 修改中... 尺寸: {new_w}x{new_h}", 0.3)
-            
+
             seed = random.randint(1, 2**32 - 1)
             generator = torch.Generator("cpu").manual_seed(seed)
-            
+
             negative_prompt = getattr(self, '_last_negative', self._negative_templates["default"])
-            
+
             result = pipe(
                 prompt=full_prompt,
                 negative_prompt=negative_prompt,
@@ -3727,19 +3349,19 @@ class ChatTab(BaseTab):
                 generator=generator,
                 num_images_per_prompt=1
             )
-            
+
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             prompt_preview = "".join(c for c in prompt[:30] if c.isalnum() or c in " _-") or "edit"
             filename = f"{timestamp}_chat_edit_{prompt_preview}.png"
-            
+
             from config.app_config import app_config
             output_dir = app_config.paths.output_dir
             os.makedirs(output_dir, exist_ok=True)
             filepath = os.path.join(output_dir, filename)
             result.images[0].save(filepath)
-            
+
             pipeline_pool.release_pipeline(model_path, lora_path, task_id)
-            
+
             self._append_image_result(filepath)
             self._append_message("assistant", f"✅ 图片已修改完成！\n📁 {os.path.basename(filepath)}")
 
@@ -3747,7 +3369,7 @@ class ChatTab(BaseTab):
             self._update_status("✅ 修改完成", 1.0)
             self.app.add_to_preview(filepath, result.images[0])
             self._pending_intent = None
-            
+
         except Exception as e:
             self._append_message("assistant", f"❌ 修改失败: {str(e)}")
             self._update_status("❌ 修改失败", 0)
@@ -3755,29 +3377,25 @@ class ChatTab(BaseTab):
             traceback.print_exc()
             self._pending_intent = None
 
-    def _handle_controlnet_generation(self, prompt: str, pose_image: Image.Image, 
+    def _handle_controlnet_generation(self, prompt: str, pose_image: Image.Image,
                                       intent: dict, params: dict):
-        """使用 ControlNet 生成"""
         try:
             from diffusers import StableDiffusionControlNetPipeline
             import torch
-            
-            # 确保 ControlNet pipeline 可用
+
             if not hasattr(self, 'controlnet_pipe') or self.controlnet_pipe is None:
                 self._setup_controlnet()
                 if not self.controlnet_available:
                     self._append_message("assistant", "❌ ControlNet 不可用，使用普通图生图")
                     self._handle_image_to_image(intent)
                     return
-            
-            # 获取模型
+
             model_name = self.app.model_var.get()
             model_path = self.app._get_model_path(model_name)
-            
-            # 生成
+
             steps = params.get("steps", 20)
             cfg = params.get("cfg", 7.5)
-            
+
             result = self.controlnet_pipe(
                 prompt=prompt,
                 image=pose_image,
@@ -3786,34 +3404,26 @@ class ChatTab(BaseTab):
                 height=512,
                 width=512,
             )
-            
-            # 保存图片
+
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"{timestamp}_controlnet_{intent.get('original_text', 'pose')[:20]}.png"
-            
+
             from config.app_config import app_config
             output_dir = app_config.paths.output_dir
             os.makedirs(output_dir, exist_ok=True)
             filepath = os.path.join(output_dir, filename)
             result.images[0].save(filepath)
-            
+
             self._append_image_result(filepath)
             self._append_message("assistant", f"✅ ControlNet 生成完成！\n📁 {os.path.basename(filepath)}")
             self.app.add_to_preview(filepath, result.images[0])
-            
+
         except Exception as e:
             self._append_message("assistant", f"❌ ControlNet 生成失败: {str(e)}")
-            # 降级到普通图生图
             self._handle_image_to_image(intent)
 
     def _generate_pose_image(self, image_path: str) -> str:
-        """
-        生成姿态图并保存为临时文件
-        返回姿态图路径
-        """
         try:
-            # 使用 OpenPose 或 MediaPipe 提取姿态
-            # 保存为临时文件
             temp_path = os.path.join(tempfile.gettempdir(), f"pose_{datetime.now().strftime('%H%M%S')}.png")
             pose_img = self._extract_pose_from_image(image_path)
             if pose_img:
@@ -3822,51 +3432,41 @@ class ChatTab(BaseTab):
         except:
             pass
         return None
-    
+
     def _analyze_image_features(self, image_path: str) -> dict:
-        """分析图片特征（增强版）"""
         try:
             import cv2
             import numpy as np
-            
+
             img = cv2.imread(image_path)
             if img is None:
                 return {}
-            
-            h, w = img.shape[:2]            
-          
-            
-            # ===== ✅ 新增：判断是写实还是动漫风格 =====
-            # 方法：检测边缘平滑度（动漫风格边缘更平滑）
+
+            h, w = img.shape[:2]
+
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             edges = cv2.Canny(gray, 50, 150)
             edge_density = np.sum(edges > 0) / (h * w)
-            
-            # 写实风格：边缘密度较高（细节多）
-            # 动漫风格：边缘密度较低（色块平滑）
-            is_realistic = edge_density > 0.03  # 阈值可调整
 
-            # ===== ✅ 新增：定义 face_cascade =====
+            is_realistic = edge_density > 0.03
+
             face_cascade = cv2.CascadeClassifier(
                 cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
             )
-        
+
             faces = face_cascade.detectMultiScale(
-                gray, 
-                scaleFactor=1.1, 
+                gray,
+                scaleFactor=1.1,
                 minNeighbors=8,
                 minSize=(30, 30)
             )
-            
+
             valid_faces = []
             for (x, y, fw, fh) in faces:
                 if fw > 40 and fh > 40:
                     valid_faces.append((x, y, fw, fh))
             faces = valid_faces
 
-
-        
-            # 去重
             if len(faces) >= 2:
                 filtered_faces = []
                 for i, (x1, y1, fw1, fh1) in enumerate(faces):
@@ -3889,11 +3489,11 @@ class ChatTab(BaseTab):
                     if not is_duplicate:
                         filtered_faces.append((x1, y1, fw1, fh1))
                 faces = filtered_faces
-            
+
             is_full_body = True
             is_portrait = False
             face_ratio = 0
-            
+
             if len(faces) > 0:
                 x, y, fw, fh = max(faces, key=lambda f: f[2] * f[3])
                 face_ratio = (fw * fh) / (w * h)
@@ -3906,13 +3506,13 @@ class ChatTab(BaseTab):
                 aspect = w / h
                 if aspect > 0.8:
                     is_full_body = True
-            
+
             brightness = np.mean(gray)
             is_bright = brightness > 150
             is_dark = brightness < 80
-            
+
             has_multiple_subjects = len(faces) >= 2
-            
+
             return {
                 "has_face": len(faces) > 0,
                 "has_person": len(faces) > 0,
@@ -3927,29 +3527,27 @@ class ChatTab(BaseTab):
                 "is_bright": is_bright,
                 "is_dark": is_dark,
                 "aspect_ratio": w / h,
-                "is_realistic": is_realistic,  # ✅ 新增
+                "is_realistic": is_realistic,
             }
         except Exception as e:
             print(f"⚠️ 分析图片失败: {e}")
             return {}
-    
+
     # ==================== 对话处理 ====================
-    
+
     def _handle_chat(self, intent: dict):
-        """处理对话（增强版）"""
         text = intent["original_text"]
         text_lower = text.lower()
 
         if intent.get("llm_reply"):
             self._append_message("assistant", intent["llm_reply"])
             return
-        
-        # 图片描述
+
         if self.uploaded_image is not None:
             if any(k in text_lower for k in ['这是什么', '这是什么图片', '描述', '分析']):
                 image_features = self._analyze_image_features(self.uploaded_image_path)
                 if image_features.get("has_face"):
-                    self._append_message("assistant", 
+                    self._append_message("assistant",
                         f"📷 这张图片包含 {image_features.get('face_count', 0)} 张人脸\n"
                         f"📐 尺寸: {image_features.get('width')}x{image_features.get('height')}\n"
                         f"{'📱 竖图' if image_features.get('is_portrait') else '🖥️ 横图'}\n\n"
@@ -3958,19 +3556,18 @@ class ChatTab(BaseTab):
                         f"• \"换成...风格\""
                     )
                 else:
-                    self._append_message("assistant", 
+                    self._append_message("assistant",
                         f"📷 已上传图片: {os.path.basename(self.uploaded_image_path)}\n"
                         f"📐 尺寸: {image_features.get('width')}x{image_features.get('height')}\n\n"
                         f"💡 如果你想修改它，请说：\"把这张图改成...\""
                     )
                 return
-        
-        # 上下文查询
+
         if '上下文' in text_lower or 'context' in text_lower:
             summary = self._get_context_summary()
             self._append_message("assistant", f"📊 当前上下文:\n{summary}")
             return
-        
+
         if '偏好' in text_lower or 'preference' in text_lower:
             prefs = []
             if self.user_preferences.get("style"):
@@ -3979,14 +3576,13 @@ class ChatTab(BaseTab):
                 prefs.append(f"场景: {self.user_preferences['scene']}")
             if self.user_preferences.get("gender"):
                 prefs.append(f"性别: {self.user_preferences['gender']}")
-            
+
             if prefs:
                 self._append_message("assistant", f"📌 你的偏好:\n• " + "\n• ".join(prefs))
             else:
                 self._append_message("assistant", "📌 还没有记录你的偏好。生成图片时我会自动学习！")
             return
-        
-        # 简单规则对话
+
         responses = {
             '你好': '你好！有什么可以帮你的吗？',
             '你是谁': '我是智能生图助手，可以帮助你生成和修改图片。试试说 "生成一张..."！',
@@ -3995,81 +3591,88 @@ class ChatTab(BaseTab):
             '谢谢': '不客气！还有需要帮忙的吗？',
             '再见': '再见！随时回来找我生成图片 😊'
         }
-        
+
         reply = None
         for key, value in responses.items():
             if key in text_lower:
                 reply = value
                 break
-        
+
         if reply:
             self._append_message("assistant", reply)
         else:
-            # 使用 LLM 对话
             if self.llm_enabled.get() and self.llm_available:
                 self._append_message("system", "🧠 正在思考...")
                 llm_reply = self._call_ollama(
-                    f"用户说：{text}\n请简短友好地回复（一句话，不要超过20字）：", 
-                    timeout=15, 
+                    f"用户说：{text}\n请简短友好地回复（一句话，不要超过20字）：",
+                    timeout=15,
                     max_tokens=128
                 )
                 if llm_reply:
                     self._append_message("assistant", llm_reply)
                     return
-                
+
             self._append_message("assistant", f"🤔 我理解你想说：\"{text}\"\n\n如果你想生成图片，可以试试说：\n• \"生成一张...\" (文生图)\n• 先上传图片，然后说 \"改成...\" (图生图)\n\n或者直接告诉我你的需求！")
-        
+
     def _ensure_model_loaded(self) -> bool:
-        """确保模型已加载"""
         if self.app.model_manager.is_sd_loaded:
             return True
-        
+
         self._append_message("system", "📦 检测到模型未加载，正在自动加载...")
         self._update_status("📦 正在加载模型...")
-        
+
         checkpoints = getattr(self.app, 'checkpoints', [])
         if not checkpoints:
             self._append_message("assistant", "❌ 没有找到可用的 SD 模型文件\n\n请将模型文件放到 models 目录下，然后在主界面加载。")
             self._update_status("❌ 未找到模型", 0)
             return False
-        
+
         model_name = checkpoints[0]
         model_path = self.app._get_model_path(model_name)
-        
+
         if not model_path:
             self._append_message("assistant", f"❌ 找不到模型文件: {model_name}")
             self._update_status("❌ 模型文件不存在", 0)
             return False
-        
+
         if self.app.model_manager.is_janus_loaded:
             self._append_message("system", "🔄 正在切换 Janus → SD...")
-        
+
         self._is_loading_model = True
-        
+
         def load_thread():
             def progress_cb(value, msg):
                 self.app.root.after(0, lambda: self._update_status(f"🔄 {msg}", value))
-            
+
             success = self.app.model_manager.load_sd(model_path, model_name, progress_cb)
             self.app.root.after(0, lambda: self._on_model_loaded(success, model_name))
-        
+
         threading.Thread(target=load_thread, daemon=True).start()
         return True
 
     def _on_model_loaded(self, success: bool, model_name: str):
-        """模型加载完成回调"""
         self._is_loading_model = False
-        
+
         if success:
             self._append_message("system", f"✅ 模型加载完成: {model_name[:40]}...")
             self._update_status("✅ 模型就绪", 1.0)
             self.progress_bar.config(value=0)
-            
+
+            # ✅ 模型加载完成后自动加载 LoRA
+            if self.lora_enabled.get():
+                lora_files = self._scan_lora_files()
+                if lora_files:
+                    default_lora = lora_files[0]
+                    lora_path = self.lora_paths.get(default_lora)
+                    if lora_path:
+                        self._append_message("system", f"📦 自动加载 LoRA: {default_lora.replace('⭐ ', '')}")
+                        self._load_lora_to_pipe(lora_path, default_lora)
+
             if self._pending_intent is not None:
                 intent = self._pending_intent
                 self._pending_intent = None
                 self._append_message("system", "🔄 继续执行之前的请求...")
-                
+
                 if intent["type"] == "text_to_image":
                     self._handle_text_to_image(intent)
                 elif intent["type"] == "image_to_image":
@@ -4080,7 +3683,6 @@ class ChatTab(BaseTab):
             self._append_message("assistant", "❌ 模型加载失败\n\n请在主界面手动加载模型后重试。")
             self._update_status("❌ 加载失败", 0)
             self._pending_intent = None
-            
-    
+
     def get_frame(self):
         return self.frame
