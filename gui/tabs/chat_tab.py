@@ -303,19 +303,37 @@ class ChatTab(BaseTab):
         # 1. 根据人脸数量确定人数指示词
         face_count = image_features.get("face_count", 0)
         has_multiple = image_features.get("has_multiple_subjects", False)
+
+        # ✅ 判断风格：从用户输入或原图文件名判断
+        # 如果原图是写实风格，用 woman；否则用 girl
+        is_realistic = image_features.get("is_realistic", True)  # 默认写实
         
+        
+        
+        # 检查用户输入中是否有提示
+        if user_text and any(k in user_text.lower() for k in ['动漫', '二次元', 'anime', '卡通']):
+            is_realistic = False
+        
+        # 检查原图文件名（如果有提示）
+        if self.uploaded_image_path:
+            filename = os.path.basename(self.uploaded_image_path).lower()
+            if 'anime' in filename or 'cartoon' in filename or '动漫' in filename:
+                is_realistic = False
+            
         if face_count == 1:
-            # 单人：根据用户输入判断性别
             if user_text and any(k in user_text.lower() for k in ['男', '帅哥', '男孩', '男性', '小哥哥', '男神']):
-                preserve_parts.append("1boy")
+                preserve_parts.append("1boy" if is_realistic else "1boy")
             else:
-                preserve_parts.append("1girl")  # 默认女性
+                # ✅ 根据风格选择
+                if is_realistic:
+                    preserve_parts.append("1woman")  # 写实用 1woman
+                else:
+                    preserve_parts.append("1girl")   # 动漫用 1girl
         elif face_count >= 2 or has_multiple:
-            # 多人：根据用户输入判断性别
             if user_text and any(k in user_text.lower() for k in ['男', '帅哥', '男孩', '男性']):
                 preserve_parts.append("2boys")
             else:
-                preserve_parts.append("2girls")  # 默认双女性
+                preserve_parts.append("2women" if is_realistic else "2girls")
         
         # 2. 姿势
         preserve_parts.append("same pose")
@@ -330,59 +348,39 @@ class ChatTab(BaseTab):
         return preserve_parts
 
     def _merge_llm_prompt_with_features(self, llm_prompt: str, preserve_parts: list) -> str:
-        """
-        合并 LLM 生成的提示词和原图特征保留词
-        
-        Args:
-            llm_prompt: LLM 生成的提示词
-            preserve_parts: 保留词列表
-        
-        Returns:
-            合并后的最终提示词
-        """
+        """合并 LLM 生成的提示词和原图特征保留词"""
         prompt_lower = llm_prompt.lower()
         
         # 1. 检查是否已有保留词
         has_preserve = "same person" in prompt_lower and "same face" in prompt_lower
         
-        # 2. 提取需要添加的保留词（去重）
+        # ✅ 检查用户是否指定了姿势（从 preserve_parts 中检测）
+        # 注意：如果 preserve_parts 中没有 "same pose"，说明用户指定了新姿势
+        has_user_pose = "same pose" not in preserve_parts
+        
+        # 2. 提取需要添加的保留词（去重，并跳过 same pose）
         parts_to_add = []
         for part in preserve_parts:
             if part.lower() not in prompt_lower:
+                # ✅ 如果用户指定了新姿势，不添加 "same pose"
+                if has_user_pose and part == "same pose":
+                    continue
                 parts_to_add.append(part)
         
         # 3. 合并
         if has_preserve:
-            # LLM 已有保留词，只添加缺失的部分
             if parts_to_add:
-                # 把性别词放在最前面
                 gender_parts = [p for p in parts_to_add if p in ["1girl", "1boy", "2girls", "2boys"]]
                 other_parts = [p for p in parts_to_add if p not in ["1girl", "1boy", "2girls", "2boys"]]
-                
-                result_parts = []
-                if gender_parts:
-                    result_parts.extend(gender_parts)
-                result_parts.append(llm_prompt)
-                if other_parts:
-                    result_parts.extend(other_parts)
-                
+                result_parts = gender_parts + [llm_prompt] + other_parts
                 return ", ".join(result_parts)
-            else:
-                return llm_prompt
+            return llm_prompt
         else:
-            # LLM 没有保留词，全部添加
-            # 把性别词放在最前面
             gender_parts = [p for p in preserve_parts if p in ["1girl", "1boy", "2girls", "2boys"]]
             other_parts = [p for p in preserve_parts if p not in ["1girl", "1boy", "2girls", "2boys"]]
-            
-            result_parts = []
-            if gender_parts:
-                result_parts.extend(gender_parts)
-            result_parts.extend(other_parts)
-            result_parts.append(llm_prompt)
-            
+            result_parts = gender_parts + other_parts + [llm_prompt]
             return ", ".join(result_parts)
-
+            
     def _enhance_prompt_with_features(self, prompt: str, intent: dict, image_features: dict) -> str:
         """
         使用原图特征增强提示词（主入口函数）
@@ -396,44 +394,69 @@ class ChatTab(BaseTab):
             增强后的提示词
         """
         user_text = intent.get("original_text", "")
+        keywords = intent.get("keywords", {})
+        user_poses = keywords.get("poses", [])  # ✅ 获取用户指定的姿势
         
         # 1. 从原图特征构建保留词
         preserve_parts = self._build_preserve_parts_from_features(image_features, user_text)
         
-        # 2. 检查 prompt 是否已经是自然语言（需要转换）
+        # ✅ 如果用户指定了姿势，移除 preserve_parts 中的 "same pose"
+        if user_poses:
+            preserve_parts = [p for p in preserve_parts if p != "same pose"]
+            print(f"   🧍 用户指定姿势: {user_poses}，已移除 'same pose'")
+        
+        # 2. 检查 prompt 是否是自然语言
         prompt_lower = prompt.lower()
         sentence_indicators = ['maintain', 'exchange', 'retain', 'keep', 'change', 'feature', 'outfit', 'gown']
         is_natural = any(ind in prompt_lower for ind in sentence_indicators)
-        
-        # ✅ 修复：同时检测中文
         has_chinese = any('\u4e00' <= char <= '\u9fff' for char in prompt)
         
+        # 3. 检查是否已有保留词
+        has_preserve = "same person" in prompt_lower and "same face" in prompt_lower
+        
+        # 4. 如果已有保留词，只补充缺失的
+        if has_preserve:
+            parts_to_add = [p for p in preserve_parts if p.lower() not in prompt_lower]
+            if parts_to_add:
+                return prompt + ", " + ", ".join(parts_to_add)
+            return prompt
+        
+        # 5. 如果是自然语言，重新构建
         if is_natural or has_chinese:
-            # 自然语言 → 需要重新构建
             # 提取服装关键词
             clothes = []
-            for kw in ['qipao', '旗袍', 'dress', 'gown', 'hanfu', '礼服']:
-                if kw in prompt_lower or kw in user_text.lower():
-                    if 'qipao' in kw or '旗袍' in kw:
-                        clothes.append('qipao')
-                    elif 'hanfu' in kw:
-                        clothes.append('hanfu')
-                    elif 'gown' in kw or '礼服' in kw:
-                        clothes.append('evening gown')
-                    elif 'dress' in kw:
-                        clothes.append('dress')
-            clothes_str = ", ".join(clothes) if clothes else "qipao"
+            clothes_map = {
+                '旗袍': 'qipao',
+                '汉服': 'hanfu',
+                '礼服': 'evening gown',
+                '裙子': 'dress',
+                '西装': 'suit',
+                '制服': 'uniform',
+                '泳衣': 'swimsuit',
+                '比基尼': 'bikini',
+                'dress': 'dress',
+                'gown': 'evening gown',
+                'qipao': 'qipao',
+            }
+            for cn, en in clothes_map.items():
+                if cn in prompt_lower or cn in user_text.lower():
+                    if en not in clothes:
+                        clothes.append(en)
             
             # 构建标准提示词
             result_parts = []
             # 性别
             gender = next((p for p in preserve_parts if p in ["1girl", "1boy", "2girls", "2boys"]), "1girl")
             result_parts.append(gender)
-            # 保留词（除了性别）
+            # 保留词（除了性别和姿势）
             other_parts = [p for p in preserve_parts if p not in ["1girl", "1boy", "2girls", "2boys"]]
             result_parts.extend(other_parts)
+            # ✅ 用户指定的姿势（如果有时）
+            if user_poses:
+                result_parts.append(" ".join(user_poses) + " pose")
             # 服装
-            result_parts.append("wearing " + clothes_str)
+            if clothes:
+                result_parts.append("wearing " + ", ".join(clothes))
             # 质量词
             result_parts.append("masterpiece")
             result_parts.append("best quality")
@@ -442,10 +465,10 @@ class ChatTab(BaseTab):
             result_parts.append("highly detailed")
             
             return ", ".join(result_parts)
-        else:
-            # 3. 标准 SD 提示词 → 合并保留词
-            return self._merge_llm_prompt_with_features(prompt, preserve_parts)
-            
+        
+        # 6. 标准 SD 提示词 → 合并保留词
+        return self._merge_llm_prompt_with_features(prompt, preserve_parts)
+        
     def debug_test_llm(self):
         """调试测试 LLM（在 UI 中调用）"""
         import requests
@@ -492,7 +515,8 @@ class ChatTab(BaseTab):
                 
         except Exception as e:
             self._append_message("system", f"❌ 测试失败: {e}")
-        
+            
+            
     def _llm_enhance_prompt(self, text: str, is_img2img: bool = False) -> dict:
         """使用 LLM 增强提示词"""
         if not self.llm_available or not self.llm_enabled.get():
@@ -502,24 +526,41 @@ class ChatTab(BaseTab):
         if cache_key in self._enhanced_prompt_cache:
             return self._enhanced_prompt_cache[cache_key]
         
-        # ✅ 更严格的提示词模板
+        # ✅ 修复：在 if 外部定义 prompt_template
         if is_img2img:
             prompt_template = """你是一个专业的 Stable Diffusion 提示词专家。用户想修改一张图片，请生成高质量的图生图提示词。
 
     用户需求：{text}
 
-    【严格规则 - 必须遵守】
-    1. 只输出英文提示词，用英文逗号分隔，不要有任何中文
-    2. 必须包含：same person, same face, same pose
-    3. 必须包含质量词：masterpiece, best quality, photorealistic, 8k, highly detailed
-    4. 根据用户需求添加具体描述（服装、场景、风格等）
-    5. 不要有任何解释、说明或完整句子，只输出提示词列表
-    6. 提示词示例格式：1girl, masterpiece, best quality, photorealistic, wearing qipao, elegant, traditional chinese
+    【重要规则】
+    1. 必须保留原始人物的核心特征：same person, same face, same pose, same identity
+    2. 必须保留原始图片的风格、光影和质感
+    3. 只修改用户明确要求的部分（如换衣服、换背景等）
+    4. 不要添加用户未提及的风格词（如 elegant, modern, professional 等）
+    5. 如果用户没有指定具体服装，用"changing outfit"代替具体服装名
+    6. 提示词要简洁，不要过度描述
+    7. 只输出提示词，不要解释
+
+    【输出格式】
+    正面提示词：xxx
+    负面提示词：xxx"""
+        else:
+            prompt_template = """你是一个专业的 Stable Diffusion 提示词专家。请根据用户描述生成高质量的文生图提示词。
+
+    用户描述：{text}
+
+    【重要规则】
+    1. 生成详细、具体、有画面感的提示词
+    2. 包含：主体描述、场景、光线、风格、构图、色彩、情绪
+    3. 添加高质量修饰词
+    4. 提示词用英文，用逗号分隔
+    5. 只输出提示词，不要解释
 
     【输出格式】
     正面提示词：xxx
     负面提示词：xxx
-    风格：xxx"""
+    风格：xxx
+    质量：xxx"""
 
         prompt = prompt_template.format(text=text)
         result = self._call_ollama(prompt, timeout=30, max_tokens=256)
@@ -534,7 +575,6 @@ class ChatTab(BaseTab):
             return parsed
         
         return None
-
 
 
     def _parse_llm_response(self, response: str) -> dict:
@@ -1251,7 +1291,7 @@ class ChatTab(BaseTab):
     
 
     def _analyze_intent(self, text: str) -> dict:
-        """分析用户意图 - 使用智能提示词 + 上下文"""
+        """分析用户意图"""
         print("\n" + "=" * 60)
         print("🔍 [意图分析调试]")
         print(f"   用户输入: {text}")
@@ -1267,20 +1307,35 @@ class ChatTab(BaseTab):
         is_continuation = any(k in text_lower for k in continuation_keywords)
         
         # ===== 🚀 修复：判断是否为图生图 =====
-        # 关键修复：如果有上传图片，且用户输入包含修改类关键词，就是图生图
+        # 在 _analyze_intent 中，edit_keywords 添加：
         edit_keywords = ['修改', '改', '换', '变成', '改成', '做成', '转换为', '转化', '制作成', 
                          'edit', 'change', 'modify', '替换', '去除', '去掉', 'turn into', 'make into',
-                         '穿上', '换上', '穿着', '穿', '换衣服', '换装']  # ✅ 新增换装关键词
+                         '穿上', '换上', '穿着', '穿', '换衣服', '换装',
+                         '服装', '衣服', '衣服改成', '换成服装', '裙子', '上衣', '外套', '裤子',  # ✅ 新增
+                         '蕾丝', 'lace', '旗袍', '汉服', '礼服', '制服']  # ✅ 新增
+
+        # ✅ 新增：服装关键词（有图片时触发图生图）
+        clothing_keywords = ['服装', '衣服', '蕾丝', 'lace', '旗袍', '汉服', '礼服', '制服', 
+                             '裙子', '上衣', '外套', '裤子', '泳衣', '比基尼', '穿着', '穿上']
+                             
+        # ✅ 新增：姿势/动作关键词（如果有图片，这些词也应触发图生图）
+        pose_keywords = ['站立', '坐', '躺', '蹲', '跪', '弯腰', '回头', '侧身', '趴', '睡', 
+                         '奔跑', '走路', '跳舞', '拥抱', '接吻', '仰头', '低头', '托腮', '叉腰', '比心',
+                         'standing', 'sitting', 'lying', 'running', 'walking', 'dancing', 'pose',
+                         '服装', '衣服', '穿着', '蕾丝', 'lace']  # ✅ 新增
         
-        is_img2img = has_image and any(k in text_lower for k in edit_keywords)
+        # 判断是否有修改意图
+        has_edit_intent = any(k in text_lower for k in edit_keywords)
+        has_clothing_intent = has_image and any(k in text_lower for k in clothing_keywords)  # ✅ 新增
+        has_pose_intent = has_image and any(k in text_lower for k in pose_keywords)
         
-        # ===== 🚀 关键修复：无论是否有图片，只要有修改意图就尝试 LLM =====
-        # 但如果有图片且是修改指令，使用图生图的 LLM 模板
+        is_img2img = has_image and (has_edit_intent or has_clothing_intent or has_pose_intent)  # ✅ 包含服装意图
+        
+        # ===== 调用 LLM =====
         use_llm = self.llm_enabled.get() and self.llm_available
         
         llm_result = None
         if use_llm:
-            # ✅ 强制调用 LLM，不管是否检测到关键词
             print("   🧠 正在调用 LLM 增强...")
             self._append_message("system", "🧠 正在使用 LLM 增强提示词...")
             
@@ -1307,7 +1362,6 @@ class ChatTab(BaseTab):
             self._append_message("system", f"🔄 复用上次提示词")
             print(f"   🔄 复用上次提示词")
         else:
-            # 使用关键词构建提示词（备用方案）
             smart_prompt = self._enhance_prompt_with_context(text, keywords)
             self._last_negative = self._negative_templates["default"]
             print(f"   📝 使用关键词构建提示词")
@@ -1318,19 +1372,11 @@ class ChatTab(BaseTab):
         is_gen = any(k in text_lower for k in gen_keywords)
         is_edit = any(k in text_lower for k in edit_keywords)
         
-        if not is_gen and not is_edit and self._has_context():
-            if has_image:
-                is_edit = True
-            elif self.last_intent_type == "text_to_image":
-                is_gen = True
-        
-        # ===== 图生图处理 =====
-        if has_image and is_edit:
+        # ===== 图生图处理（包含姿势意图） =====
+        if has_image and (is_edit or (not is_gen and has_pose_intent)):
             actions = keywords.get("actions", [])
             
-            # ✅ 如果 LLM 已经生成了提示词，不要覆盖
             if not llm_result or not llm_result.get('prompt'):
-                # ✅ 确保有性别词
                 gender = keywords.get("genders", ["1girl"])[0]
                 
                 if "remove_clothes" in actions:
@@ -1345,8 +1391,11 @@ class ChatTab(BaseTab):
                     scene_str = ", ".join(keywords["scenes"])
                     smart_prompt = f"same person, same face, same pose, {gender}, {scene_str} background, (masterpiece:1.2), (best quality:1.2)"
                     self._append_message("system", f"🏠 检测到换背景指令: {scene_str}")
+                elif keywords.get("poses"):
+                    pose_str = ", ".join(keywords["poses"])
+                    smart_prompt = f"same person, same face, {gender}, {pose_str} pose, (masterpiece:1.2), (best quality:1.2)"
+                    self._append_message("system", f"🧍 检测到姿势指令: {pose_str}")
                 else:
-                    # ✅ 默认也加上性别
                     smart_prompt = f"same person, same face, same pose, {gender}, {smart_prompt}"
             
             result = {
@@ -1940,6 +1989,18 @@ class ChatTab(BaseTab):
             return
         
         prompt = intent["prompt"]
+        # 如果 LLM 生成了太多风格词，精简它
+        if intent.get("llm_enhanced"):
+            # 移除可能导致风格变化的词
+            style_removals = ['elegant', 'modern', 'professional', 'fashionable', 'professional style']
+            for word in style_removals:
+                prompt = prompt.replace(word, '')
+            # 清理多余逗号
+            prompt = re.sub(r',\s*,', ',', prompt)
+            prompt = prompt.strip(', ')
+            intent["prompt"] = prompt
+            print(f"   ✂️ 精简风格词后: {prompt[:100]}...")
+        
         keywords = intent.get("keywords", {})
 
         # ===== 🚀 新增：分析原图特征并增强提示词 =====
@@ -1973,9 +2034,6 @@ class ChatTab(BaseTab):
         if intent.get("llm_enhanced"):
             print(f"   🧠 已启用 LLM 增强")
         print("=" * 60 + "\n")
-        
-        # 分析原图特征
-        image_features = self._analyze_image_features(self.uploaded_image_path)
         
         # ===== 🚀 修复：避免提示词重复 =====
         # 检查 prompt 是否已经包含保留词
@@ -2037,15 +2095,15 @@ class ChatTab(BaseTab):
         if params["height"] > 1024:
             params["height"] = 1024
         
-        strength = 0.4
+        strength = 0.2  # 从 0.3 改为 0.2
         if image_features.get("is_bright"):
-            strength = 0.35
+            strength = 0.18
         elif image_features.get("is_dark"):
-            strength = 0.5
+            strength = 0.25
         if image_features.get("has_face"):
-            strength = min(strength, 0.4)
+            strength = min(strength, 0.2)
             self._append_message("system", f"🛡️ 检测到面部，降低强度保护面部: {strength:.2f}")
-        
+            
         params["strength"] = strength
         
         self._append_message("system", f"⚙️ 参数: 步数={params['steps']}, CFG={params['cfg']}, 强度={params['strength']}")
@@ -2156,13 +2214,24 @@ class ChatTab(BaseTab):
             if img is None:
                 return {}
             
-            h, w = img.shape[:2]
+            h, w = img.shape[:2]            
+          
             
+            # ===== ✅ 新增：判断是写实还是动漫风格 =====
+            # 方法：检测边缘平滑度（动漫风格边缘更平滑）
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            edges = cv2.Canny(gray, 50, 150)
+            edge_density = np.sum(edges > 0) / (h * w)
+            
+            # 写实风格：边缘密度较高（细节多）
+            # 动漫风格：边缘密度较低（色块平滑）
+            is_realistic = edge_density > 0.03  # 阈值可调整
+
+            # ===== ✅ 新增：定义 face_cascade =====
             face_cascade = cv2.CascadeClassifier(
                 cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
             )
-            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            
+        
             faces = face_cascade.detectMultiScale(
                 gray, 
                 scaleFactor=1.1, 
@@ -2175,7 +2244,9 @@ class ChatTab(BaseTab):
                 if fw > 40 and fh > 40:
                     valid_faces.append((x, y, fw, fh))
             faces = valid_faces
-            
+
+
+        
             # 去重
             if len(faces) >= 2:
                 filtered_faces = []
@@ -2236,7 +2307,8 @@ class ChatTab(BaseTab):
                 "height": h,
                 "is_bright": is_bright,
                 "is_dark": is_dark,
-                "aspect_ratio": w / h
+                "aspect_ratio": w / h,
+                "is_realistic": is_realistic,  # ✅ 新增
             }
         except Exception as e:
             print(f"⚠️ 分析图片失败: {e}")
