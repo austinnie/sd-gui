@@ -50,4 +50,5 @@ desktop.ini
 
 # ============ 日志 ============
 *.log
-logs/
+logs/"gui/models/controlnet_cache/" 
+"gui/models/huggingface_cache/" 

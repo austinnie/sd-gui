@@ -16,13 +16,21 @@ from PIL import Image, ImageTk
 import torch
 
 # ===== 🚀 方案2：设置 Hugging Face 缓存环境变量 =====
-# 必须在导入 diffusers 之前设置
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-hf_cache_dir = os.path.join(project_root, "models", "huggingface_cache")
-os.makedirs(hf_cache_dir, exist_ok=True)
+# ✅ 使用统一的缓存目录 E:\hf_cache\.cache（与 run_marble.py 保持一致）
+CACHE_ROOT = r"E:\hf_cache\.cache"
+os.makedirs(CACHE_ROOT, exist_ok=True)
 
-os.environ["HF_HOME"] = hf_cache_dir
-os.environ["HF_HUB_CACHE"] = os.path.join(hf_cache_dir, "hub")
+os.environ["HF_HOME"] = CACHE_ROOT
+os.environ["HF_HUB_CACHE"] = os.path.join(CACHE_ROOT, "hub")
+os.environ["U2NET_HOME"] = os.path.join(CACHE_ROOT, "u2net")
+os.environ["DEEPFACE_HOME"] = os.path.join(CACHE_ROOT, "deepface")
+
+# 确保所有目录存在
+for env_var in ['HF_HOME', 'HF_HUB_CACHE', 'U2NET_HOME', 'DEEPFACE_HOME']:
+    path = os.environ.get(env_var)
+    if path:
+        os.makedirs(path, exist_ok=True)
+        print(f"   ✅ {env_var} = {path}")
 
 
 from .base_tab import BaseTab
@@ -1397,7 +1405,7 @@ class ChatTab(BaseTab):
         
     # 在 chat_tab.py 中添加 ControlNet 相关方法
     def _setup_controlnet(self):
-        """初始化 ControlNet（懒加载）- 方案1+3"""
+        """初始化 ControlNet（懒加载）- 使用统一缓存"""
         if hasattr(self, 'controlnet_available') and self.controlnet_available:
             print("✅ ControlNet 已就绪（使用缓存）")
             return
@@ -1407,34 +1415,33 @@ class ChatTab(BaseTab):
             
             print("📦 正在加载 ControlNet...")
             
-            # ===== 🚀 方案1：指定缓存目录 =====
-            controlnet_cache_dir = os.path.join(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                "models", "controlnet_cache"
-            )
+            # ===== 🚀 使用统一的缓存目录 =====
+            hf_cache_dir = os.environ.get("HF_HOME", r"E:\hf_cache\.cache")
+            controlnet_cache_dir = os.path.join(hf_cache_dir, "hub")
             os.makedirs(controlnet_cache_dir, exist_ok=True)
             
-            # ===== 🚀 方案3：检查本地是否已有模型 =====
-            # 检查是否已下载
+            print(f"   📁 缓存目录: {controlnet_cache_dir}")
+            
+            # ===== 检查是否已缓存 =====
             model_path = os.path.join(controlnet_cache_dir, "models--lllyasviel--sd-controlnet-openpose")
             if os.path.exists(model_path):
-                print(f"   ✅ 找到本地缓存: {model_path}")
-                # 直接从本地加载
+                print(f"   ✅ 找到本地缓存")
                 controlnet = ControlNetModel.from_pretrained(
                     "lllyasviel/sd-controlnet-openpose",
                     torch_dtype=torch.float32,
                     low_cpu_mem_usage=True,
                     cache_dir=controlnet_cache_dir,
-                    local_files_only=True,  # ✅ 只使用本地文件
+                    local_files_only=True,
                 )
             else:
-                print("   📦 本地未找到，从 Hugging Face 下载...")
+                print("   📦 首次使用，下载 ControlNet (1.45GB)...")
+                print("   ⏳ 下载完成后会自动缓存到 E:\\hf_cache\\.cache")
                 controlnet = ControlNetModel.from_pretrained(
                     "lllyasviel/sd-controlnet-openpose",
                     torch_dtype=torch.float32,
                     low_cpu_mem_usage=True,
                     cache_dir=controlnet_cache_dir,
-                    resume_download=True,  # ✅ 支持断点续传
+                    resume_download=True,
                 )
                 print("   ✅ 下载完成，已缓存到本地")
             
@@ -1462,21 +1469,18 @@ class ChatTab(BaseTab):
             self.controlnet_available = False
         
 
+
     def _check_controlnet_cached(self) -> bool:
         """检查 ControlNet 是否已缓存"""
-        controlnet_cache_dir = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "models", "controlnet_cache"
-        )
+        hf_cache_dir = os.environ.get("HF_HOME", r"E:\hf_cache\.cache")
+        controlnet_cache_dir = os.path.join(hf_cache_dir, "hub")
         model_path = os.path.join(controlnet_cache_dir, "models--lllyasviel--sd-controlnet-openpose")
         return os.path.exists(model_path)
 
     def _get_controlnet_size(self) -> str:
         """获取 ControlNet 缓存大小"""
-        controlnet_cache_dir = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "models", "controlnet_cache"
-        )
+        hf_cache_dir = os.environ.get("HF_HOME", r"E:\hf_cache\.cache")
+        controlnet_cache_dir = os.path.join(hf_cache_dir, "hub")
         if not os.path.exists(controlnet_cache_dir):
             return "未缓存"
         
@@ -1487,7 +1491,6 @@ class ChatTab(BaseTab):
                 if os.path.exists(fp):
                     total_size += os.path.getsize(fp)
         
-        # 转换为 MB/GB
         if total_size > 1024**3:
             return f"{total_size / 1024**3:.1f} GB"
         elif total_size > 1024**2:
