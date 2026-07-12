@@ -17,7 +17,7 @@ import torch
 
 from .base_tab import BaseTab
 from gui.components.memory_monitor import force_memory_cleanup
-
+import tempfile
 
 class ChatTab(BaseTab):
     """智能会话标签页"""
@@ -1289,7 +1289,93 @@ class ChatTab(BaseTab):
             self.cancel_btn.config(state=tk.DISABLED)
             self.progress_bar.config(value=0)
         
-
+    # 在 chat_tab.py 中添加 ControlNet 相关方法
+    def _setup_controlnet(self):
+        """初始化 ControlNet（懒加载）"""
+        if hasattr(self, 'controlnet_available') and self.controlnet_available:
+            return
+        
+        try:
+            from diffusers import ControlNetModel, StableDiffusionControlNetPipeline
+            
+            print("📦 正在加载 ControlNet...")
+            controlnet = ControlNetModel.from_pretrained(
+                "lllyasviel/sd-controlnet-openpose",
+                torch_dtype=torch.float32,
+                low_cpu_mem_usage=True
+            )
+            
+            pipe = self.app.model_manager.get_pipeline()
+            if pipe:
+                self.controlnet_pipe = StableDiffusionControlNetPipeline(
+                    vae=pipe.vae,
+                    text_encoder=pipe.text_encoder,
+                    tokenizer=pipe.tokenizer,
+                    unet=pipe.unet,
+                    controlnet=controlnet,
+                    scheduler=pipe.scheduler,
+                    safety_checker=None,
+                    feature_extractor=None,
+                    requires_safety_checker=False,
+                )
+                self.controlnet_available = True
+                print("✅ ControlNet 已加载")
+        except Exception as e:
+            print(f"⚠️ ControlNet 加载失败: {e}")
+            self.controlnet_available = False
+        
+        
+    def _extract_pose_from_image(self, image_path: str) -> Image.Image:
+        """
+        从图片中提取骨骼姿态图（OpenPose）
+        用于 ControlNet 控制
+        """
+        try:
+            import cv2
+            import numpy as np
+            from PIL import Image
+            
+            # 方法1：使用 OpenPose（需要安装）
+            # 这里简化处理，用 OpenCV 检测人体轮廓
+            
+            img = cv2.imread(image_path)
+            if img is None:
+                return None
+            
+            h, w = img.shape[:2]
+            
+            # 使用 OpenPose（如果有）
+            try:
+                from controlnet_aux import OpenPoseDetector
+                detector = OpenPoseDetector.from_pretrained("lllyasviel/ControlNet")
+                pose_img = detector(img, output_type="pil")
+                return pose_img
+            except:
+                pass
+            
+            # 备用：使用 MediaPipe
+            try:
+                import mediapipe as mp
+                mp_pose = mp.solutions.pose
+                with mp_pose.Pose(static_image_mode=True) as pose:
+                    results = pose.process(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+                    if results.pose_landmarks:
+                        # 绘制骨骼
+                        pose_img = np.zeros_like(img)
+                        # ... 绘制骨骼点
+                        return Image.fromarray(pose_img)
+            except:
+                pass
+            
+            # 最简备用：返回边缘检测图
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            edges = cv2.Canny(gray, 50, 150)
+            return Image.fromarray(edges)
+            
+        except Exception as e:
+            print(f"⚠️ 姿态提取失败: {e}")
+            return None
+            
     def _analyze_intent(self, text: str) -> dict:
         """智能分析用户意图 - 自动判断，无需关键词"""
         print("\n" + "=" * 60)
@@ -2131,13 +2217,42 @@ class ChatTab(BaseTab):
             return
         
         prompt = intent["prompt"]
-        # ===== ✅ 先获取 image_features =====
         image_features = self._analyze_image_features(self.uploaded_image_path)
-        
-        # ===== ✅ 然后使用 params =====
-        params = intent.get("params", {})        
+
+        # ===== 获取 params =====
+        params = intent.get("params", {})
         if not params:
             params = self._optimize_parameters(prompt, "image_to_image", image_features)
+    
+        # ===== 🚀 新增：检测是否需要姿态控制 =====
+        user_text = intent.get("original_text", "").lower()
+        pose_keywords = ['站立', '坐', '躺', '蹲', '跪', '弯腰', '回头', '侧身', 
+                         '奔跑', '走路', '跳舞', '拥抱', '接吻', '仰头', '低头']
+        needs_pose_control = any(k in user_text for k in pose_keywords)
+        
+        # 获取用户指定的姿势
+        keywords = intent.get("keywords", {})
+        user_poses = keywords.get("poses", [])
+        
+        # ===== 🚀 如果用户指定了姿势，尝试使用 ControlNet =====
+        use_controlnet = needs_pose_control and hasattr(self, 'controlnet_available') and self.controlnet_available
+        
+        if use_controlnet and user_poses:
+            # 从原图提取姿态
+            pose_image = self._extract_pose_from_image(self.uploaded_image_path)
+            if pose_image:
+                self._append_message("system", "🦴 已提取姿态图，使用 ControlNet 控制")
+                # 使用 ControlNet 生成
+                self._handle_controlnet_generation(prompt, pose_image, intent, params)
+                return
+            else:
+                self._append_message("system", "⚠️ 姿态提取失败，使用普通图生图")
+
+        # ===== 普通图生图 =====              
+        # ===== ✅ 然后使用 params =====
+        #params = intent.get("params", {})        
+        #if not params:
+        #    params = self._optimize_parameters(prompt, "image_to_image", image_features)
 
         # 使用 params 中的值
         steps = params.get("steps", 20)
@@ -2368,6 +2483,74 @@ class ChatTab(BaseTab):
             traceback.print_exc()
             self._pending_intent = None
 
+    def _handle_controlnet_generation(self, prompt: str, pose_image: Image.Image, 
+                                      intent: dict, params: dict):
+        """使用 ControlNet 生成"""
+        try:
+            from diffusers import StableDiffusionControlNetPipeline
+            import torch
+            
+            # 确保 ControlNet pipeline 可用
+            if not hasattr(self, 'controlnet_pipe') or self.controlnet_pipe is None:
+                self._setup_controlnet()
+                if not self.controlnet_available:
+                    self._append_message("assistant", "❌ ControlNet 不可用，使用普通图生图")
+                    self._handle_image_to_image(intent)
+                    return
+            
+            # 获取模型
+            model_name = self.app.model_var.get()
+            model_path = self.app._get_model_path(model_name)
+            
+            # 生成
+            steps = params.get("steps", 20)
+            cfg = params.get("cfg", 7.5)
+            
+            result = self.controlnet_pipe(
+                prompt=prompt,
+                image=pose_image,
+                num_inference_steps=steps,
+                guidance_scale=cfg,
+                height=512,
+                width=512,
+            )
+            
+            # 保存图片
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"{timestamp}_controlnet_{intent.get('original_text', 'pose')[:20]}.png"
+            
+            from config.app_config import app_config
+            output_dir = app_config.paths.output_dir
+            os.makedirs(output_dir, exist_ok=True)
+            filepath = os.path.join(output_dir, filename)
+            result.images[0].save(filepath)
+            
+            self._append_image_result(filepath)
+            self._append_message("assistant", f"✅ ControlNet 生成完成！\n📁 {os.path.basename(filepath)}")
+            self.app.add_to_preview(filepath, result.images[0])
+            
+        except Exception as e:
+            self._append_message("assistant", f"❌ ControlNet 生成失败: {str(e)}")
+            # 降级到普通图生图
+            self._handle_image_to_image(intent)
+
+    def _generate_pose_image(self, image_path: str) -> str:
+        """
+        生成姿态图并保存为临时文件
+        返回姿态图路径
+        """
+        try:
+            # 使用 OpenPose 或 MediaPipe 提取姿态
+            # 保存为临时文件
+            temp_path = os.path.join(tempfile.gettempdir(), f"pose_{datetime.now().strftime('%H%M%S')}.png")
+            pose_img = self._extract_pose_from_image(image_path)
+            if pose_img:
+                pose_img.save(temp_path)
+                return temp_path
+        except:
+            pass
+        return None
+    
     def _analyze_image_features(self, image_path: str) -> dict:
         """分析图片特征（增强版）"""
         try:
