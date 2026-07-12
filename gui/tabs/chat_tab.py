@@ -2224,6 +2224,9 @@ class ChatTab(BaseTab):
         if not params:
             params = self._optimize_parameters(prompt, "image_to_image", image_features)
     
+        # ===== 🚀 新增：主动初始化 ControlNet =====
+        self._setup_controlnet()  # ✅ 添加这行
+    
         # ===== 🚀 新增：检测是否需要姿态控制 =====
         user_text = intent.get("original_text", "").lower()
         pose_keywords = ['站立', '坐', '躺', '蹲', '跪', '弯腰', '回头', '侧身', 
