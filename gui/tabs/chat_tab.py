@@ -144,7 +144,7 @@ class ChatTab(BaseTab):
         return lora_files
 
     def _load_lora_to_pipe(self, lora_path: str, lora_name: str):
-        """加载 LoRA 到当前 pipeline"""
+        """加载 LoRA 到当前 pipeline（兼容旧版 diffusers）"""
         if not self.app.model_manager.is_sd_loaded:
             self._append_message("system", "⚠️ 模型未加载，请先加载模型")
             return False
@@ -165,13 +165,43 @@ class ChatTab(BaseTab):
                 try:
                     pipe.unload_lora_weights()
                     print(f"   🗑️ 已卸载旧 LoRA")
+                except Exception as e:
+                    print(f"   ⚠️ 卸载旧 LoRA 失败: {e}")
+
+            print(f"   🔗 加载 LoRA: {lora_name}")
+            
+            # ===== 尝试多种加载方式（兼容旧版 diffusers） =====
+            success = False
+            
+            # 方式 1: 直接加载（最简单，兼容性最好）
+            try:
+                pipe.load_lora_weights(lora_path)
+                print(f"   ✅ 方式1: load_lora_weights 成功")
+                success = True
+            except Exception as e:
+                print(f"   ⚠️ 方式1 失败: {e}")
+                
+                # 方式 2: 尝试 fuse_lora
+                try:
+                    pipe.load_lora_weights(lora_path)
+                    pipe.fuse_lora()
+                    print(f"   ✅ 方式2: fuse_lora 成功")
+                    success = True
+                except Exception as e2:
+                    print(f"   ⚠️ 方式2 失败: {e2}")
+            
+            if not success:
+                self._append_message("system", f"❌ LoRA 加载失败: 所有方式均失败")
+                return False
+
+            # 如果权重不是 1.0，尝试调整
+            if hasattr(pipe, 'lora_weights') and self.lora_weight != 1.0:
+                try:
+                    for key in pipe.lora_weights.keys():
+                        pipe.lora_weights[key] = self.lora_weight
+                    print(f"   ⚙️ 权重已调整为: {self.lora_weight}")
                 except:
                     pass
-
-            # 加载新 LoRA
-            print(f"   🔗 加载 LoRA: {lora_name}")
-            pipe.load_lora_weights(lora_path, adapter_name="chat_lora")
-            pipe.set_adapters(["chat_lora"], adapter_weights=[1.0])
 
             self.current_lora_path = lora_path
             self.lora_loaded = True
@@ -184,8 +214,10 @@ class ChatTab(BaseTab):
         except Exception as e:
             self._append_message("system", f"❌ LoRA 加载失败: {str(e)}")
             print(f"   ❌ LoRA 加载失败: {e}")
+            import traceback
+            traceback.print_exc()
             return False
-
+        
     def _unload_lora(self):
         """卸载 LoRA"""
         if not self.lora_loaded:
