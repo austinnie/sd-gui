@@ -39,6 +39,14 @@ import tempfile
 
 class ChatTab(BaseTab):
     """智能会话标签页"""
+
+    # ===== 默认加载的 LoRA 列表 =====
+    DEFAULT_LORAS = [
+        "busty_slider.safetensors",
+        "beauty_masters.safetensors",
+        "boobs.safetensors",
+        "chunli.safetensors",
+    ]
     
     def __init__(self, parent, app):
         super().__init__(parent, app)
@@ -46,6 +54,9 @@ class ChatTab(BaseTab):
         self._init_vars()
         self.setup_ui()
 
+        # ✅ 延迟加载 LoRA（等待模型就绪）
+        self.app.root.after(2000, self._auto_load_default_lora)
+        
         # ✅ 延迟检测 LLM（给程序启动留时间）
         self.app.root.after(3000, self._check_ollama)
     
@@ -93,6 +104,13 @@ class ChatTab(BaseTab):
         self.llm_available = False
         self.llm_installing = False
         self.llm_model_size = "1GB"
+
+        # ===== LoRA 相关变量 =====
+        self.lora_enabled = tk.BooleanVar(value=True)
+        self.lora_var = tk.StringVar(value="")
+        self.lora_paths = {}
+        self.current_lora_path = None
+        self.lora_loaded = False
         
         # ✅ 新增：缓存增强后的提示词
         self._enhanced_prompt_cache = {}
@@ -104,7 +122,150 @@ class ChatTab(BaseTab):
             "landscape": "worst quality, low quality, ugly, deformed, blurry, watermark, text, bad composition, cluttered",
             "nude": "clothes, fabric, dress, shirt, pants, underwear, bra, panties, bikini, swimsuit, covering, censorship, mosaic",
         }
-        
+    # ==================== LoRA 管理 ====================
+
+    def _scan_lora_files(self):
+        """扫描 sd15-lora 目录下的 LoRA 文件"""
+        lora_dir = r"E:\SD_OpenVINO\models\sd15-lora"
+        if not os.path.exists(lora_dir):
+            print(f"⚠️ LoRA 目录不存在: {lora_dir}")
+            return []
+
+        lora_files = []
+        self.lora_paths = {}
+
+        for f in os.listdir(lora_dir):
+            if f.endswith('.safetensors'):
+                # 检查是否在默认列表中
+                is_default = f in self.DEFAULT_LORAS
+                display_name = f"{'⭐ ' if is_default else ''}{f}"
+                lora_files.append(display_name)
+                self.lora_paths[display_name] = os.path.join(lora_dir, f)
+
+        # 按默认优先排序
+        lora_files.sort(key=lambda x: 0 if x.startswith('⭐') else 1)
+        return lora_files
+
+    def _load_lora_to_pipe(self, lora_path: str, lora_name: str):
+        """加载 LoRA 到当前 pipeline"""
+        if not self.app.model_manager.is_sd_loaded:
+            self._append_message("system", "⚠️ 模型未加载，请先加载模型")
+            return False
+
+        pipe = self.app.model_manager._sd_pipe
+        if pipe is None:
+            self._append_message("system", "❌ Pipeline 不可用")
+            return False
+
+        try:
+            # 如果已加载相同 LoRA，跳过
+            if self.current_lora_path == lora_path and self.lora_loaded:
+                self._append_message("system", f"ℹ️ LoRA 已加载: {lora_name}")
+                return True
+
+            # 如果加载了不同的 LoRA，先卸载
+            if self.lora_loaded:
+                try:
+                    pipe.unload_lora_weights()
+                    print(f"   🗑️ 已卸载旧 LoRA")
+                except:
+                    pass
+
+            # 加载新 LoRA
+            print(f"   🔗 加载 LoRA: {lora_name}")
+            pipe.load_lora_weights(lora_path, adapter_name="chat_lora")
+            pipe.set_adapters(["chat_lora"], adapter_weights=[1.0])
+
+            self.current_lora_path = lora_path
+            self.lora_loaded = True
+            self.lora_var.set(lora_name)
+
+            self._append_message("system", f"✅ LoRA 加载成功: {lora_name}")
+            self._update_lora_status()
+            return True
+
+        except Exception as e:
+            self._append_message("system", f"❌ LoRA 加载失败: {str(e)}")
+            print(f"   ❌ LoRA 加载失败: {e}")
+            return False
+
+    def _unload_lora(self):
+        """卸载 LoRA"""
+        if not self.lora_loaded:
+            self._append_message("system", "ℹ️ 没有已加载的 LoRA")
+            return
+
+        pipe = self.app.model_manager._sd_pipe
+        if pipe is None:
+            return
+
+        try:
+            pipe.unload_lora_weights()
+            self.lora_loaded = False
+            self.current_lora_path = None
+            self._append_message("system", "🗑️ LoRA 已卸载")
+            self._update_lora_status()
+        except Exception as e:
+            self._append_message("system", f"❌ 卸载失败: {str(e)}")
+
+    def _auto_load_default_lora(self):
+        """自动加载默认 LoRA"""
+        # 检查模型是否已加载
+        if not self.app.model_manager.is_sd_loaded:
+            self._append_message("system", "⏳ 等待模型加载后自动加载 LoRA...")
+            # 延迟重试
+            self.app.root.after(3000, self._auto_load_default_lora)
+            return
+
+        if not self.lora_enabled.get():
+            return
+
+        # 获取 LoRA 列表
+        lora_files = self._scan_lora_files()
+        if not lora_files:
+            return
+
+        # 优先加载默认 LoRA（第一个）
+        default_lora = lora_files[0]
+        lora_path = self.lora_paths.get(default_lora)
+
+        if lora_path and os.path.exists(lora_path):
+            self._append_message("system", f"📦 自动加载 LoRA: {default_lora.replace('⭐ ', '')}")
+            self._load_lora_to_pipe(lora_path, default_lora)
+        else:
+            self._append_message("system", "⚠️ 未找到默认 LoRA")
+
+    def _on_lora_selected(self, event=None):
+        """LoRA 下拉选择事件"""
+        selected = self.lora_var.get()
+        if not selected:
+            return
+
+        lora_path = self.lora_paths.get(selected)
+        if not lora_path:
+            self._append_message("system", "❌ 找不到 LoRA 文件")
+            return
+
+        if not self.app.model_manager.is_sd_loaded:
+            self._append_message("system", "⚠️ 请先加载模型")
+            return
+
+        self._load_lora_to_pipe(lora_path, selected)
+
+    def _toggle_lora(self):
+        """切换 LoRA 启用/禁用"""
+        if self.lora_enabled.get():
+            self._auto_load_default_lora()
+        else:
+            self._unload_lora()
+
+    def _update_lora_status(self):
+        """更新 LoRA 状态显示"""
+        if self.lora_loaded and self.current_lora_path:
+            name = os.path.basename(self.current_lora_path)
+            self.lora_status_label.config(text=f"🟢 {name}", foreground="green")
+        else:
+            self.lora_status_label.config(text="🔴 未加载", foreground="red")        
      
 
     def _detect_couple_intent(self, text: str) -> bool:
@@ -1177,6 +1338,55 @@ class ChatTab(BaseTab):
         # ===== 工具栏 =====
         toolbar = ttk.Frame(main_frame)
         toolbar.pack(fill=tk.X, pady=2)
+        
+        
+        # ===== LoRA 控制区域 =====
+        lora_frame = ttk.Frame(toolbar)
+        lora_frame.pack(side=tk.LEFT, padx=5)
+
+        ttk.Label(lora_frame, text="🔗 LoRA:").pack(side=tk.LEFT, padx=2)
+
+        # LoRA 下拉选择
+        lora_files = self._scan_lora_files()
+        self.lora_combo = ttk.Combobox(
+            lora_frame,
+            textvariable=self.lora_var,
+            values=lora_files,
+            width=25,
+            state="readonly"
+        )
+        self.lora_combo.pack(side=tk.LEFT, padx=2)
+        self.lora_combo.bind('<<ComboboxSelected>>', self._on_lora_selected)
+
+        # 启用开关
+        self.lora_check = ttk.Checkbutton(
+            lora_frame,
+            text="启用",
+            variable=self.lora_enabled,
+            command=self._toggle_lora
+        )
+        self.lora_check.pack(side=tk.LEFT, padx=5)
+
+        # 状态标签
+        self.lora_status_label = ttk.Label(
+            lora_frame,
+            text="🔴 未加载",
+            foreground="red",
+            font=("", 8)
+        )
+        self.lora_status_label.pack(side=tk.LEFT, padx=5)
+
+        # 刷新按钮
+        ttk.Button(
+            lora_frame,
+            text="🔄",
+            width=2,
+            command=self._refresh_lora_list
+        ).pack(side=tk.LEFT, padx=2)
+
+        # 分隔线
+        ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=5)
+        
         # 在工具栏添加清除图片按钮
         self.clear_images_btn = ttk.Button(
             toolbar, 
@@ -1452,7 +1662,16 @@ class ChatTab(BaseTab):
         
         self.progress_bar = ttk.Progressbar(status_frame, length=200, mode='determinate')
         self.progress_bar.pack(side=tk.RIGHT, padx=5)
-
+        
+    def _refresh_lora_list(self):
+        """刷新 LoRA 列表"""
+        lora_files = self._scan_lora_files()
+        self.lora_combo['values'] = lora_files
+        if lora_files and not self.lora_var.get():
+            # 如果当前没有选择，默认选第一个（默认 LoRA）
+            self.lora_var.set(lora_files[0])
+        self._append_message("system", f"🔄 LoRA 列表已刷新 ({len(lora_files)} 个)")
+        
     def _toggle_safe_mode(self):
         """切换安全模式"""
         current = self.safe_mode_var.get()
