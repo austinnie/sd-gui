@@ -570,9 +570,9 @@ class SDApp:
         if app_config.model.auto_load_first:
             self.root.after(100, self._auto_load_model)
 
-    def get_sd_model_type(self) -> str:
-        """获取当前 SD 模型类型: 'sd15' 或 'sdxl'"""
-        return self.model_manager.get_sd_model_type()
+    #def get_sd_model_type(self) -> str:
+    #    """获取当前 SD 模型类型: 'sd15' 或 'sdxl'"""
+    #    return self.model_manager.get_sd_model_type()
     
     # ===== 兼容旧代码的属性 =====
     @property
