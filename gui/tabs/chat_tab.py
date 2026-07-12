@@ -1415,14 +1415,14 @@ class ChatTab(BaseTab):
             
             print("📦 正在加载 ControlNet...")
             
-            # ===== 🚀 使用统一的缓存目录 =====
+            # ===== 获取缓存目录 =====
             hf_cache_dir = os.environ.get("HF_HOME", r"E:\hf_cache\.cache")
             controlnet_cache_dir = os.path.join(hf_cache_dir, "hub")
             os.makedirs(controlnet_cache_dir, exist_ok=True)
             
             print(f"   📁 缓存目录: {controlnet_cache_dir}")
             
-            # ===== 检查是否已缓存 =====
+            # ===== 加载 ControlNet =====
             model_path = os.path.join(controlnet_cache_dir, "models--lllyasviel--sd-controlnet-openpose")
             if os.path.exists(model_path):
                 print(f"   ✅ 找到本地缓存")
@@ -1435,7 +1435,6 @@ class ChatTab(BaseTab):
                 )
             else:
                 print("   📦 首次使用，下载 ControlNet (1.45GB)...")
-                print("   ⏳ 下载完成后会自动缓存到 E:\\hf_cache\\.cache")
                 controlnet = ControlNetModel.from_pretrained(
                     "lllyasviel/sd-controlnet-openpose",
                     torch_dtype=torch.float32,
@@ -1445,8 +1444,43 @@ class ChatTab(BaseTab):
                 )
                 print("   ✅ 下载完成，已缓存到本地")
             
-            pipe = self.app.model_manager.get_pipeline()
+            # ===== ✅ 修复：从 pipeline_pool 获取 pipeline =====
+            from utils.pipeline_pool import pipeline_pool
+            
+            # 获取当前使用的模型
+            model_name = self.app.model_var.get() if hasattr(self.app, 'model_var') else None
+            if not model_name:
+                print("   ⚠️ 未选择模型")
+                self.controlnet_available = False
+                return
+            
+            model_path = self.app._get_model_path(model_name)
+            if not model_path:
+                print(f"   ⚠️ 找不到模型: {model_name}")
+                self.controlnet_available = False
+                return
+            
+            # 获取 LoRA 信息
+            lora_path = None
+            lora_weight = 1.0
+            if hasattr(self.app, 'lora_var') and hasattr(self.app, 'lora_paths'):
+                lora_display = self.app.lora_var.get()
+                if lora_display:
+                    lora_path = self.app.lora_paths.get(lora_display)
+                    lora_weight = self.app.lora_weight_var.get() if hasattr(self.app, 'lora_weight_var') else 1.0
+            
+            # 从 pipeline_pool 获取 pipeline
+            task_id = f"controlnet_{datetime.now().strftime('%H%M%S')}"
+            pipe, is_new = pipeline_pool.get_pipeline(
+                model_path=model_path,
+                model_name=model_name,
+                lora_path=lora_path,
+                lora_weight=lora_weight,
+                task_id=task_id
+            )
+            
             if pipe:
+                # 创建 ControlNet pipeline
                 self.controlnet_pipe = StableDiffusionControlNetPipeline(
                     vae=pipe.vae,
                     text_encoder=pipe.text_encoder,
@@ -1459,7 +1493,7 @@ class ChatTab(BaseTab):
                     requires_safety_checker=False,
                 )
                 self.controlnet_available = True
-                print(f"✅ ControlNet 已加载（缓存: {controlnet_cache_dir}）")
+                print(f"✅ ControlNet 已加载")
             else:
                 print("⚠️ 无法获取 Pipeline，ControlNet 加载失败")
                 self.controlnet_available = False
@@ -1467,7 +1501,7 @@ class ChatTab(BaseTab):
         except Exception as e:
             print(f"⚠️ ControlNet 加载失败: {e}")
             self.controlnet_available = False
-        
+            
 
 
     def _check_controlnet_cached(self) -> bool:
