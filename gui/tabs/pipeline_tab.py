@@ -47,12 +47,8 @@ class PipelineTab(BaseTab):
     
     def _init_steps(self):
         """注册所有步骤"""
-        # 目前只注册 marble，后面逐步添加
-        PipelineRegistry.register_step("marble", MarbleStep)
-        # 后续扩展:
-        # PipelineRegistry.register_step("qipao", QipaoStep)
-        # PipelineRegistry.register_step("remove_clothes", RemoveClothesStep)
-        # PipelineRegistry.register_step("lace_dress", LaceDressStep)
+        from core.pipeline import register_all_steps
+        register_all_steps()
     
     def _load_pipelines(self):
         """加载流水线配置"""

@@ -30,17 +30,197 @@
                 }
             ]
         },
-        "大理石雕像_精致": {
-            "description": "精致版 - 更多步数，更高强度",
+        "旗袍风格": {
+            "description": "将人物转换为传统旗袍风格（4种场景）",
             "steps": [
                 {
-                    "type": "marble",
+                    "type": "qipao",
                     "config": {
                         "strength": 0.35,
-                        "max_strength": 0.60,
                         "cfg": 7.5,
-                        "steps": 25,
-                        "scenes": 14
+                        "steps": 25
+                    }
+                }
+            ]
+        },
+        "情侣拥抱": {
+            "description": "生成情侣拥抱场景（4种场景）",
+            "steps": [
+                {
+                    "type": "couple",
+                    "config": {
+                        "strength": 0.45,
+                        "cfg": 7.0,
+                        "steps": 30
+                    }
+                }
+            ]
+        },
+        "浪漫接吻": {
+            "description": "生成浪漫接吻场景（4种场景）",
+            "steps": [
+                {
+                    "type": "couple",
+                    "config": {
+                        "strength": 0.45,
+                        "cfg": 7.0,
+                        "steps": 30
+                    }
+                }
+            ]
+        },
+        "瑜伽姿势": {
+            "description": "转换为瑜伽姿势（4种场景）",
+            "steps": [
+                {
+                    "type": "yoga",
+                    "config": {
+                        "strength": 0.40,
+                        "cfg": 7.5,
+                        "steps": 25
+                    }
+                }
+            ]
+        },
+        "油画风格": {
+            "description": "转换为油画风格（6种名画风格）",
+            "steps": [
+                {
+                    "type": "oil_painting",
+                    "config": {
+                        "strength": 0.35,
+                        "cfg": 8.0,
+                        "steps": 30
+                    }
+                }
+            ]
+        },
+        "动漫爱爱": {
+            "description": "转换为动漫爱爱风格（6种场景）",
+            "steps": [
+                {
+                    "type": "anime_xxx",
+                    "config": {
+                        "strength": 0.45,
+                        "cfg": 7.0,
+                        "steps": 30
+                    }
+                }
+            ]
+        },
+        "去掉衣服_全部场景": {
+            "description": "去掉衣服 - 包含所有常见场景（28种）",
+            "steps": [
+                {
+                    "type": "remove_clothes",
+                    "config": {
+                        "strength": 0.55,
+                        "cfg": 7.0,
+                        "steps": 35
+                    }
+                }
+            ]
+        },
+        "去掉衣服_比基尼": {
+            "description": "比基尼/泳装 → 裸体（4种场景）",
+            "steps": [
+                {
+                    "type": "remove_clothes",
+                    "config": {
+                        "strength": 0.50,
+                        "cfg": 7.0,
+                        "steps": 30
+                    }
+                }
+            ]
+        },
+        "去掉衣服_紧身衣": {
+            "description": "紧身衣/瑜伽服 → 裸体（3种场景）",
+            "steps": [
+                {
+                    "type": "remove_clothes",
+                    "config": {
+                        "strength": 0.55,
+                        "cfg": 7.0,
+                        "steps": 30
+                    }
+                }
+            ]
+        },
+        "去掉衣服_正装": {
+            "description": "正装/外套 → 裸体（4种场景）",
+            "steps": [
+                {
+                    "type": "remove_clothes",
+                    "config": {
+                        "strength": 0.60,
+                        "cfg": 7.0,
+                        "steps": 35
+                    }
+                }
+            ]
+        },
+        "去掉衣服_宽松": {
+            "description": "宽松衣物 → 裸体（4种场景）",
+            "steps": [
+                {
+                    "type": "remove_clothes",
+                    "config": {
+                        "strength": 0.65,
+                        "cfg": 6.5,
+                        "steps": 40
+                    }
+                }
+            ]
+        },
+        "去掉衣服_职业装": {
+            "description": "职业装 → 裸体（4种场景）",
+            "steps": [
+                {
+                    "type": "remove_clothes",
+                    "config": {
+                        "strength": 0.60,
+                        "cfg": 7.0,
+                        "steps": 35
+                    }
+                }
+            ]
+        },
+        "去掉衣服_校服": {
+            "description": "校服/学生装 → 裸体（2种场景）",
+            "steps": [
+                {
+                    "type": "remove_clothes",
+                    "config": {
+                        "strength": 0.55,
+                        "cfg": 7.0,
+                        "steps": 30
+                    }
+                }
+            ]
+        },
+        "去掉衣服_传统服装": {
+            "description": "传统服装 → 裸体（3种场景）",
+            "steps": [
+                {
+                    "type": "remove_clothes",
+                    "config": {
+                        "strength": 0.60,
+                        "cfg": 7.0,
+                        "steps": 35
+                    }
+                }
+            ]
+        },
+        "去掉衣服_内衣": {
+            "description": "内衣/情趣内衣 → 裸体（3种场景）",
+            "steps": [
+                {
+                    "type": "remove_clothes",
+                    "config": {
+                        "strength": 0.45,
+                        "cfg": 7.0,
+                        "steps": 30
                     }
                 }
             ]
