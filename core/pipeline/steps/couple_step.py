@@ -31,6 +31,7 @@ class CoupleStep(PipelineStep):
     
     def execute(self, context: StepContext) -> StepResult:
         """执行情侣场景生成"""
+        import torch
         config = self._config
         image_path = context.input_path
         
@@ -50,7 +51,7 @@ class CoupleStep(PipelineStep):
             
             if pipe is None and model_path:
                 from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
-                import torch
+                
                 
                 common_args = {
                     "torch_dtype": torch.float32,

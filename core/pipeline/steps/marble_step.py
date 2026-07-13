@@ -8,7 +8,7 @@ import shutil
 from PIL import Image
 from datetime import datetime
 from ..step import PipelineStep, StepContext, StepResult, StepStatus
-
+import torch
 
 class MarbleStep(PipelineStep):
     """大理石雕像转换步骤 - 复用现有脚本"""
@@ -38,6 +38,7 @@ class MarbleStep(PipelineStep):
     # core/pipeline/steps/marble_step.py
     def execute(self, context: StepContext) -> StepResult:
         """执行大理石转换（使用上下文中的 pipe）"""
+        
         config = self._config
         image_path = context.input_path
         
@@ -60,7 +61,7 @@ class MarbleStep(PipelineStep):
             if pipe is None and model_path:
                 # 如果没有传入 pipe，独立加载（兼容旧逻辑）
                 from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
-                import torch
+
                 
                 common_args = {
                     "torch_dtype": torch.float32,

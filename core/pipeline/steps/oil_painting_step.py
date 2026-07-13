@@ -31,6 +31,7 @@ class OilPaintingStep(PipelineStep):
     
     def execute(self, context: StepContext) -> StepResult:
         """执行油画转换"""
+        import torch
         config = self._config
         image_path = context.input_path
         
@@ -50,7 +51,7 @@ class OilPaintingStep(PipelineStep):
             
             if pipe is None and model_path:
                 from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
-                import torch
+                
                 
                 common_args = {
                     "torch_dtype": torch.float32,
