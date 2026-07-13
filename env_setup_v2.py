@@ -36,41 +36,42 @@ MIRRORS = [
     "https://mirrors.aliyun.com/pypi/simple/",
 ]
 
-# ===== 核心依赖列表（基于实际测试的兼容版本） =====
+# ===== 核心依赖列表（完整兼容版本） =====
 REQUIRED_PACKAGES = [
     # PyTorch (CPU 版本，与 NumPy 2.x 兼容)
     "torch==2.5.1",
     "torchvision==0.20.1",
     
-    # 核心库
+    # ===== 核心库（版本锁定，保证兼容） =====
     "diffusers==0.26.0",
     "transformers==4.40.0",
-    "huggingface-hub==0.24.0",
+    "huggingface-hub==0.24.0",      # ✅ 固定版本，兼容 diffusers 0.26.0
     "accelerate==1.14.0",
     "safetensors==0.8.0",
+    "peft==0.10.0",                  # ✅ 新增，兼容 huggingface-hub 0.24.0
     
-    # 图像处理与数据分析
+    # ===== 图像处理与数据分析 =====
     "numpy==2.4.6",
     "pillow==12.2.0",
     "opencv-python==4.13.0.92",
     "scipy==1.18.0",
     "scikit-image==0.26.0",
     
-    # 工具
+    # ===== 工具 =====
     "psutil==7.2.2",
     "packaging==26.2",
     "tqdm==4.68.3",
     "requests==2.34.2",
     "filelock==3.29.0",
     
-    # ✅ 遮罩与背景去除 (图生图换衣核心)
+    # ===== 遮罩与背景去除 (图生图换衣核心) =====
     "rembg==2.0.76",
     
-    # ✅ CLIP 反推及打分功能
+    # ===== CLIP 反推及打分功能 =====
     "open_clip_torch==3.3.0",
     # "clip-interrogator==0.6.0",  # 可选，有兼容性问题时注释
     
-    # ✅ Janus-Pro 依赖 (多模态模型)
+    # ===== Janus-Pro 依赖 (多模态模型) =====
     "attrdict==2.0.1",
     "einops==0.8.2",
     "timm==1.0.27",
@@ -87,6 +88,7 @@ VERIFY_MODULES = [
     ("accelerate", "accelerate.__version__"),
     ("huggingface_hub", "huggingface_hub.__version__"),
     ("safetensors", "safetensors.__version__"),
+    ("peft", "peft.__version__"),                    # ✅ 新增
     ("numpy", "numpy.__version__"),
     ("PIL", "PIL.__version__"),
     ("cv2", "cv2.__version__"),

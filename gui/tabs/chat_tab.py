@@ -1002,73 +1002,113 @@ class ChatTab(BaseTab):
             else:
                 print(f"   📤 调用 LLM (超时: {timeout}s, max_tokens: {max_tokens})...")
             
-            response = requests.post(
-                "http://localhost:11434/api/generate",
-                json={
-                    "model": self.llm_model.get(),
-                    "prompt": prompt,
-                    "temperature": 0.7,
-                    "stream": stream,
-                    "max_tokens": max_tokens,
-                    "top_p": 0.9,
-                },
-                timeout=timeout,
-                stream=stream
-            )
-            
-            if response.status_code != 200:
-                print(f"   ❌ LLM 返回错误: {response.status_code}")
-                return None
-            
-            if stream:
-                # ===== 流式模式：逐块接收 =====
-                result = ""
-                chunk_count = 0
-                for line in response.iter_lines():
-                    if line:
-                        try:
-                            import json
-                            data = json.loads(line)
-                            if "response" in data:
-                                chunk = data["response"]
-                                result += chunk
-                                chunk_count += 1
-                                # 每 5 个块打印一次进度
-                                if chunk_count % 5 == 0:
-                                    print(f"\r   📥 接收中: {len(result)} 字符", end="")
-                            if data.get("done", False):
-                                break
-                        except json.JSONDecodeError:
+            max_retries = 2
+            for attempt in range(max_retries):
+                try:
+                    response = requests.post(
+                        "http://localhost:11434/api/generate",
+                        json={
+                            "model": self.llm_model.get(),
+                            "prompt": prompt,
+                            "temperature": 0.7,
+                            "stream": stream,
+                            "max_tokens": max_tokens,
+                            "top_p": 0.9,
+                            "stop": ["\n\n", "正面提示词", "负面提示词"],
+                        },
+                        timeout=timeout,
+                        stream=stream
+                    )
+                    
+                    if response.status_code != 200:
+                        print(f"   ❌ LLM 返回错误: {response.status_code}")
+                        if attempt < max_retries - 1:
+                            print(f"   🔄 重试 {attempt + 1}/{max_retries}...")
+                            time.sleep(1)
                             continue
-                
-                # 换行
-                print()
-                print(f"   📥 流式接收完成: {len(result)} 字符")
-                
-                # 清理结果（去除可能的特殊标记）
-                result = result.strip()
-                # 如果结果包含特殊标记，尝试清理
-                if result.startswith('"') and result.endswith('"'):
-                    try:
-                        import json
-                        result = json.loads(result)
-                    except:
-                        pass
-                
-                return result
-            else:
-                # ===== 非流式模式：一次性返回 =====
-                result = response.json().get("response", "").strip()
-                print(f"   📥 LLM 响应长度: {len(result)} 字符")
-                return result
-                
-        except requests.exceptions.Timeout:
-            print("⚠️ Ollama 超时")
-            return None
+                        return None
+                    
+                    if stream:
+                        # ===== 流式模式：逐块接收 =====
+                        result = ""
+                        chunk_count = 0
+                        start_time = time.time()
+                        last_chunk_time = start_time
+                        chunk_timeout = 10  # 每块超时 10 秒
+                        
+                        try:
+                            for line in response.iter_lines():
+                                # 整体超时保护
+                                if time.time() - start_time > timeout:
+                                    print(f"\n   ⚠️ 流式超时 ({timeout}s)，停止接收")
+                                    break
+                                
+                                # 单块超时保护
+                                if time.time() - last_chunk_time > chunk_timeout:
+                                    print(f"\n   ⚠️ 块接收超时 ({chunk_timeout}s)，停止接收")
+                                    break
+                                
+                                if line:
+                                    try:
+                                        import json
+                                        data = json.loads(line)
+                                        if "response" in data:
+                                            chunk = data["response"]
+                                            result += chunk
+                                            chunk_count += 1
+                                            last_chunk_time = time.time()
+                                            if chunk_count % 5 == 0:
+                                                print(f"\r   📥 接收中: {len(result)} 字符", end="")
+                                        
+                                        # ✅ 检查是否完成
+                                        if data.get("done", False):
+                                            print()
+                                            print(f"   📥 流式接收完成: {len(result)} 字符")
+                                            break
+                                            
+                                        # ✅ 移除过早的截断限制，让 LLM 完整输出
+                                        # 只在超过 1000 字符时才警告，不截断
+                                        if len(result) > 1000:
+                                            print(f"\n   ⚠️ 响应很长 ({len(result)} 字符)，继续接收...")
+                                            
+                                    except json.JSONDecodeError:
+                                        continue
+                        except requests.exceptions.Timeout:
+                            print(f"\n   ⚠️ 流式读取超时 ({timeout}s)")
+                            return result if result else None
+                        
+                        result = result.strip()
+                        
+                        if result.startswith('"') and result.endswith('"'):
+                            try:
+                                import json
+                                result = json.loads(result)
+                            except:
+                                pass
+                        
+                        return result
+                    else:
+                        # 非流式模式
+                        result = response.json().get("response", "").strip()
+                        print(f"   📥 LLM 响应长度: {len(result)} 字符")
+                        return result
+                        
+                except requests.exceptions.Timeout:
+                    print(f"\n   ⚠️ 请求超时 ({timeout}s)，尝试 {attempt + 1}/{max_retries}")
+                    if attempt < max_retries - 1:
+                        time.sleep(2)
+                        continue
+                    return None
+                except requests.exceptions.ConnectionError:
+                    print(f"   ⚠️ 连接错误，尝试 {attempt + 1}/{max_retries}")
+                    if attempt < max_retries - 1:
+                        time.sleep(2)
+                        continue
+                    return None
+                        
         except Exception as e:
             print(f"⚠️ Ollama 调用失败: {e}")
             return None
-        
         
     def _build_preserve_parts_from_features(self, image_features: dict, user_text: str = "") -> list:
         preserve_parts = ["same person", "same face", "same identity"]
@@ -1140,46 +1180,41 @@ class ChatTab(BaseTab):
         user_text = intent.get("original_text", "")
         keywords = intent.get("keywords", {})
         user_poses = keywords.get("poses", [])
-
+        
         preserve_parts = self._build_preserve_parts_from_features(image_features, user_text)
-
+        
         if user_poses:
             preserve_parts = [p for p in preserve_parts if p != "same pose"]
-            print(f"   🧍 用户指定姿势: {user_poses}，已移除 'same pose'")
-
+        
+        # ===== 清理提示词 =====
+        prompt = self._clean_prompt_for_sd(prompt)
+        
         prompt_lower = prompt.lower()
-        sentence_indicators = ['maintain', 'exchange', 'retain', 'keep', 'change', 'feature', 'outfit', 'gown']
-        is_natural = any(ind in prompt_lower for ind in sentence_indicators)
+        is_natural = any(ind in prompt_lower for ind in ['maintain', 'exchange', 'retain', 'keep', 'change', 'feature', 'outfit', 'gown'])
         has_chinese = any('\u4e00' <= char <= '\u9fff' for char in prompt)
-
+        
         has_preserve = "same person" in prompt_lower and "same face" in prompt_lower
-
+        
+        # ===== 构建最终提示词（避免重复） =====
         if has_preserve:
             parts_to_add = [p for p in preserve_parts if p.lower() not in prompt_lower]
             if parts_to_add:
                 return prompt + ", " + ", ".join(parts_to_add)
             return prompt
-
+        
         if is_natural or has_chinese:
             clothes = []
             clothes_map = {
-                '旗袍': 'qipao',
-                '汉服': 'hanfu',
-                '礼服': 'evening gown',
-                '裙子': 'dress',
-                '西装': 'suit',
-                '制服': 'uniform',
-                '泳衣': 'swimsuit',
-                '比基尼': 'bikini',
-                'dress': 'dress',
-                'gown': 'evening gown',
-                'qipao': 'qipao',
+                '旗袍': 'qipao', '汉服': 'hanfu', '礼服': 'evening gown',
+                '裙子': 'dress', '西装': 'suit', '制服': 'uniform',
+                '泳衣': 'swimsuit', '比基尼': 'bikini',
+                'dress': 'dress', 'gown': 'evening gown', 'qipao': 'qipao',
             }
             for cn, en in clothes_map.items():
                 if cn in prompt_lower or cn in user_text.lower():
                     if en not in clothes:
                         clothes.append(en)
-
+            
             result_parts = []
             gender = next((p for p in preserve_parts if p in ["1girl", "1boy", "2girls", "2boys"]), "1girl")
             result_parts.append(gender)
@@ -1189,16 +1224,15 @@ class ChatTab(BaseTab):
                 result_parts.append(" ".join(user_poses) + " pose")
             if clothes:
                 result_parts.append("wearing " + ", ".join(clothes))
-            result_parts.append("masterpiece")
-            result_parts.append("best quality")
-            result_parts.append("photorealistic")
-            result_parts.append("8k")
-            result_parts.append("highly detailed")
-
+            
+            # ✅ 只添加一次质量词
+            quality = ["masterpiece", "best quality", "photorealistic", "8k", "highly detailed"]
+            result_parts.extend(quality)
+            
             return ", ".join(result_parts)
-
+        
         return self._merge_llm_prompt_with_features(prompt, preserve_parts)
-
+    
     def debug_test_llm(self):
         import requests
 
@@ -1242,6 +1276,7 @@ class ChatTab(BaseTab):
 
         except Exception as e:
             self._append_message("system", f"❌ 测试失败: {e}")
+
 
     def _llm_enhance_prompt(self, text: str, is_img2img: bool = False) -> dict:
         if not self.llm_available or not self.llm_enabled.get():
@@ -1320,23 +1355,38 @@ class ChatTab(BaseTab):
 
         prompt = prompt_template.format(text=text)
         
-        # ✅ 使用流式输出，提高响应速度
-        result = self._call_ollama(prompt, timeout=60, max_tokens=200, stream=True)
+        # 使用流式输出
+        result = self._call_ollama(prompt, timeout=90, max_tokens=300, stream=True)
 
         if not result:
+            print("   ❌ LLM 返回空结果")
             return None
 
-        parsed = self._parse_llm_response_simple(result)
-        parsed = self._parse_llm_response_stream(result)
+        # ✅ 【修复】先解析，再清理（不要提前清理）
+        print(f"   📝 LLM 原始响应:\n{result[:500]}...")
+        
+        # ✅ 直接使用整个响应作为提示词（如果包含"正面提示词"标记则解析）
+        if '正面提示词' in result or '正面提示词：' in result:
+            parsed = self._parse_llm_response_stream(result)
+        else:
+            # 如果 LLM 没有按格式输出，直接使用结果
+            parsed = {
+                "prompt": result,
+                "negative": self._negative_templates["animal"] if is_animal else self._negative_templates["default"]
+            }
 
         if parsed and parsed.get('prompt'):
-            parsed['prompt'] = self._clean_prompt(parsed['prompt'])
-            # 如果是动物主题，使用动物负面提示词
+            # 清理提示词
+            parsed['prompt'] = self._clean_prompt_for_sd(parsed['prompt'])
+            print(f"   ✅ 清理后提示词: {parsed['prompt'][:150]}...")
+            
             if is_animal and not parsed.get('negative'):
                 parsed['negative'] = self._negative_templates["animal"]
+            
             self._enhanced_prompt_cache[cache_key] = parsed
             return parsed
 
+        print("   ❌ LLM 解析失败")
         return None
     
     def _parse_llm_response(self, response: str) -> dict:
@@ -1520,7 +1570,7 @@ class ChatTab(BaseTab):
                 content = next_line
         
         return content
-    
+            
     def _parse_llm_response_stream(self, response: str) -> dict:
         """解析流式 LLM 响应，实时提取提示词"""
         result = {
@@ -1531,13 +1581,10 @@ class ChatTab(BaseTab):
         if not response:
             return result
         
-        # 按行分割
         lines = response.strip().split('\n')
-        
-        # 状态机
         current_section = None
-        prompt_buffer = []
-        negative_buffer = []
+        prompt_parts = []
+        negative_parts = []
         
         for line in lines:
             line = line.strip()
@@ -1547,43 +1594,62 @@ class ChatTab(BaseTab):
             # 检测节标题
             if '正面提示词' in line or '正面' in line:
                 current_section = 'prompt'
-                # 如果有冒号，提取内容
                 if '：' in line or ':' in line:
-                    content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
+                    sep = '：' if '：' in line else ':'
+                    content = line.split(sep, 1)[-1].strip()
                     if content:
-                        prompt_buffer.append(content)
+                        prompt_parts.append(content)
                 continue
             elif '负面提示词' in line or '负面' in line:
                 current_section = 'negative'
                 if '：' in line or ':' in line:
-                    content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
+                    sep = '：' if '：' in line else ':'
+                    content = line.split(sep, 1)[-1].strip()
                     if content:
-                        negative_buffer.append(content)
+                        negative_parts.append(content)
                 continue
             
             # 根据当前节添加内容
-            if current_section == 'prompt':
-                prompt_buffer.append(line)
-            elif current_section == 'negative':
-                negative_buffer.append(line)
-            else:
-                # 没有节标题，尝试智能判断
-                if '负面' in line or 'negative' in line.lower():
-                    continue
-                prompt_buffer.append(line)
+            if current_section == 'prompt' and line:
+                prompt_parts.append(line)
+            elif current_section == 'negative' and line:
+                negative_parts.append(line)
         
         # 组合结果
-        if prompt_buffer:
-            result['prompt'] = ', '.join(prompt_buffer)
-        if negative_buffer:
-            result['negative'] = ', '.join(negative_buffer)
+        if prompt_parts:
+            result['prompt'] = ', '.join(prompt_parts)
+            print(f"   ✅ 从标记提取到提示词: {result['prompt'][:100]}...")
+        else:
+            # ✅ 如果按行解析失败，尝试从整个响应中提取
+            print("   ⚠️ 按行解析失败，尝试从整个响应提取...")
+            
+            # 尝试找到 "正面提示词：" 后的内容
+            match = re.search(r'正面提示词[：:]\s*(.+?)(?=负面提示词|$)', response, re.DOTALL)
+            if match:
+                content = match.group(1).strip()
+                if content:
+                    result['prompt'] = content
+                    print(f"   ✅ 从正则提取到提示词: {result['prompt'][:100]}...")
+            else:
+                # 整段作为提示词
+                clean = response.strip()
+                if clean:
+                    result['prompt'] = clean
+                    print(f"   ✅ 整段作为提示词: {result['prompt'][:100]}...")
         
-        # 如果没有负面提示词，使用默认
+        if negative_parts:
+            result['negative'] = ', '.join(negative_parts)
+        else:
+            # 尝试提取负面提示词
+            match = re.search(r'负面提示词[：:]\s*(.+?)$', response, re.DOTALL)
+            if match:
+                result['negative'] = match.group(1).strip()
+        
         if not result['negative']:
-            result['negative'] = self._negative_templates["default"]
+            result['negative'] = self._negative_templates.get("animal", self._negative_templates["default"])
         
         return result
-
+    
     
     def _clean_prompt(self, prompt: str) -> str:
         """清理提示词：去重、去标点、保留关键信息"""
@@ -1624,7 +1690,69 @@ class ChatTab(BaseTab):
                 result = result[:last_comma]
         
         return result
+
+    def _clean_prompt_for_sd(self, prompt: str) -> str:
+        """
+        清理 LLM 生成的提示词，使其符合 SD 格式要求
+        1. 移除中文和特殊字符
+        2. 去重质量词
+        3. 限制长度（CLIP 77 tokens）
+        4. 确保只包含英文
+        """
+        if not prompt:
+            return prompt
         
+        # ===== 1. 移除中文和特殊字符 =====
+        # 移除中文（包括括号内的中文）
+        prompt = re.sub(r'[\u4e00-\u9fff]+', '', prompt)
+        # 移除括号及其内容（中文括号）
+        prompt = re.sub(r'[（(][^）)]*[）)]', '', prompt)
+        # 移除星号和多余符号
+        prompt = re.sub(r'\*\*', '', prompt)
+        prompt = re.sub(r'[，、。！？]', ',', prompt)
+        
+        # ===== 2. 分割并清理 =====
+        parts = [p.strip() for p in prompt.split(',') if p.strip()]
+        
+        # 移除空字符串和过短的部分
+        parts = [p for p in parts if len(p) > 1]
+        
+        # ===== 3. 去重 =====
+        seen = set()
+        unique_parts = []
+        for p in parts:
+            p_lower = p.lower()
+            if p_lower not in seen and len(p) > 1:
+                seen.add(p_lower)
+                unique_parts.append(p)
+        
+        # ===== 4. 确保质量词在开头（去重） =====
+        quality_words = ['masterpiece', 'best quality', 'photorealistic', '8k', 'highly detailed']
+        final_parts = []
+        
+        for q in quality_words:
+            if q not in seen:
+                final_parts.append(q)
+                seen.add(q)
+        
+        # 添加其他部分（排除质量词）
+        for p in unique_parts:
+            if p.lower() not in quality_words:
+                final_parts.append(p)
+        
+        # ===== 5. 限制长度（最多 75 个 token，留有余地） =====
+        result = ', '.join(final_parts)
+        
+        # 简单估算 token 数（英文约 4 字符/token）
+        if len(result) > 300:  # 约 75 tokens
+            # 截断到 280 字符，保持完整的词
+            result = result[:280]
+            last_comma = result.rfind(',')
+            if last_comma > 200:
+                result = result[:last_comma]
+        
+        return result
+    
     def _enhance_prompt_with_context(self, base_prompt: str, keywords: dict) -> str:
         quality_parts = ["masterpiece", "best quality", "photorealistic", "8k", "highly detailed", "ultra detailed"]
         prompt_parts = quality_parts.copy()
@@ -1644,46 +1772,269 @@ class ChatTab(BaseTab):
             if animal_features:
                 prompt_parts.extend(animal_features)
             
-            # 添加数量描述
-            count_keywords = ['一只', '两只', '三只', '一群', 'a', 'two', 'three', 'a group of']
-            for kw in count_keywords:
-                if kw in base_prompt.lower():
-                    prompt_parts.append(kw)
+            # ===== 添加动作描述（扩展版） =====
+            action_keywords = {
+                # 交配相关
+                '插入': 'mating, copulation',
+                '性交': 'mating, copulation',
+                '交配': 'mating, copulation',
+                '配种': 'breeding',
+                '交尾': 'mating',
+                '从后面': 'from behind, rear mount',
+                '后面插入': 'rear mount, from behind',
+                '强行': 'forceful mating, dominant',
+                '强暴': 'forceful mating, dominant',
+                '强迫': 'coercive mating',
+                # 日常动作
+                '奔跑': 'running, galloping',
+                '跑步': 'running, galloping',
+                '站立': 'standing',
+                '站着': 'standing',
+                '坐': 'sitting',
+                '坐着': 'sitting',
+                '躺': 'lying down',
+                '躺着': 'lying down',
+                '卧': 'lying down',
+                '吃草': 'grazing',
+                '吃': 'eating',
+                '喝水': 'drinking water',
+                '睡觉': 'sleeping',
+                '休息': 'resting',
+                '跳跃': 'jumping, leaping',
+                '跳': 'jumping',
+                '飞': 'flying',
+                '飞翔': 'flying',
+                '游泳': 'swimming',
+                '游': 'swimming',
+                '吼叫': 'roaring',
+                '嘶鸣': 'neighing, whinnying',
+                '叫': 'calling',
+                # 姿态
+                '低头': 'head down',
+                '仰头': 'head up',
+                '回头': 'looking back',
+                '转身': 'turning around',
+                '靠近': 'approaching',
+                '远离': 'moving away',
+                '跟随': 'following',
+                '追逐': 'chasing',
+                '追赶': 'chasing',
+                '打架': 'fighting',
+                '争斗': 'fighting',
+                '嬉戏': 'playing',
+                '玩耍': 'playing',
+                '亲昵': 'nuzzling, affectionate',
+                '舔': 'licking',
+                '嗅': 'sniffing',
+                '闻': 'smelling',
+            }
+            
+            # 提取动作
+            actions_found = []
+            for cn, en in action_keywords.items():
+                if cn in base_prompt.lower():
+                    for action in en.split(', '):
+                        if action not in actions_found:
+                            actions_found.append(action)
+            
+            if actions_found:
+                prompt_parts.extend(actions_found)
+                print(f"   🎬 检测到动作: {', '.join(actions_found)}")
+            
+            # ===== 添加情绪/氛围描述 =====
+            mood_keywords = {
+                '激烈': 'intense, passionate',
+                '温柔': 'gentle, tender',
+                '安静': 'quiet, peaceful',
+                '宁静': 'calm, serene',
+                '狂野': 'wild, untamed',
+                '凶猛': 'fierce, aggressive',
+                '可爱': 'cute, adorable',
+                '优雅': 'elegant, graceful',
+                '威武': 'majestic, powerful',
+                '高贵': 'noble, regal',
+                '自由': 'free, wild',
+                '快乐': 'happy, joyful',
+                '悲伤': 'sad, melancholy',
+                '孤独': 'lonely, solitary',
+                '神秘': 'mysterious',
+                '梦幻': 'dreamy, ethereal',
+            }
+            
+            for cn, en in mood_keywords.items():
+                if cn in base_prompt.lower():
+                    for mood in en.split(', '):
+                        if mood not in prompt_parts:
+                            prompt_parts.append(mood)
                     break
             
-            # 添加场景（如果有）
-            if keywords.get("scenes"):
-                prompt_parts.append("in " + ", ".join(keywords["scenes"]))
+            # ===== 添加数量描述 =====
+            count_keywords = {
+                '一只': 'a single',
+                '两只': 'two',
+                '三只': 'three',
+                '四只': 'four',
+                '一群': 'a group of',
+                '好多': 'many',
+                '大量': 'a large group of',
+                'a': 'a',
+                'two': 'two',
+                'three': 'three',
+                'a group of': 'a group of',
+            }
+            for cn, en in count_keywords.items():
+                if cn in base_prompt.lower():
+                    if en not in prompt_parts:
+                        prompt_parts.insert(1, en)  # 放在动物名称后面
+                    break
             
-            # 添加姿势（如果有）
-            if keywords.get("poses"):
-                prompt_parts.append(", ".join(keywords["poses"]))
+            # ===== 添加场景描述（扩展版） =====
+            scene_keywords = {
+                '草原': 'grassland, prairie',
+                '大草原': 'grassland, prairie',
+                '牧场': 'pasture, ranch',
+                '田野': 'field, meadow',
+                '草地': 'grassland, meadow',
+                '花园': 'garden',
+                '花丛': 'flower field',
+                '花海': 'flower field',
+                '森林': 'forest, woods',
+                '树林': 'forest, woods',
+                '丛林': 'jungle, forest',
+                '山地': 'mountain, hills',
+                '山顶': 'mountaintop',
+                '山谷': 'valley',
+                '海边': 'beach, seaside',
+                '沙滩': 'beach, sand',
+                '海滩': 'beach',
+                '河流': 'river, stream',
+                '溪流': 'stream, creek',
+                '湖泊': 'lake',
+                '池塘': 'pond',
+                '瀑布': 'waterfall',
+                '沙漠': 'desert',
+                '雪地': 'snow, snowy ground',
+                '雪原': 'snowfield',
+                '冰川': 'glacier',
+                '城市': 'city, urban',
+                '乡村': 'countryside, rural',
+                '农场': 'farm, ranch',
+                '马厩': 'stable, barn',
+                '栅栏': 'fence, enclosure',
+                '日出': 'sunrise, dawn',
+                '日落': 'sunset, dusk',
+                '黄昏': 'twilight, dusk',
+                '夜晚': 'night, nighttime',
+                '星空': 'starry sky',
+                '月光': 'moonlight',
+                '阳光': 'sunlight, sunshine',
+                '雨中': 'rain, rainy',
+                '雪中': 'snow, snowy',
+                '雾中': 'fog, misty',
+            }
             
-            # 添加风格（如果有）
+            scenes_found = []
+            for cn, en in scene_keywords.items():
+                if cn in base_prompt.lower():
+                    for scene in en.split(', '):
+                        if scene not in scenes_found:
+                            scenes_found.append(scene)
+            
+            if scenes_found:
+                prompt_parts.append("in " + ", ".join(scenes_found))
+                print(f"   🏞️ 检测到场景: {', '.join(scenes_found)}")
+            
+            # ===== 添加灯光描述 =====
+            light_keywords = {
+                '自然光': 'natural lighting',
+                '暖光': 'warm lighting',
+                '冷光': 'cold lighting',
+                '柔光': 'soft lighting',
+                '强光': 'bright lighting',
+                '逆光': 'backlighting',
+                '侧光': 'side lighting',
+                '阳光': 'sunlight',
+                '月光': 'moonlight',
+                '烛光': 'candlelight',
+                '金色光': 'golden light',
+                '黄昏光': 'golden hour',
+                '黎明光': 'dawn light',
+                '阴天': 'overcast lighting',
+                '舞台光': 'stage lighting',
+                '聚光灯': 'spotlight',
+            }
+            
+            for cn, en in light_keywords.items():
+                if cn in base_prompt.lower():
+                    if en not in prompt_parts:
+                        prompt_parts.append("with " + en)
+                    break
+            
+            # ===== 添加颜色描述 =====
+            if keywords.get("colors"):
+                prompt_parts.append("with " + ", ".join(keywords["colors"]) + " fur/feathers")
+            
+            # ===== 添加风格 =====
             if keywords.get("styles"):
                 prompt_parts.extend(keywords["styles"])
             
-            # 添加颜色描述（如果有）
-            if keywords.get("colors"):
-                prompt_parts.append("with " + ", ".join(keywords["colors"]) + " fur")
+            # ===== 添加视角/构图 =====
+            angle_keywords = {
+                '特写': 'close-up shot',
+                '近景': 'close-up',
+                '中景': 'medium shot',
+                '远景': 'wide shot, distant view',
+                '全身': 'full body shot',
+                '半身': 'half body shot',
+                '俯视': 'top-down view, bird\'s eye view',
+                '仰视': 'low angle view, worm\'s eye view',
+                '侧面': 'side view',
+                '正面': 'front view',
+                '背面': 'back view',
+                '动态': 'dynamic pose, action shot',
+                '静态': 'static pose, still shot',
+            }
             
-            # 添加灯光（如果有）
-            if keywords.get("lighting"):
-                prompt_parts.append("with " + ", ".join(keywords["lighting"]))
+            for cn, en in angle_keywords.items():
+                if cn in base_prompt.lower():
+                    for angle in en.split(', '):
+                        if angle not in prompt_parts:
+                            prompt_parts.append(angle)
+                    break
             
-            # 构建最终提示词
+            # ===== 添加背景细节 =====
+            bg_keywords = {
+                '模糊': 'bokeh, blurred background',
+                '虚化': 'bokeh, shallow depth of field',
+                '清晰': 'sharp focus, clear background',
+                '简单': 'simple background',
+                '复杂': 'complex background, detailed',
+                '纯色': 'solid color background',
+            }
+            
+            for cn, en in bg_keywords.items():
+                if cn in base_prompt.lower():
+                    for bg in en.split(', '):
+                        if bg not in prompt_parts:
+                            prompt_parts.append(bg)
+                    break
+            
+            # ===== 构建最终提示词 =====
             full_prompt = ", ".join(prompt_parts)
             
-            # 如果用户输入包含中文描述，尝试保留一些核心描述
+            # ===== 从中文提取额外描述 =====
             if any('\u4e00' <= char <= '\u9fff' for char in base_prompt):
-                # 提取中文描述中的核心词（去除动物名本身）
+                # 提取中文描述中的核心词
                 core_desc = base_prompt
-                for animal_name in ['猫', '猫咪', '小猫', '狗', '小狗', '兔子']:
+                # 移除动物名称
+                for animal_name in ['猫', '猫咪', '小猫', '狗', '小狗', '兔子', '马', '公马', '母马', '老虎', '狮子', '大象', '长颈鹿', '熊猫']:
                     core_desc = core_desc.replace(animal_name, '')
                 core_desc = core_desc.strip()
+                
                 if core_desc and len(core_desc) < 30:
-                    # 将中文描述翻译成英文（简单映射）
+                    # 扩展中文描述映射
                     desc_map = {
+                        # 位置
                         '躺在床上': 'lying on bed',
                         '在沙发上': 'on the sofa',
                         '在花园里': 'in the garden',
@@ -1702,6 +2053,52 @@ class ChatTab(BaseTab):
                         '在雨中': 'in the rain',
                         '在风中': 'in the wind',
                         '在月光下': 'under the moonlight',
+                        '在阳光下': 'in the sunlight',
+                        '在灯光下': 'under the light',
+                        '在阴影中': 'in the shadow',
+                        '在灌木丛中': 'in the bushes',
+                        '在花丛中': 'among the flowers',
+                        '在溪边': 'by the stream',
+                        '在河边': 'by the river',
+                        '在湖边': 'by the lake',
+                        '在海边': 'by the sea',
+                        '在草原上': 'on the grassland',
+                        '在田野里': 'in the field',
+                        '在农场里': 'on the farm',
+                        '在马厩里': 'in the stable',
+                        '在栅栏旁': 'by the fence',
+                        # 动作
+                        '奔跑': 'running',
+                        '跳跃': 'jumping',
+                        '飞翔': 'flying',
+                        '游泳': 'swimming',
+                        '漫步': 'strolling',
+                        '踱步': 'pacing',
+                        '打滚': 'rolling',
+                        '打盹': 'napping',
+                        '打哈欠': 'yawning',
+                        '伸懒腰': 'stretching',
+                        '甩尾巴': 'wagging tail',
+                        '摇尾巴': 'wagging tail',
+                        '竖起耳朵': 'ears perked up',
+                        '低头吃草': 'grazing',
+                        '饮水': 'drinking water',
+                        '嬉戏': 'playing',
+                        '追逐': 'chasing',
+                        '奔跑': 'running',
+                        '飞驰': 'galloping',
+                        '慢跑': 'trotting',
+                        # 状态
+                        '开心': 'happy',
+                        '快乐': 'happy',
+                        '悲伤': 'sad',
+                        '孤独': 'lonely',
+                        '温柔': 'gentle',
+                        '凶猛': 'fierce',
+                        '优雅': 'elegant',
+                        '威武': 'majestic',
+                        '可爱': 'cute',
+                        '萌': 'adorable',
                     }
                     for cn, en in desc_map.items():
                         if cn in core_desc:
@@ -1709,67 +2106,70 @@ class ChatTab(BaseTab):
                                 full_prompt += f", {en}"
                             break
             
+            # ===== 最终清理和去重 =====
+            full_prompt = self._clean_prompt_for_sd(full_prompt)
+            print(f"   🐾 最终动物提示词: {full_prompt[:150]}...")
             return full_prompt
-        
-        # ===== 人物主题：原有逻辑 =====
-        genders = keywords.get("genders", [])
-        if not genders:
-            if self.uploaded_image_path:
-                image_features = self._analyze_image_features(self.uploaded_image_path)
-                face_count = image_features.get("face_count", 0)
-                if face_count == 1:
-                    genders = ["1girl"]
-                elif face_count >= 2:
-                    genders = ["2girls"]
+            
+            # ===== 人物主题：原有逻辑 =====
+            genders = keywords.get("genders", [])
+            if not genders:
+                if self.uploaded_image_path:
+                    image_features = self._analyze_image_features(self.uploaded_image_path)
+                    face_count = image_features.get("face_count", 0)
+                    if face_count == 1:
+                        genders = ["1girl"]
+                    elif face_count >= 2:
+                        genders = ["2girls"]
+                    else:
+                        genders = ["1girl"]
                 else:
                     genders = ["1girl"]
-            else:
-                genders = ["1girl"]
-            keywords["genders"] = genders
+                keywords["genders"] = genders
 
-        existing_genders = [p for p in prompt_parts if p in ["1girl", "1boy", "2girls", "2boys", "1girl, 1boy"]]
-        if not existing_genders:
-            prompt_parts = genders + prompt_parts
-        elif existing_genders and genders and existing_genders[0] != genders[0]:
-            for g in existing_genders:
-                prompt_parts.remove(g)
-            prompt_parts = genders + prompt_parts
+            existing_genders = [p for p in prompt_parts if p in ["1girl", "1boy", "2girls", "2boys", "1girl, 1boy"]]
+            if not existing_genders:
+                prompt_parts = genders + prompt_parts
+            elif existing_genders and genders and existing_genders[0] != genders[0]:
+                for g in existing_genders:
+                    prompt_parts.remove(g)
+                prompt_parts = genders + prompt_parts
 
-        current_prompt = ", ".join(prompt_parts)
-        if base_prompt and base_prompt not in current_prompt:
-            prompt_parts.append(base_prompt)
+            current_prompt = ", ".join(prompt_parts)
+            if base_prompt and base_prompt not in current_prompt:
+                prompt_parts.append(base_prompt)
 
-        if keywords.get("styles"):
-            for style in keywords["styles"]:
-                if style not in prompt_parts:
-                    prompt_parts.append(style)
+            if keywords.get("styles"):
+                for style in keywords["styles"]:
+                    if style not in prompt_parts:
+                        prompt_parts.append(style)
 
-        subject_parts = []
-        if keywords.get("scenes"):
-            subject_parts.append("background: " + ", ".join(keywords["scenes"]))
-        if keywords.get("lighting"):
-            subject_parts.append("lighting: " + ", ".join(keywords["lighting"]))
-        if keywords.get("poses"):
-            subject_parts.append("pose: " + ", ".join(keywords["poses"]))
-        if keywords.get("expressions"):
-            subject_parts.append("expression: " + ", ".join(keywords["expressions"]))
-        if keywords.get("body"):
-            subject_parts.extend(keywords["body"])
-        if keywords.get("clothes"):
-            subject_parts.append("wearing " + ", ".join(keywords["clothes"]))
-        if keywords.get("colors"):
-            subject_parts.append("with " + ", ".join(keywords["colors"]) + " color scheme")
+            subject_parts = []
+            if keywords.get("scenes"):
+                subject_parts.append("background: " + ", ".join(keywords["scenes"]))
+            if keywords.get("lighting"):
+                subject_parts.append("lighting: " + ", ".join(keywords["lighting"]))
+            if keywords.get("poses"):
+                subject_parts.append("pose: " + ", ".join(keywords["poses"]))
+            if keywords.get("expressions"):
+                subject_parts.append("expression: " + ", ".join(keywords["expressions"]))
+            if keywords.get("body"):
+                subject_parts.extend(keywords["body"])
+            if keywords.get("clothes"):
+                subject_parts.append("wearing " + ", ".join(keywords["clothes"]))
+            if keywords.get("colors"):
+                subject_parts.append("with " + ", ".join(keywords["colors"]) + " color scheme")
 
-        full_prompt = ", ".join(prompt_parts)
-        if subject_parts:
-            full_prompt += ", " + ", ".join(subject_parts)
+            full_prompt = ", ".join(prompt_parts)
+            if subject_parts:
+                full_prompt += ", " + ", ".join(subject_parts)
 
-        if self.user_preferences.get("style"):
-            style = self.user_preferences["style"]
-            if style not in full_prompt:
-                full_prompt += f", {style} style"
+            if self.user_preferences.get("style"):
+                style = self.user_preferences["style"]
+                if style not in full_prompt:
+                    full_prompt += f", {style} style"
 
-        return full_prompt
+            return full_prompt
 
     # ==================== UI 事件处理 ====================
 
@@ -1794,6 +2194,30 @@ class ChatTab(BaseTab):
             self.safe_mode_label.config(text="🔴 已禁用", foreground="red")
             self._append_message("system", "⚠️ 安全模式已禁用 - 内容不受限制")
 
+    def _clear_upload(self):
+        self.uploaded_images = []
+        self.uploaded_image_paths = []
+        self.uploaded_image = None
+        self.uploaded_image_path = None
+        self.image_status.config(text="")
+        self.preview_label.config(image="")
+        self.preview_label.image = None
+        self._append_message("system", "🗑️ 已清除所有图片")
+
+    def _clear_chat(self):
+        self.chat_text.config(state=tk.NORMAL)
+        self.chat_text.delete("1.0", tk.END)
+        self.chat_text.config(state=tk.DISABLED)
+        self.messages = []
+        self.chat_context = {}
+        self.uploaded_image = None
+        self.uploaded_image_path = None
+        self.image_status.config(text="")
+        self.preview_label.config(image="")
+        self.preview_label.image = None
+        self._enhanced_prompt_cache = {}
+        self._append_message("assistant", "🗑️ 对话已清空，有什么可以帮你的？")
+        
     def _update_safe_mode_status(self):
         if self.safe_mode_var.get():
             self.safe_mode_label.config(text="🟢 已启用", foreground="green")
@@ -1870,16 +2294,8 @@ class ChatTab(BaseTab):
 
         return alternatives.get(category, alternatives["romantic"])
 
-    def _clear_upload(self):
-        self.uploaded_images = []
-        self.uploaded_image_paths = []
-        self.uploaded_image = None
-        self.uploaded_image_path = None
-        self.image_status.config(text="")
-        self.preview_label.config(image="")
-        self.preview_label.image = None
-        self._append_message("system", "🗑️ 已清除所有图片")
 
+        
     def _set_quality_mode(self, mode: str):
         self.quality_mode_var.set(mode)
 
@@ -2068,20 +2484,6 @@ class ChatTab(BaseTab):
         self.cancel_btn.config(state=tk.DISABLED)
         self.send_btn.config(state=tk.NORMAL)
         self.status_var.set("⏹️ 已取消")
-
-    def _clear_chat(self):
-        self.chat_text.config(state=tk.NORMAL)
-        self.chat_text.delete("1.0", tk.END)
-        self.chat_text.config(state=tk.DISABLED)
-        self.messages = []
-        self.chat_context = {}
-        self.uploaded_image = None
-        self.uploaded_image_path = None
-        self.image_status.config(text="")
-        self.preview_label.config(image="")
-        self.preview_label.image = None
-        self._enhanced_prompt_cache = {}
-        self._append_message("assistant", "🗑️ 对话已清空，有什么可以帮你的？")
 
     def _append_message(self, role: str, content: str):
         self.chat_text.config(state=tk.NORMAL)
@@ -2904,7 +3306,7 @@ class ChatTab(BaseTab):
                 params["strength"] = min(params["strength"], 0.35)
 
         return params
-    
+        
     def _extract_keywords(self, text: str) -> dict:
         text_lower = text.lower()
 
@@ -2938,19 +3340,21 @@ class ChatTab(BaseTab):
             '海豚': 'dolphin', 'dolphin': 'dolphin',
             '鲨鱼': 'shark', 'shark': 'shark',
             # 其他
-            '马': 'horse', 'horse': 'horse',
+            '马': 'horse', '母马': 'mare', '公马': 'stallion', 'horse': 'horse',
             '蝴蝶': 'butterfly', 'butterfly': 'butterfly',
             '蛇': 'snake', 'snake': 'snake',
         }
         
         # 检测动物并记录具体种类
         detected_animals = []
-        animal_types = []
         for cn, en in animal_map.items():
             if cn in text_lower:
-                if en not in animal_types:
-                    animal_types.append(en)
+                if en not in detected_animals:
                     detected_animals.append(en)
+        
+        # ✅ 如果没有检测到动物，但文本包含 "horse" 或 "马"
+        if not detected_animals and ('horse' in text_lower or '马' in text_lower):
+            detected_animals.append('horse')
         
         # 检测是否是动物主题
         is_animal = len(detected_animals) > 0
@@ -3572,28 +3976,26 @@ class ChatTab(BaseTab):
                 return
             self._append_message("assistant", "⏳ 模型加载中，请稍候再试...")
             return
-
+            
         # ===== 获取提示词 =====
         if intent.get("llm_generated", False):
-            # LLM 生成的提示词
             prompt = intent["prompt"]
             negative = intent.get("negative", self._negative_templates["default"])
-            print(f"\n📝 [LLM 生成的提示词]")
-            print(f"   {prompt}")
             
-            # ===== 【新增】如果检测到延续性，提示用户 =====
-            if intent.get("is_continuation", False) and self.last_prompt:
-                print(f"   🔄 [延续模式] 基于之前的主题: {self.last_prompt[:60]}...")
-                self._append_message("system", f"🔄 延续之前的话题，生成新变体...")
+            # ✅ 清理提示词
+            prompt = self._clean_prompt_for_sd(prompt)
+            print(f"\n📝 [清理后的提示词]")
+            print(f"   {prompt}")
         else:
-            # 降级方案：使用原有的构建逻辑
             prompt = intent.get("prompt", "")
             negative = intent.get("negative", self._negative_templates["default"])
             
             # 如果是延续性，添加上下文增强
             if intent.get("is_continuation", False) and self.last_prompt:
                 prompt = self._enhance_with_context(prompt)
-                print(f"   🔄 [延续模式] 增强后: {prompt[:100]}...")
+        
+        # ✅ 最终清理
+        prompt = self._clean_prompt_for_sd(prompt)
 
         original_text = intent.get("original_text", "")
 
