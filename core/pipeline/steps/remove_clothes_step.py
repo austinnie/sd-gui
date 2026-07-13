@@ -2,7 +2,7 @@
 """去掉衣服 - 将人物转换为裸体风格"""
 
 import os
-import torch
+
 from PIL import Image
 from datetime import datetime
 

@@ -2,7 +2,7 @@
 """动漫爱爱风格转换步骤 - 扩展版"""
 
 import os
-import torch
+
 from PIL import Image
 from datetime import datetime
 

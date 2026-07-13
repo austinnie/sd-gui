@@ -2,7 +2,7 @@
 """旗袍风格转换步骤"""
 
 import os
-import torch
+
 from PIL import Image
 from datetime import datetime
 

@@ -7,7 +7,6 @@ import subprocess
 import shutil
 from PIL import Image
 from datetime import datetime
-
 from ..step import PipelineStep, StepContext, StepResult, StepStatus
 
 

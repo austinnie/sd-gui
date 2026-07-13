@@ -2,7 +2,7 @@
 """情侣场景步骤 - 拥抱/接吻"""
 
 import os
-import torch
+
 from PIL import Image
 from datetime import datetime
 

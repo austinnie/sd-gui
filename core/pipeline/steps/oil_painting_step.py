@@ -2,7 +2,7 @@
 """油画风格转换步骤 - 包含世界名画裸体画风格"""
 
 import os
-import torch
+
 from PIL import Image
 from datetime import datetime
 

@@ -2,7 +2,7 @@
 """瑜伽姿势转换步骤"""
 
 import os
-import torch
+
 from PIL import Image
 from datetime import datetime
 
