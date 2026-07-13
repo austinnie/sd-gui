@@ -1,6 +1,6 @@
 {
   "enabled": true,
-  "level": "extreme",
+  "level": "safe",
   "auto_detect": true,
   "filter_keywords": true,
   "use_dedicated_models": false,

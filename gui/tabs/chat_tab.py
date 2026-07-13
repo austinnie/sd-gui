@@ -111,19 +111,21 @@ class ChatTab(BaseTab):
         # 缓存
         self._enhanced_prompt_cache = {}
 
-        # 负面提示词模板
+        # 负面提示词模板（新增动物专用）
         self._negative_templates = {
             "default": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, watermark, text, extra limbs, bad proportions, bad hands, missing fingers, extra fingers",
             "portrait": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, watermark, text, extra limbs, bad proportions, bad hands, bad face, distorted face",
             "landscape": "worst quality, low quality, ugly, deformed, blurry, watermark, text, bad composition, cluttered",
             "nude": "clothes, fabric, dress, shirt, pants, underwear, bra, panties, bikini, swimsuit, covering, censorship, mosaic",
-        }
+            # ✅ 新增动物专用
+            "animal": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, extra legs, missing limbs, deformed body, watermark, text, human, person, man, woman, people, clothes, clothing, accessories, jewelry, hat, glasses",
+        }        
 
     # ==================== LoRA 管理 ====================
 
     def _scan_lora_files(self):
         """扫描 sd15-lora 目录下的 LoRA 文件"""
-        lora_dir = r"E:\SD_OpenVINO\models\sd15-lora"
+        lora_dir = r"..\models\sd15-lora"
         if not os.path.exists(lora_dir):
             print(f"⚠️ LoRA 目录不存在: {lora_dir}")
             return []
@@ -143,79 +145,43 @@ class ChatTab(BaseTab):
         lora_files.sort(key=lambda x: 0 if x.startswith('⭐') else 1)
         return lora_files
 
+
     def _load_lora_to_pipe(self, lora_path: str, lora_name: str):
-        """加载 LoRA 到当前 pipeline（兼容旧版 diffusers）"""
+        """加载 LoRA - 通过重新加载主模型"""
         if not self.app.model_manager.is_sd_loaded:
             self._append_message("system", "⚠️ 模型未加载，请先加载模型")
             return False
 
-        pipe = self.app.model_manager._sd_pipe
-        if pipe is None:
-            self._append_message("system", "❌ Pipeline 不可用")
-            return False
-
         try:
-            # 如果已加载相同 LoRA，跳过
-            if self.current_lora_path == lora_path and self.lora_loaded:
-                self._append_message("system", f"ℹ️ LoRA 已加载: {lora_name}")
-                return True
-
-            # 如果加载了不同的 LoRA，先卸载
-            if self.lora_loaded:
-                try:
-                    pipe.unload_lora_weights()
-                    print(f"   🗑️ 已卸载旧 LoRA")
-                except Exception as e:
-                    print(f"   ⚠️ 卸载旧 LoRA 失败: {e}")
-
-            print(f"   🔗 加载 LoRA: {lora_name}")
+            self._append_message("system", f"📦 重新加载模型并加载 LoRA: {lora_name}")
             
-            # ===== 尝试多种加载方式（兼容旧版 diffusers） =====
-            success = False
+            model_name = self.app.model_var.get()
+            model_path = self.app._get_model_path(model_name)
             
-            # 方式 1: 直接加载（最简单，兼容性最好）
-            try:
-                pipe.load_lora_weights(lora_path)
-                print(f"   ✅ 方式1: load_lora_weights 成功")
-                success = True
-            except Exception as e:
-                print(f"   ⚠️ 方式1 失败: {e}")
-                
-                # 方式 2: 尝试 fuse_lora
-                try:
-                    pipe.load_lora_weights(lora_path)
-                    pipe.fuse_lora()
-                    print(f"   ✅ 方式2: fuse_lora 成功")
-                    success = True
-                except Exception as e2:
-                    print(f"   ⚠️ 方式2 失败: {e2}")
-            
-            if not success:
-                self._append_message("system", f"❌ LoRA 加载失败: 所有方式均失败")
+            if not model_path:
+                self._append_message("system", "❌ 找不到模型文件")
                 return False
-
-            # 如果权重不是 1.0，尝试调整
-            if hasattr(pipe, 'lora_weights') and self.lora_weight != 1.0:
-                try:
-                    for key in pipe.lora_weights.keys():
-                        pipe.lora_weights[key] = self.lora_weight
-                    print(f"   ⚙️ 权重已调整为: {self.lora_weight}")
-                except:
-                    pass
-
-            self.current_lora_path = lora_path
-            self.lora_loaded = True
-            self.lora_var.set(lora_name)
-
-            self._append_message("system", f"✅ LoRA 加载成功: {lora_name}")
-            self._update_lora_status()
-            return True
-
+            
+            # ✅ 重新加载模型带上 LoRA
+            success = self.app.model_manager.load_sd(
+                model_path, model_name, None,
+                lora_path=lora_path,
+                lora_weight=1.0
+            )
+            
+            if success:
+                self.lora_loaded = True
+                self.current_lora_path = lora_path
+                self.lora_var.set(lora_name)
+                self._append_message("system", f"✅ LoRA 加载成功: {lora_name}")
+                self._update_lora_status()
+                return True
+            else:
+                self._append_message("system", f"❌ LoRA 加载失败")
+                return False
+                
         except Exception as e:
             self._append_message("system", f"❌ LoRA 加载失败: {str(e)}")
-            print(f"   ❌ LoRA 加载失败: {e}")
-            import traceback
-            traceback.print_exc()
             return False
         
     def _unload_lora(self):
@@ -1015,34 +981,95 @@ class ChatTab(BaseTab):
 
     # ==================== LLM 提示词增强 ====================
 
-    def _call_ollama(self, prompt: str, timeout: int = 30, max_tokens: int = 512) -> str:
+    def _call_ollama(self, prompt: str, timeout: int = 30, max_tokens: int = 512, stream: bool = False) -> str:
+        """
+        调用 Ollama API
+        
+        参数:
+            prompt: 提示词
+            timeout: 超时时间（秒）
+            max_tokens: 最大生成 token 数
+            stream: 是否启用流式输出（边生成边返回）
+        """
         if not self.llm_available:
             return None
 
         try:
             import requests
+            
+            if stream:
+                print(f"   📤 流式调用 LLM (超时: {timeout}s)...")
+            else:
+                print(f"   📤 调用 LLM (超时: {timeout}s, max_tokens: {max_tokens})...")
+            
             response = requests.post(
                 "http://localhost:11434/api/generate",
                 json={
                     "model": self.llm_model.get(),
                     "prompt": prompt,
-                    "temperature": 0.8,
-                    "stream": False,
+                    "temperature": 0.7,
+                    "stream": stream,
                     "max_tokens": max_tokens,
                     "top_p": 0.9,
                 },
-                timeout=timeout
+                timeout=timeout,
+                stream=stream
             )
-            if response.status_code == 200:
-                return response.json().get("response", "").strip()
-            return None
+            
+            if response.status_code != 200:
+                print(f"   ❌ LLM 返回错误: {response.status_code}")
+                return None
+            
+            if stream:
+                # ===== 流式模式：逐块接收 =====
+                result = ""
+                chunk_count = 0
+                for line in response.iter_lines():
+                    if line:
+                        try:
+                            import json
+                            data = json.loads(line)
+                            if "response" in data:
+                                chunk = data["response"]
+                                result += chunk
+                                chunk_count += 1
+                                # 每 5 个块打印一次进度
+                                if chunk_count % 5 == 0:
+                                    print(f"\r   📥 接收中: {len(result)} 字符", end="")
+                            if data.get("done", False):
+                                break
+                        except json.JSONDecodeError:
+                            continue
+                
+                # 换行
+                print()
+                print(f"   📥 流式接收完成: {len(result)} 字符")
+                
+                # 清理结果（去除可能的特殊标记）
+                result = result.strip()
+                # 如果结果包含特殊标记，尝试清理
+                if result.startswith('"') and result.endswith('"'):
+                    try:
+                        import json
+                        result = json.loads(result)
+                    except:
+                        pass
+                
+                return result
+            else:
+                # ===== 非流式模式：一次性返回 =====
+                result = response.json().get("response", "").strip()
+                print(f"   📥 LLM 响应长度: {len(result)} 字符")
+                return result
+                
         except requests.exceptions.Timeout:
             print("⚠️ Ollama 超时")
             return None
         except Exception as e:
             print(f"⚠️ Ollama 调用失败: {e}")
             return None
-
+        
+        
     def _build_preserve_parts_from_features(self, image_features: dict, user_text: str = "") -> list:
         preserve_parts = ["same person", "same face", "same identity"]
 
@@ -1224,501 +1251,467 @@ class ChatTab(BaseTab):
         if cache_key in self._enhanced_prompt_cache:
             return self._enhanced_prompt_cache[cache_key]
 
-        if is_img2img:
-            prompt_template = """你是一个专业的 Stable Diffusion 提示词专家。用户想修改一张图片，请生成高质量的图生图提示词。
-
-    用户需求：{text}
-
-    【重要规则】
-    1. 必须保留原始人物的核心特征：same person, same face, same pose, same identity
-    2. 必须保留原始图片的风格、光影和质感
-    3. 只修改用户明确要求的部分（如换衣服、换背景等）
-    4. 不要添加用户未提及的风格词（如 elegant, modern, professional 等）
-    5. 如果用户没有指定具体服装，用"changing outfit"代替具体服装名
-    6. 提示词要简洁，不要过度描述
-    7. 只输出提示词，不要解释
-
-    【输出格式】
-    正面提示词：xxx
-    负面提示词：xxx"""
+        # ===== 自动检测主题类型 =====
+        text_lower = text.lower()
+        
+        # 动物关键词
+        animal_keywords = ['猫', '狗', '兔', '鸟', '鱼', '马', '鹿', '熊', '熊猫', '老虎', '狮子', 
+                           '豹', '大象', '长颈鹿', '鹰', '猫头鹰', '孔雀', '鲸鱼', '海豚', '鲨鱼', 
+                           '蝴蝶', '蛇', '狐狸', '狼', '仓鼠', '鹦鹉', '鸽子', '天鹅', '鹤', '鸳鸯',
+                           'cat', 'dog', 'rabbit', 'bird', 'fish', 'horse', 'panda', 'tiger', 'lion',
+                           'elephant', 'giraffe', 'eagle', 'owl', 'whale', 'dolphin', 'shark', 'fox', 'wolf']
+        
+        # 风景关键词
+        landscape_keywords = ['风景', '山水', '日落', '日出', '大海', '山川', '森林', '花园', '草原', 
+                              '沙漠', '瀑布', '湖泊', '溪流', '山谷', '天空', '云海', '极光', '星空',
+                              'landscape', 'scenery', 'mountain', 'ocean', 'forest', 'garden', 'desert',
+                              'waterfall', 'lake', 'river', 'valley', 'sky', 'aurora', 'starry']
+        
+        # 植物关键词
+        plant_keywords = ['花', '树', '草', '玫瑰', '樱花', '荷花', '薰衣草', '枫叶', '竹林', '森林',
+                          'flower', 'rose', 'cherry blossom', 'lotus', 'lavender', 'maple', 'bamboo']
+        
+        # 物体/建筑关键词
+        object_keywords = ['建筑', '房屋', '城堡', '宫殿', '寺庙', '教堂', '桥梁', '塔', '摩天轮', 
+                           '汽车', '火车', '飞机', '船', '自行车', '相机', '钢琴', '吉他', '书籍',
+                           'building', 'castle', 'palace', 'temple', 'church', 'bridge', 'tower',
+                           'car', 'train', 'airplane', 'boat', 'bicycle', 'piano', 'guitar']
+        
+        # 判断主题类型
+        is_animal = any(k in text_lower for k in animal_keywords)
+        is_landscape = any(k in text_lower for k in landscape_keywords)
+        is_plant = any(k in text_lower for k in plant_keywords)
+        is_object = any(k in text_lower for k in object_keywords)
+        
+        # 确定主题类型
+        if is_animal:
+            subject_type = "动物"
+            extra_rules = "使用具体动物名称作为主体标签（如 cat, dog, bird 等），不要使用 1girl/1boy"
+        elif is_landscape:
+            subject_type = "风景"
+            extra_rules = "使用 landscape, scenery, nature 等标签，描述整体场景和氛围"
+        elif is_plant:
+            subject_type = "植物"
+            extra_rules = "使用具体植物名称（如 rose, cherry blossom, lotus 等）"
+        elif is_object:
+            subject_type = "物体/建筑"
+            extra_rules = "使用具体物体或建筑名称，描述其外观、材质和细节"
         else:
-            prompt_template = """你是一个专业的 Stable Diffusion 提示词专家。请根据用户描述生成高质量的文生图提示词。
+            subject_type = "人物"
+            extra_rules = "根据性别和人数选择合适的标签（1girl, 1boy, 1woman, 1man, couple 等）"
 
-    用户描述：{text}
+        # ===== 使用简洁的提示词模板 =====
+        if is_img2img:
+            prompt_template = f"""SD提示词专家。用户修改图片：{{text}}
 
-    【重要规则】
-    1. 生成详细、具体、有画面感的提示词
-    2. 包含：主体描述、场景、光线、风格、构图、色彩、情绪
-    3. 添加高质量修饰词
-    4. 提示词用英文，用逗号分隔
-    5. 只输出提示词，不要解释
+    主题：{subject_type}
+    规则：{extra_rules}。保留原图特征(same person/animal/scene)，只改用户要求的部分。英文，逗号分隔。
 
-    【输出格式】
-    正面提示词：xxx
-    负面提示词：xxx
-    风格：xxx
-    质量：xxx"""
+    正面提示词：
+    负面提示词："""
+        else:
+            prompt_template = f"""SD提示词专家。根据描述生成提示词：{{text}}
+
+    主题：{subject_type}
+    规则：{extra_rules}。包含主体、场景、光线。英文，逗号分隔。不要重复。
+
+    正面提示词：
+    负面提示词："""
 
         prompt = prompt_template.format(text=text)
-        result = self._call_ollama(prompt, timeout=30, max_tokens=256)
+        
+        # ✅ 使用流式输出，提高响应速度
+        result = self._call_ollama(prompt, timeout=60, max_tokens=200, stream=True)
 
         if not result:
             return None
 
-        parsed = self._parse_llm_response(result)
+        parsed = self._parse_llm_response_simple(result)
+        parsed = self._parse_llm_response_stream(result)
 
         if parsed and parsed.get('prompt'):
+            parsed['prompt'] = self._clean_prompt(parsed['prompt'])
+            # 如果是动物主题，使用动物负面提示词
+            if is_animal and not parsed.get('negative'):
+                parsed['negative'] = self._negative_templates["animal"]
             self._enhanced_prompt_cache[cache_key] = parsed
             return parsed
 
         return None
-
-    def _parse_llm_response_v1(self, response: str) -> dict:
-        lines = response.strip().split('\n')
-
+    
+    def _parse_llm_response(self, response: str) -> dict:
+        """
+        解析 LLM 响应，提取正面和负面提示词
+        支持多种格式，更健壮
+        """
         result = {
             "prompt": "",
             "negative": "",
-            "style": "",
-            "quality": "masterpiece, best quality, photorealistic, 8k, highly detailed",
         }
-
-        current_key = None
-        for line in lines:
+        
+        if not response:
+            return result
+        
+        lines = response.strip().split('\n')
+        
+        # ===== 尝试提取正面提示词 =====
+        prompt_found = False
+        for i, line in enumerate(lines):
             line = line.strip()
             if not line:
                 continue
-
-            if '正面提示词' in line or '正面' in line:
-                current_key = 'prompt'
-                content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
+            
+            # 匹配中文或英文的"正面提示词"
+            if any(k in line for k in ['正面提示词', '正面', 'Positive prompt', 'Prompt']):
+                # 提取冒号后的内容
+                if '：' in line:
+                    content = line.split('：', 1)[-1].strip()
+                elif ':' in line:
+                    content = line.split(':', 1)[-1].strip()
+                else:
+                    # 如果只有标记没有内容，看下一行
+                    if i + 1 < len(lines):
+                        content = lines[i + 1].strip()
+                    else:
+                        content = ""
+                
                 if content:
                     result['prompt'] = content
-            elif '负面提示词' in line or '负面' in line:
-                current_key = 'negative'
-                content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
-                if content:
-                    result['negative'] = content
-            elif '风格' in line:
-                current_key = 'style'
-                content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
-                if content:
-                    result['style'] = content
-            elif '质量' in line:
-                current_key = 'quality'
-                content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
-                if content:
-                    result['quality'] = content
-            elif current_key and line:
-                if current_key == 'prompt':
-                    result['prompt'] += ', ' + line if result['prompt'] else line
-                elif current_key == 'negative':
-                    result['negative'] += ', ' + line if result['negative'] else line
-
-        if not result['prompt']:
-            cleaned = re.sub(r'^.*?：', '', response)
-            cleaned = re.sub(r'^.*?:', '', cleaned)
-            cleaned = cleaned.strip()
-            if cleaned:
-                result['prompt'] = cleaned
-            else:
-                return None
-
-        prompt_text = result['prompt']
-        prompt_lower = prompt_text.lower()
-
-        sentence_indicators = [
-            'maintain', 'exchange', 'retain', 'keep', 'change',
-            'feature', 'outfit', 'formal', 'gown', 'the woman',
-            'the man', 'the person', 'the image', 'the picture',
-            'inserts', 'behind', 'engaging', 'intimate', 'activity',
-            'strong', 'muscular', 'large', 'big', 'enjoying',
-        ]
-        is_natural_language = any(ind in prompt_lower for ind in sentence_indicators)
-
-        has_chinese = any('\u4e00' <= char <= '\u9fff' for char in prompt_text)
-
-        if is_natural_language or has_chinese:
-            print(f"   ⚠️ 检测到自然语言格式，正在转换为 SD 提示词...")
-            print(f"   📝 原始: {prompt_text[:100]}...")
-
-            is_man = any(k in prompt_lower for k in ['man', 'male', 'boy', 'him', 'he', 'his', '男人', '男孩', '男性', '帅哥'])
-            is_woman = any(k in prompt_lower for k in ['woman', 'female', 'girl', 'her', 'she', 'hers', '女人', '女孩', '女性', '美女'])
-            is_couple = any(k in prompt_lower for k in ['couple', 'together', 'both', 'two', '双人', '情侣', '两人', '一起'])
-
-            body_features = []
-            if any(k in prompt_lower for k in ['strong', 'muscular', '强壮', '肌肉']):
-                body_features.append("muscular")
-            if any(k in prompt_lower for k in ['large breasts', 'big breasts', '大胸', '巨乳']):
-                body_features.append("large breasts")
-            if any(k in prompt_lower for k in ['curvy', '丰满']):
-                body_features.append("curvy figure")
-            if any(k in prompt_lower for k in ['slim', '苗条']):
-                body_features.append("slim figure")
-
-            prompt_parts = []
-
-            if is_couple or (is_man and is_woman):
-                prompt_parts.append("1man, 1woman")
-                prompt_parts.append("couple")
-                prompt_parts.append("two people")
-            elif is_man:
-                prompt_parts.append("1man")
-            elif is_woman:
-                prompt_parts.append("1woman")
-            else:
-                prompt_parts.append("1girl")
-
-            pose_keywords = {
-                'behind': 'from behind',
-                'front': 'from front',
-                'standing': 'standing',
-                'sit': 'sitting',
-                'lying': 'lying down',
-                'bed': 'on bed',
-                'embrace': 'embracing',
-                'hug': 'hugging',
-                'kiss': 'kissing',
-                'hold': 'holding',
-                'touch': 'touching',
-            }
-
-            poses_found = []
-            for key, pose in pose_keywords.items():
-                if key in prompt_lower:
-                    poses_found.append(pose)
-
-            if poses_found:
-                prompt_parts.extend(poses_found)
-
-            if body_features:
-                prompt_parts.append("with " + ", ".join(body_features))
-
-            clothes_keywords = []
-            clothes_map = {
-                '旗袍': 'qipao',
-                '汉服': 'hanfu',
-                '礼服': 'evening gown',
-                'dress': 'dress',
-                'gown': 'evening gown',
-                '裙子': 'dress',
-                '西装': 'suit',
-                '制服': 'uniform',
-                '泳衣': 'swimsuit',
-                '比基尼': 'bikini',
-                '内衣': 'lingerie',
-                '蕾丝': 'lace',
-            }
-            for cn, en in clothes_map.items():
-                if cn in prompt_lower:
-                    if en not in clothes_keywords:
-                        clothes_keywords.append(en)
-
-            if clothes_keywords:
-                prompt_parts.append("wearing " + ", ".join(clothes_keywords))
-
-            scene_keywords = []
-            scenes_map = {
-                '沙滩': 'beach',
-                '海滩': 'beach',
-                '海边': 'ocean',
-                '花园': 'garden',
-                '森林': 'forest',
-                '城市': 'city',
-                '卧室': 'bedroom',
-                '浴室': 'bathroom',
-                '舞台': 'stage',
-                '宫殿': 'palace',
-                '日落': 'sunset',
-                '星空': 'starry sky',
-            }
-            for cn, en in scenes_map.items():
-                if cn in prompt_lower:
-                    if en not in scene_keywords:
-                        scene_keywords.append(en)
-            if scene_keywords:
-                prompt_parts.extend(scene_keywords)
-
-            style_keywords = []
-            styles_map = {
-                '现代': 'modern style',
-                '传统': 'traditional style',
-                '复古': 'vintage style',
-                '优雅': 'elegant style',
-                '性感': 'sexy style',
-                '可爱': 'cute style',
-                '梦幻': 'dreamy style',
-                '暗黑': 'dark style',
-                '古风': 'traditional chinese style',
-                '东方': 'eastern style',
-                '中国风': 'chinese style',
-                '油画': 'oil painting style',
-                '水彩': 'watercolor style',
-                '动漫': 'anime style',
-                '写实': 'photorealistic style',
-            }
-            for cn, en in styles_map.items():
-                if cn in prompt_lower:
-                    if en not in style_keywords:
-                        style_keywords.append(en)
-            if style_keywords:
-                prompt_parts.extend(style_keywords)
-
-            prompt_parts.append("masterpiece")
-            prompt_parts.append("best quality")
-            prompt_parts.append("photorealistic")
-            prompt_parts.append("8k")
-            prompt_parts.append("highly detailed")
-
-            new_prompt = ", ".join(prompt_parts)
-            result['prompt'] = new_prompt
-
-            print(f"   ✅ 转换后提示词: {new_prompt}")
-
-        if 'masterpiece' not in result['prompt'].lower() and 'best quality' not in result['prompt'].lower():
-            result['prompt'] = f"masterpiece, best quality, photorealistic, 8k, highly detailed, {result['prompt']}"
-
-        if not result['negative']:
-            result['negative'] = self._negative_templates["default"]
-
-        return result
-
-    # This is _parse_llm_response_v2
-    def _parse_llm_response(self, response: str, original_text: str = "") -> dict:
-        lines = response.strip().split('\n')
+                    prompt_found = True
+                    break
         
-        result = {
-            "prompt": "",
-            "negative": "",
-            "style": "",
-            "quality": "masterpiece, best quality, photorealistic, 8k, highly detailed",
-        }
-        
-        current_key = None
+        # ===== 尝试提取负面提示词 =====
         for line in lines:
             line = line.strip()
             if not line:
                 continue
             
-            if '正面提示词' in line or '正面' in line:
-                current_key = 'prompt'
-                content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
-                if content:
-                    result['prompt'] = content
-            elif '负面提示词' in line or '负面' in line:
-                current_key = 'negative'
-                content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
+            if any(k in line for k in ['负面提示词', '负面', 'Negative prompt', 'Negative']):
+                if '：' in line:
+                    content = line.split('：', 1)[-1].strip()
+                elif ':' in line:
+                    content = line.split(':', 1)[-1].strip()
+                else:
+                    content = ""
+                
                 if content:
                     result['negative'] = content
-            elif '风格' in line:
-                current_key = 'style'
-                content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
-                if content:
-                    result['style'] = content
-            elif '质量' in line:
-                current_key = 'quality'
-                content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
-                if content:
-                    result['quality'] = content
-            elif current_key and line:
-                if current_key == 'prompt':
-                    result['prompt'] += ', ' + line if result['prompt'] else line
-                elif current_key == 'negative':
-                    result['negative'] += ', ' + line if result['negative'] else line
+                    break
         
+        # ===== 如果还是没有提取到，尝试整段提取 =====
         if not result['prompt']:
-            cleaned = re.sub(r'^.*?：', '', response)
-            cleaned = re.sub(r'^.*?:', '', cleaned)
-            cleaned = cleaned.strip()
-            if cleaned:
-                result['prompt'] = cleaned
+            # 移除常见的标记
+            clean = response
+            clean = re.sub(r'正面提示词[：:]\s*', '', clean)
+            clean = re.sub(r'负面提示词[：:]\s*', '', clean)
+            clean = re.sub(r'Positive prompt[：:]\s*', '', clean, flags=re.IGNORECASE)
+            clean = re.sub(r'Negative prompt[：:]\s*', '', clean, flags=re.IGNORECASE)
+            
+            # 如果还有 "负面" 标记，分割
+            if '负面' in clean or 'Negative' in clean:
+                parts = re.split(r'负面|Negative', clean, flags=re.IGNORECASE)
+                if len(parts) >= 2:
+                    result['prompt'] = parts[0].strip()
+                    result['negative'] = parts[1].strip()
+                else:
+                    result['prompt'] = clean.strip()
             else:
-                return None
+                result['prompt'] = clean.strip()
         
-        prompt_text = result['prompt']
-        prompt_lower = prompt_text.lower()
+        # ===== 清理提示词 =====
+        if result['prompt']:
+            result['prompt'] = self._clean_prompt_text(result['prompt'])
         
-        # 检测是否是自然语言
-        sentence_indicators = [
-            'maintain', 'exchange', 'retain', 'keep', 'change',
-            'feature', 'outfit', 'formal', 'gown', 'the woman',
-            'the man', 'the person', 'the image', 'the picture',
-            'inserts', 'behind', 'engaging', 'intimate', 'activity',
-            'strong', 'muscular', 'large', 'big', 'enjoying',
-        ]
-        is_natural_language = any(ind in prompt_lower for ind in sentence_indicators)
-        has_chinese = any('\u4e00' <= char <= '\u9fff' for char in prompt_text)
-        
-        if is_natural_language or has_chinese:
-            print(f"   ⚠️ 检测到自然语言格式，正在转换为 SD 提示词...")
-            print(f"   📝 原始: {prompt_text[:100]}...")
-            
-            # ===== ✅ 修复：使用原始用户输入检测性别 =====
-            # 如果传入了 original_text，使用它；否则使用 prompt_text
-            if original_text:
-                detect_text = original_text
-            else:
-                detect_text = prompt_text
-            
-            detect_lower = detect_text.lower()
-            
-            # 检测性别（从原始输入中检测）
-            is_man = any(k in detect_lower for k in [
-                '男', '帅哥', '男孩', '男性', '小哥哥', '男神',
-                'man', 'male', 'boy', 'guy', 'gentleman', 'him', 'he', 'his'
-            ])
-            is_woman = any(k in detect_lower for k in [
-                '女', '美女', '女孩', '女性', '小姐姐', '女神',
-                'woman', 'female', 'girl', 'lady', 'her', 'she', 'hers'
-            ])
-            is_couple = any(k in detect_lower for k in [
-                '两人', '双人', '情侣', '夫妻', '一对', '两个',
-                'couple', 'together', 'both', 'two people', 'pair'
-            ])
-            
-            print(f"   🧐 性别检测: 男性={is_man}, 女性={is_woman}, 双人={is_couple}")
-            
-            # 提取身体特征
-            body_features = []
-            if any(k in prompt_lower for k in ['strong', 'muscular', '强壮', '肌肉']):
-                body_features.append("muscular")
-            if any(k in prompt_lower for k in ['large breasts', 'big breasts', 'huge breasts', '大胸', '巨乳']):
-                body_features.append("large breasts")
-            if any(k in prompt_lower for k in ['curvy', '丰满']):
-                body_features.append("curvy figure")
-            if any(k in prompt_lower for k in ['slim', '苗条']):
-                body_features.append("slim figure")
-            
-            # ===== 构建提示词 =====
-            prompt_parts = []
-            
-            # 1. 性别和人数（基于原始输入）
-            if is_couple or (is_man and is_woman):
-                prompt_parts.append("1man, 1woman")
-                prompt_parts.append("couple")
-                prompt_parts.append("two people")
-            elif is_man:
-                prompt_parts.append("1man")
-            elif is_woman:
-                prompt_parts.append("1woman")
-            else:
-                # 默认：单女
-                prompt_parts.append("1woman")
-            
-            # 2. 姿势（从文本中提取）
-            pose_keywords = {
-                'behind': 'from behind',
-                'front': 'from front',
-                'standing': 'standing',
-                '站着': 'standing',
-                '坐': 'sitting',
-                'sitting': 'sitting',
-                '躺': 'lying down',
-                'lying': 'lying down',
-                'bed': 'on bed',
-                '床上': 'on bed',
-                'embrace': 'embracing',
-                '拥抱': 'hugging',
-                'hug': 'hugging',
-                'kiss': 'kissing',
-                '接吻': 'kissing',
-                'hold': 'holding',
-                'touch': 'touching',
-            }
-            
-            poses_found = []
-            for key, pose in pose_keywords.items():
-                if key in prompt_lower:
-                    poses_found.append(pose)
-            
-            if poses_found:
-                prompt_parts.extend(poses_found)
-            
-            # 3. 身体特征
-            if body_features:
-                prompt_parts.append("with " + ", ".join(body_features))
-            
-            # 4. 服装
-            clothes_keywords = []
-            clothes_map = {
-                '旗袍': 'qipao', '汉服': 'hanfu', '礼服': 'evening gown',
-                'dress': 'dress', 'gown': 'evening gown', '裙子': 'dress',
-                '西装': 'suit', '制服': 'uniform', '泳衣': 'swimsuit',
-                '比基尼': 'bikini', '内衣': 'lingerie', '蕾丝': 'lace',
-            }
-            for cn, en in clothes_map.items():
-                if cn in prompt_lower:
-                    if en not in clothes_keywords:
-                        clothes_keywords.append(en)
-            if clothes_keywords:
-                prompt_parts.append("wearing " + ", ".join(clothes_keywords))
-            
-            # 5. 场景
-            scene_keywords = []
-            scenes_map = {
-                '沙滩': 'beach', '海滩': 'beach', '海边': 'ocean',
-                '花园': 'garden', '森林': 'forest', '城市': 'city',
-                '卧室': 'bedroom', '浴室': 'bathroom', '舞台': 'stage',
-                '宫殿': 'palace', '日落': 'sunset', '星空': 'starry sky',
-            }
-            for cn, en in scenes_map.items():
-                if cn in prompt_lower:
-                    if en not in scene_keywords:
-                        scene_keywords.append(en)
-            if scene_keywords:
-                prompt_parts.extend(scene_keywords)
-            
-            # 6. 风格
-            style_keywords = []
-            styles_map = {
-                '动漫': 'anime style', '油画': 'oil painting style',
-                '水彩': 'watercolor style', '素描': 'sketch style',
-                '写实': 'photorealistic', '赛博朋克': 'cyberpunk style',
-                '暗黑': 'dark style', '梦幻': 'dreamy style',
-                '复古': 'vintage style', '古风': 'traditional chinese style',
-                '唯美': 'aesthetic style', '可爱': 'cute style',
-                '性感': 'sexy style', '优雅': 'elegant style',
-            }
-            for cn, en in styles_map.items():
-                if cn in prompt_lower:
-                    if en not in style_keywords:
-                        style_keywords.append(en)
-            if style_keywords:
-                prompt_parts.extend(style_keywords)
-            
-            # 7. 质量词（去重）
-            prompt_parts.append("masterpiece")
-            prompt_parts.append("best quality")
-            prompt_parts.append("photorealistic")
-            prompt_parts.append("8k")
-            prompt_parts.append("highly detailed")
-            
-            # 组合成最终提示词（去重）
-            seen = set()
-            unique_parts = []
-            for p in prompt_parts:
-                if p not in seen:
-                    seen.add(p)
-                    unique_parts.append(p)
-            
-            new_prompt = ", ".join(unique_parts)
-            result['prompt'] = new_prompt
-            
-            print(f"   ✅ 转换后提示词: {new_prompt}")
-        
-        # 确保有质量词
-        if 'masterpiece' not in result['prompt'].lower() and 'best quality' not in result['prompt'].lower():
-            result['prompt'] = f"masterpiece, best quality, photorealistic, 8k, highly detailed, {result['prompt']}"
-        
+        # ===== 如果没有负面提示词，使用默认 =====
         if not result['negative']:
             result['negative'] = self._negative_templates["default"]
+        else:
+            result['negative'] = self._clean_prompt_text(result['negative'])
+        
+        # ===== 确保质量词存在 =====
+        if result['prompt']:
+            prompt_lower = result['prompt'].lower()
+            if 'masterpiece' not in prompt_lower and 'best quality' not in prompt_lower:
+                result['prompt'] = f"masterpiece, best quality, photorealistic, 8k, {result['prompt']}"
         
         return result
     
+    def _parse_llm_response_simple(self, response: str) -> dict:
+        """简化版解析 LLM 响应 - 支持更多格式"""
+        result = {
+            "prompt": "",
+            "negative": "",
+        }
+        
+        if not response:
+            return result
+        
+        lines = response.strip().split('\n')
+        
+        # ===== 方法1: 按行解析 =====
+        for i, line in enumerate(lines):
+            line = line.strip()
+            if not line:
+                continue
+            
+            # 检测正面提示词
+            if any(k in line for k in ['正面提示词', '正面', 'Positive prompt', 'Prompt']):
+                content = self._extract_content(line, lines, i)
+                if content:
+                    result['prompt'] = content
+                    continue
+            
+            # 检测负面提示词
+            if any(k in line for k in ['负面提示词', '负面', 'Negative prompt', 'Negative']):
+                content = self._extract_content(line, lines, i)
+                if content:
+                    result['negative'] = content
+                    continue
+            
+            # 如果没有检测到标记，但行内容看起来像提示词（英文逗号分隔）
+            if not result['prompt'] and ',' in line and len(line) > 10:
+                # 检查是否包含质量词
+                if any(q in line.lower() for q in ['masterpiece', 'best quality', 'photorealistic']):
+                    result['prompt'] = line
+        
+        # ===== 方法2: 如果还没解析到，从整个响应提取 =====
+        if not result['prompt']:
+            clean = response
+            clean = re.sub(r'(正面|正面提示词|Positive prompt)[：:]\s*', '', clean, flags=re.IGNORECASE)
+            clean = re.sub(r'(负面|负面提示词|Negative prompt)[：:]\s*', '', clean, flags=re.IGNORECASE)
+            clean = clean.strip()
+            
+            if clean:
+                # 如果包含负面标记，分割
+                if any(k in clean for k in ['负面', 'Negative']):
+                    parts = re.split(r'负面|Negative', clean, flags=re.IGNORECASE)
+                    result['prompt'] = parts[0].strip()
+                    if len(parts) > 1:
+                        result['negative'] = parts[1].strip()
+                else:
+                    result['prompt'] = clean
+        
+        # ===== 清理 =====
+        if result['prompt']:
+            result['prompt'] = self._clean_prompt(result['prompt'])
+        
+        if not result['negative']:
+            result['negative'] = self._negative_templates["default"]
+        else:
+            result['negative'] = self._clean_prompt(result['negative'])
+        
+        return result
+
+    def _extract_content(self, line: str, lines: list, index: int) -> str:
+        """提取冒号后的内容"""
+        # 尝试从当前行提取
+        if '：' in line:
+            content = line.split('：', 1)[-1].strip()
+        elif ':' in line:
+            content = line.split(':', 1)[-1].strip()
+        else:
+            content = line.replace('正面提示词', '').replace('正面', '').replace('Negative prompt', '').replace('负面', '').strip()
+        
+        # 如果内容为空，尝试从下一行获取
+        if not content and index + 1 < len(lines):
+            next_line = lines[index + 1].strip()
+            # 确保下一行不是标记行
+            if next_line and not any(k in next_line for k in ['正面', '负面', 'Prompt', 'Negative']):
+                content = next_line
+        
+        return content
+    
+    def _parse_llm_response_stream(self, response: str) -> dict:
+        """解析流式 LLM 响应，实时提取提示词"""
+        result = {
+            "prompt": "",
+            "negative": "",
+        }
+        
+        if not response:
+            return result
+        
+        # 按行分割
+        lines = response.strip().split('\n')
+        
+        # 状态机
+        current_section = None
+        prompt_buffer = []
+        negative_buffer = []
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            
+            # 检测节标题
+            if '正面提示词' in line or '正面' in line:
+                current_section = 'prompt'
+                # 如果有冒号，提取内容
+                if '：' in line or ':' in line:
+                    content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
+                    if content:
+                        prompt_buffer.append(content)
+                continue
+            elif '负面提示词' in line or '负面' in line:
+                current_section = 'negative'
+                if '：' in line or ':' in line:
+                    content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
+                    if content:
+                        negative_buffer.append(content)
+                continue
+            
+            # 根据当前节添加内容
+            if current_section == 'prompt':
+                prompt_buffer.append(line)
+            elif current_section == 'negative':
+                negative_buffer.append(line)
+            else:
+                # 没有节标题，尝试智能判断
+                if '负面' in line or 'negative' in line.lower():
+                    continue
+                prompt_buffer.append(line)
+        
+        # 组合结果
+        if prompt_buffer:
+            result['prompt'] = ', '.join(prompt_buffer)
+        if negative_buffer:
+            result['negative'] = ', '.join(negative_buffer)
+        
+        # 如果没有负面提示词，使用默认
+        if not result['negative']:
+            result['negative'] = self._negative_templates["default"]
+        
+        return result
+
+    
+    def _clean_prompt(self, prompt: str) -> str:
+        """清理提示词：去重、去标点、保留关键信息"""
+        if not prompt:
+            return prompt
+        
+        # 1. 移除多余的句号和感叹号，替换为逗号
+        prompt = prompt.replace('。', ', ').replace('！', ', ').replace('?', ', ')
+        prompt = prompt.replace('.', ', ').replace('!', ', ').replace('?', ', ')
+        
+        # 2. 拆分并去重
+        parts = [p.strip() for p in prompt.split(',') if p.strip()]
+        seen = set()
+        unique_parts = []
+        for p in parts:
+            # 只取前50个字符，避免过长
+            if len(p) > 50:
+                p = p[:50]
+            if p.lower() not in seen:
+                seen.add(p.lower())
+                unique_parts.append(p)
+        
+        # 3. 确保质量词在最前面
+        quality_words = ['masterpiece', 'best quality', 'photorealistic', '8k', 'highly detailed']
+        quality_used = []
+        for q in quality_words:
+            if q not in seen:
+                unique_parts.insert(0, q)
+                seen.add(q)
+        
+        # 4. 限制总长度（最多200字符，避免提示词过长）
+        result = ", ".join(unique_parts)
+        if len(result) > 200:
+            # 保留前150字符 + ...
+            result = result[:200]
+            last_comma = result.rfind(',')
+            if last_comma > 150:
+                result = result[:last_comma]
+        
+        return result
+        
     def _enhance_prompt_with_context(self, base_prompt: str, keywords: dict) -> str:
         quality_parts = ["masterpiece", "best quality", "photorealistic", "8k", "highly detailed", "ultra detailed"]
         prompt_parts = quality_parts.copy()
-
+        
+        # ===== 检测是否是动物主题 =====
+        is_animal = keywords.get("is_animal", False)
+        animals = keywords.get("animals", [])
+        animal_features = keywords.get("animal_features", [])
+        
+        if is_animal and animals:
+            # ===== 动物主题：构建动物提示词 =====
+            animal_str = ", ".join(animals)
+            prompt_parts = quality_parts.copy()
+            prompt_parts.append(animal_str)
+            
+            # 添加动物特征
+            if animal_features:
+                prompt_parts.extend(animal_features)
+            
+            # 添加数量描述
+            count_keywords = ['一只', '两只', '三只', '一群', 'a', 'two', 'three', 'a group of']
+            for kw in count_keywords:
+                if kw in base_prompt.lower():
+                    prompt_parts.append(kw)
+                    break
+            
+            # 添加场景（如果有）
+            if keywords.get("scenes"):
+                prompt_parts.append("in " + ", ".join(keywords["scenes"]))
+            
+            # 添加姿势（如果有）
+            if keywords.get("poses"):
+                prompt_parts.append(", ".join(keywords["poses"]))
+            
+            # 添加风格（如果有）
+            if keywords.get("styles"):
+                prompt_parts.extend(keywords["styles"])
+            
+            # 添加颜色描述（如果有）
+            if keywords.get("colors"):
+                prompt_parts.append("with " + ", ".join(keywords["colors"]) + " fur")
+            
+            # 添加灯光（如果有）
+            if keywords.get("lighting"):
+                prompt_parts.append("with " + ", ".join(keywords["lighting"]))
+            
+            # 构建最终提示词
+            full_prompt = ", ".join(prompt_parts)
+            
+            # 如果用户输入包含中文描述，尝试保留一些核心描述
+            if any('\u4e00' <= char <= '\u9fff' for char in base_prompt):
+                # 提取中文描述中的核心词（去除动物名本身）
+                core_desc = base_prompt
+                for animal_name in ['猫', '猫咪', '小猫', '狗', '小狗', '兔子']:
+                    core_desc = core_desc.replace(animal_name, '')
+                core_desc = core_desc.strip()
+                if core_desc and len(core_desc) < 30:
+                    # 将中文描述翻译成英文（简单映射）
+                    desc_map = {
+                        '躺在床上': 'lying on bed',
+                        '在沙发上': 'on the sofa',
+                        '在花园里': 'in the garden',
+                        '在草地上': 'on the grass',
+                        '在阳光下': 'in the sunlight',
+                        '在窗台上': 'on the windowsill',
+                        '在笼子里': 'in the cage',
+                        '在树上': 'in the tree',
+                        '在水里': 'in the water',
+                        '在雪地里': 'in the snow',
+                        '在花丛中': 'among flowers',
+                        '在森林里': 'in the forest',
+                        '在山顶上': 'on the mountaintop',
+                        '在沙滩上': 'on the beach',
+                        '在屋顶上': 'on the roof',
+                        '在雨中': 'in the rain',
+                        '在风中': 'in the wind',
+                        '在月光下': 'under the moonlight',
+                    }
+                    for cn, en in desc_map.items():
+                        if cn in core_desc:
+                            if en not in full_prompt:
+                                full_prompt += f", {en}"
+                            break
+            
+            return full_prompt
+        
+        # ===== 人物主题：原有逻辑 =====
         genders = keywords.get("genders", [])
         if not genders:
             if self.uploaded_image_path:
@@ -2634,40 +2627,261 @@ class ChatTab(BaseTab):
 
         return {"type": "chat", "confidence": "low"}
 
+
+    def _build_llm_parser_prompt(self, text: str, is_img2img: bool, has_image: bool, 
+                                  has_multiple_images: bool, context: str = "") -> str:
+        """构建 LLM 解析提示词（包含上下文）"""
+        
+        text_lower = text.lower()
+        
+        # 检测主题类型
+        is_animal = any(k in text_lower for k in ['猫', '狗', '兔', '鸟', '鱼', '马', '鹿', '熊', '熊猫', '老虎', '狮子', '豹', '大象', '长颈鹿', '鹰', '猫头鹰', '孔雀', '鲸鱼', '海豚', '鲨鱼', '蝴蝶', '蛇', '狐狸', '狼'])
+        is_landscape = any(k in text_lower for k in ['风景', '山水', '日落', '日出', '大海', '山川', '森林', '花园', '草原'])
+        is_portrait = any(k in text_lower for k in ['肖像', '头像', '特写', '半身'])
+        
+        subject_type = "人物"
+        if is_animal:
+            subject_type = "动物"
+        elif is_landscape:
+            subject_type = "风景"
+        
+        # ===== 【新增】检测是否是延续性指令 =====
+        is_continuation = self._is_continuation(text)
+        continuation_hint = ""
+        if is_continuation and self.last_prompt:
+            continuation_hint = f"""
+    【延续性提示】
+    用户可能在延续之前的对话。之前的主题是：{self.last_prompt[:100]}...
+    请保持主题一致性，如果用户只是简单说"再来一张"或"换一个"，请基于之前的主题生成新的变体。
+    """
+        
+        # 上下文信息
+        context_info = ""
+        if context and context != "无历史对话":
+            context_info = f"""
+    【对话上下文】
+    {context}
+    """
+        
+        # 图生图特殊规则
+        img2img_rules = ""
+        if is_img2img:
+            img2img_rules = """
+    【图生图特殊规则】
+    - 必须包含 "same person, same face, same pose" 保持人物一致性
+    - 只修改用户明确要求的部分
+    - 不要添加用户未提及的风格词
+    """
+        
+        return f"""你是一个专业的 Stable Diffusion 提示词专家。请根据用户的自然语言描述，生成高质量的 SD 提示词。
+
+    用户描述：{text}
+    {context_info}
+    {continuation_hint}
+
+    【主题识别】
+    当前主题类型：{subject_type}
+
+    【重要规则】
+    1. 提示词使用英文，用逗号分隔
+    2. 包含：主体描述、场景、光线、风格、构图、色彩、情绪
+    3. 添加高质量修饰词：masterpiece, best quality, photorealistic, 8k, highly detailed
+    4. 根据主题类型选择合适的标签：
+       - 人物：1girl, 1boy, 1woman, 1man, couple 等
+       - 动物：cat, dog, rabbit, bird, fish 等具体动物名称
+       - 风景：landscape, scenery, nature 等
+    5. 如果是延续性对话，保持主题一致性
+    6. 提取所有可识别的元素：颜色、姿势、场景、风格、情绪
+    {img2img_rules}
+
+    【输出格式】
+    请严格按以下格式输出，每行一个部分：
+
+    主题类型：[人物/动物/风景/其他]
+    主体标签：[1girl/1boy/cat/dog/landscape 等]
+    场景：[场景描述]
+    光线：[光线描述]
+    风格：[风格描述]
+    构图：[构图描述]
+    色彩：[色彩描述]
+    情绪：[情绪描述]
+    正面提示词：[完整的英文提示词]
+    负面提示词：[完整的英文负面提示词]
+
+    注意：正面提示词必须包含所有相关元素，用逗号分隔。"""
+
+    def _parse_llm_unified_response(self, response: str, original_text: str) -> dict:
+        """解析 LLM 统一格式的响应"""
+        result = {
+            "prompt": "",
+            "negative": self._negative_templates["default"],
+            "subject_type": "人物",
+            "subject_tag": "1girl",
+        }
+        
+        lines = response.strip().split('\n')
+        current_section = None
+        prompt_lines = []
+        negative_lines = []
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            
+            # 解析各个字段
+            if '主题类型：' in line or '主题类型:' in line:
+                result["subject_type"] = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
+            elif '主体标签：' in line or '主体标签:' in line:
+                result["subject_tag"] = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
+            elif '正面提示词：' in line or '正面提示词:' in line:
+                content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
+                if content:
+                    result["prompt"] = content
+            elif '负面提示词：' in line or '负面提示词:' in line:
+                content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
+                if content:
+                    result["negative"] = content
+            elif line.startswith('场景：') or line.startswith('场景:'):
+                continue
+            elif line.startswith('光线：') or line.startswith('光线:'):
+                continue
+            elif line.startswith('风格：') or line.startswith('风格:'):
+                continue
+            elif line.startswith('构图：') or line.startswith('构图:'):
+                continue
+            elif line.startswith('色彩：') or line.startswith('色彩:'):
+                continue
+            elif line.startswith('情绪：') or line.startswith('情绪:'):
+                continue
+        
+        # 如果没有解析到提示词，尝试从整个响应中提取
+        if not result["prompt"]:
+            # 尝试找包含提示词的行
+            for line in lines:
+                if '正面提示词' in line:
+                    content = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
+                    if content:
+                        result["prompt"] = content
+                        break
+            
+            # 如果还是没有，尝试从其他字段组合
+            if not result["prompt"]:
+                # 收集所有有用的描述
+                parts = []
+                for line in lines:
+                    if line.startswith('主体标签：') or line.startswith('主体标签:'):
+                        tag = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
+                        if tag:
+                            parts.append(tag)
+                    elif line.startswith('场景：') or line.startswith('场景:'):
+                        scene = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
+                        if scene:
+                            parts.append(scene)
+                    elif line.startswith('光线：') or line.startswith('光线:'):
+                        light = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
+                        if light:
+                            parts.append(light)
+                    elif line.startswith('风格：') or line.startswith('风格:'):
+                        style = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
+                        if style:
+                            parts.append(style)
+                    elif line.startswith('情绪：') or line.startswith('情绪:'):
+                        mood = line.split('：')[-1].strip() if '：' in line else line.split(':')[-1].strip()
+                        if mood:
+                            parts.append(mood)
+                
+                if parts:
+                    result["prompt"] = "masterpiece, best quality, photorealistic, 8k, highly detailed, " + ", ".join(parts)
+        
+        # 确保有负面提示词
+        if not result["negative"]:
+            # 根据主题类型选择合适的负面提示词
+            subject_type = result.get("subject_type", "人物")
+            if subject_type == "动物":
+                result["negative"] = self._negative_templates["animal"]
+            else:
+                result["negative"] = self._negative_templates["default"]
+        
+        return result
+    
     def _optimize_parameters(self, prompt: str, intent_type: str, image_features: dict = None) -> dict:
         prompt_lower = prompt.lower()
         params = {}
 
-        if any(k in prompt_lower for k in ['快速', '快', '预览', '草稿']):
+        # ===== 【新增】动物主题参数优化 =====
+        is_animal = any(k in prompt_lower for k in ['cat', 'dog', 'rabbit', 'fox', 'wolf', 'deer', 
+                                                      'bear', 'panda', 'tiger', 'lion', 'elephant', 
+                                                      'giraffe', 'bird', 'eagle', 'owl', 'fish', 
+                                                      'whale', 'dolphin', 'shark', 'horse', 'butterfly', 
+                                                      'snake', 'animal', 'kitten', 'puppy'])
+        
+        if is_animal:
+            # 动物主题：步数可以稍少，CFG稍低
+            if any(k in prompt_lower for k in ['快速', '快', '预览', 'quick', 'fast']):
+                params["steps"] = 10
+            elif any(k in prompt_lower for k in ['高质量', '精美', '细致', 'high quality', 'detailed']):
+                params["steps"] = 25
+            else:
+                params["steps"] = 16  # 动物默认步数
+            
+            params["cfg"] = 6.5  # 动物主题用稍低CFG更自然
+            
+            # 动物主题尺寸（修复：使用中文关键词检测）
+            if any(k in prompt_lower for k in ['肖像', '头像', '特写', 'close-up', 'portrait', 'face']):
+                params["width"] = 512
+                params["height"] = 512
+                params["size_msg"] = "动物肖像（方图）"
+            elif any(k in prompt_lower for k in ['全身', '站立', 'full body', 'standing', 'full-length']):
+                params["width"] = 512
+                params["height"] = 768
+                params["size_msg"] = "动物全身（竖图）"
+            elif any(k in prompt_lower for k in ['风景', '场景', 'landscape', 'scenery', 'scene']):
+                params["width"] = 768
+                params["height"] = 512
+                params["size_msg"] = "动物与风景（横图）"
+            else:
+                params["width"] = 512
+                params["height"] = 512
+                params["size_msg"] = "动物默认（方图）"
+            
+            # 添加默认的 negative（如果是动物主题，使用动物专用负面提示词）
+            if not params.get("negative"):
+                params["negative"] = self._negative_templates.get("animal", self._negative_templates["default"])
+            
+            return params
+        
+        # ===== 人物主题：原有参数优化逻辑 =====
+        if any(k in prompt_lower for k in ['快速', '快', '预览', '草稿', 'quick', 'fast', 'draft']):
             params["steps"] = 8
-        elif any(k in prompt_lower for k in ['高质量', '精美', '细致', '大师', '杰作']):
+        elif any(k in prompt_lower for k in ['高质量', '精美', '细致', '大师', '杰作', 'high quality', 'masterpiece']):
             params["steps"] = 30
-        elif any(k in prompt_lower for k in ['动漫', '卡通', '二次元']):
+        elif any(k in prompt_lower for k in ['动漫', '卡通', '二次元', 'anime', 'cartoon']):
             params["steps"] = 16
-        elif any(k in prompt_lower for k in ['写实', '真实', '照片']):
+        elif any(k in prompt_lower for k in ['写实', '真实', '照片', 'realistic', 'photorealistic', 'photo']):
             params["steps"] = 24
         else:
             params["steps"] = 12
 
-        if any(k in prompt_lower for k in ['抽象', '梦幻', '随意']):
+        if any(k in prompt_lower for k in ['抽象', '梦幻', '随意', 'abstract', 'dreamy']):
             params["cfg"] = 5.0
-        elif any(k in prompt_lower for k in ['写实', '真实', '照片']):
+        elif any(k in prompt_lower for k in ['写实', '真实', '照片', 'realistic', 'photorealistic']):
             params["cfg"] = 8.0
-        elif any(k in prompt_lower for k in ['动漫', '卡通']):
+        elif any(k in prompt_lower for k in ['动漫', '卡通', 'anime', 'cartoon']):
             params["cfg"] = 6.5
         else:
             params["cfg"] = 7.5
 
-        if any(k in prompt_lower for k in ['肖像', '头像', '特写', '脸部']):
+        if any(k in prompt_lower for k in ['肖像', '头像', '特写', '脸部', 'portrait', 'headshot', 'close-up', 'face']):
             params["width"], params["height"] = 512, 640
             params["size_msg"] = "肖像模式（竖图）"
-        elif any(k in prompt_lower for k in ['全身', '站立', '整体']):
+        elif any(k in prompt_lower for k in ['全身', '站立', '整体', 'full body', 'standing']):
             params["width"], params["height"] = 512, 768
             params["size_msg"] = "全身照（竖图）"
-        elif any(k in prompt_lower for k in ['风景', '场景', '全景', '横']):
+        elif any(k in prompt_lower for k in ['风景', '场景', '全景', '横', 'landscape', 'scenery', 'panorama']):
             params["width"], params["height"] = 896, 512
             params["size_msg"] = "风景模式（横图）"
-        elif any(k in prompt_lower for k in ['双人', '多人', '情侣']):
+        elif any(k in prompt_lower for k in ['双人', '多人', '情侣', 'couple', 'two', 'group']):
             params["width"], params["height"] = 640, 896
             params["size_msg"] = "双人照（竖图）"
         else:
@@ -2675,13 +2889,13 @@ class ChatTab(BaseTab):
             params["size_msg"] = "默认竖图"
 
         if intent_type == "image_to_image":
-            if any(k in prompt_lower for k in ['微调', '轻微', '稍微']):
+            if any(k in prompt_lower for k in ['微调', '轻微', '稍微', 'slight', 'minor']):
                 params["strength"] = 0.25
-            elif any(k in prompt_lower for k in ['大幅', '完全', '改变']):
+            elif any(k in prompt_lower for k in ['大幅', '完全', '改变', 'major', 'full', 'change']):
                 params["strength"] = 0.55
-            elif any(k in prompt_lower for k in ['风格', '风格转换']):
+            elif any(k in prompt_lower for k in ['风格', '风格转换', 'style', 'style transfer']):
                 params["strength"] = 0.50
-            elif any(k in prompt_lower for k in ['换装', '换衣服', '换背景']):
+            elif any(k in prompt_lower for k in ['换装', '换衣服', '换背景', 'change clothes', 'change background']):
                 params["strength"] = 0.35
             else:
                 params["strength"] = 0.40
@@ -2690,18 +2904,94 @@ class ChatTab(BaseTab):
                 params["strength"] = min(params["strength"], 0.35)
 
         return params
-
+    
     def _extract_keywords(self, text: str) -> dict:
         text_lower = text.lower()
 
+        # ===== 动物检测（扩展版） =====
+        animals = []
+        animal_map = {
+            # 常见宠物
+            '猫': 'cat', '猫咪': 'cat', '小猫': 'kitten', 'cat': 'cat',
+            '狗': 'dog', '小狗': 'puppy', 'dog': 'dog', '狗狗': 'dog',
+            '兔子': 'rabbit', '兔兔': 'rabbit', 'rabbit': 'rabbit',
+            '仓鼠': 'hamster', 'hamster': 'hamster',
+            # 野生动物
+            '狐狸': 'fox', 'fox': 'fox',
+            '狼': 'wolf', 'wolf': 'wolf',
+            '鹿': 'deer', 'deer': 'deer',
+            '熊': 'bear', 'bear': 'bear',
+            '熊猫': 'panda', 'panda': 'panda',
+            '老虎': 'tiger', 'tiger': 'tiger',
+            '狮子': 'lion', 'lion': 'lion',
+            '豹': 'leopard', 'leopard': 'leopard',
+            '大象': 'elephant', 'elephant': 'elephant',
+            '长颈鹿': 'giraffe', 'giraffe': 'giraffe',
+            # 鸟类
+            '鸟': 'bird', '小鸟': 'bird', 'bird': 'bird',
+            '鹰': 'eagle', 'eagle': 'eagle',
+            '猫头鹰': 'owl', 'owl': 'owl',
+            '孔雀': 'peacock', 'peacock': 'peacock',
+            # 海洋动物
+            '鱼': 'fish', 'fish': 'fish',
+            '鲸鱼': 'whale', 'whale': 'whale',
+            '海豚': 'dolphin', 'dolphin': 'dolphin',
+            '鲨鱼': 'shark', 'shark': 'shark',
+            # 其他
+            '马': 'horse', 'horse': 'horse',
+            '蝴蝶': 'butterfly', 'butterfly': 'butterfly',
+            '蛇': 'snake', 'snake': 'snake',
+        }
+        
+        # 检测动物并记录具体种类
+        detected_animals = []
+        animal_types = []
+        for cn, en in animal_map.items():
+            if cn in text_lower:
+                if en not in animal_types:
+                    animal_types.append(en)
+                    detected_animals.append(en)
+        
+        # 检测是否是动物主题
+        is_animal = len(detected_animals) > 0
+        
+        # 检测动物特征描述
+        animal_features = []
+        feature_map = {
+            '可爱': 'cute',
+            '毛茸茸': 'fluffy',
+            '胖': 'chubby',
+            '萌': 'adorable',
+            '优雅': 'elegant',
+            '威风': 'majestic',
+            '凶猛': 'fierce',
+            '温顺': 'gentle',
+            '活泼': 'lively',
+            '慵懒': 'lazy',
+            '调皮': 'playful',
+            '高贵': 'noble',
+            '野性': 'wild',
+            '灵动': 'agile',
+        }
+        for cn, en in feature_map.items():
+            if cn in text_lower:
+                animal_features.append(en)
+                
+        # ===== 性别检测（仅非动物主题） =====
         genders = []
-        if any(k in text_lower for k in ['女', '美女', '女孩', '女性', '姑娘', '小姐姐', '女神']):
-            genders.append("1girl")
-        elif any(k in text_lower for k in ['男', '帅哥', '男孩', '男性', '小哥哥', '男神']):
-            genders.append("1boy")
-        elif any(k in text_lower for k in ['情侣', '双人', '两人', '夫妻', 'couple', '恋人']):
-            genders.append("1girl, 1boy")
-
+        if not is_animal:
+            if any(k in text_lower for k in ['女', '美女', '女孩', '女性', '姑娘', '小姐姐', '女神']):
+                genders.append("1girl")
+            elif any(k in text_lower for k in ['男', '帅哥', '男孩', '男性', '小哥哥', '男神']):
+                genders.append("1boy")
+            elif any(k in text_lower for k in ['情侣', '双人', '两人', '夫妻', 'couple', '恋人']):
+                genders.append("1girl, 1boy")
+            
+        # ===== 【新增】如果检测到动物，添加 animal 关键词 =====
+        subject_parts = []
+        if is_animal:
+            subject_parts.extend(animals)
+        
         clothes_map = {
             '裙子': 'dress',
             '连衣裙': 'dress',
@@ -2958,6 +3248,10 @@ class ChatTab(BaseTab):
 
         return {
             "genders": genders,
+            "animals": detected_animals,  # 检测到的动物列表
+            "is_animal": is_animal,        # 是否为动物主题
+            "animal_features": animal_features,  # 动物特征描述
+            "animal_type": detected_animals[0] if detected_animals else None,  # 主要动物          
             "clothes": clothes,
             "colors": colors,
             "scenes": scenes,
@@ -3279,7 +3573,28 @@ class ChatTab(BaseTab):
             self._append_message("assistant", "⏳ 模型加载中，请稍候再试...")
             return
 
-        prompt = intent["prompt"]
+        # ===== 获取提示词 =====
+        if intent.get("llm_generated", False):
+            # LLM 生成的提示词
+            prompt = intent["prompt"]
+            negative = intent.get("negative", self._negative_templates["default"])
+            print(f"\n📝 [LLM 生成的提示词]")
+            print(f"   {prompt}")
+            
+            # ===== 【新增】如果检测到延续性，提示用户 =====
+            if intent.get("is_continuation", False) and self.last_prompt:
+                print(f"   🔄 [延续模式] 基于之前的主题: {self.last_prompt[:60]}...")
+                self._append_message("system", f"🔄 延续之前的话题，生成新变体...")
+        else:
+            # 降级方案：使用原有的构建逻辑
+            prompt = intent.get("prompt", "")
+            negative = intent.get("negative", self._negative_templates["default"])
+            
+            # 如果是延续性，添加上下文增强
+            if intent.get("is_continuation", False) and self.last_prompt:
+                prompt = self._enhance_with_context(prompt)
+                print(f"   🔄 [延续模式] 增强后: {prompt[:100]}...")
+
         original_text = intent.get("original_text", "")
 
         print("\n" + "=" * 60)
@@ -3288,6 +3603,8 @@ class ChatTab(BaseTab):
         print(f"   提示词: {prompt}")
         if intent.get("llm_enhanced"):
             print(f"   🧠 已启用 LLM 增强")
+        if intent.get("is_continuation", False):
+            print(f"   🔄 延续模式")
         print("=" * 60 + "\n")
 
         params = self._estimate_params(prompt)
@@ -3302,6 +3619,7 @@ class ChatTab(BaseTab):
         self._update_status(f"🎨 生成中... (尺寸: {params['width']}x{params['height']})", 0.1)
 
         try:
+            # ... 原有的生成代码保持不变 ...
             from utils.pipeline_pool import pipeline_pool
             from datetime import datetime
             import random
@@ -3332,17 +3650,24 @@ class ChatTab(BaseTab):
 
             self._update_status(f"🎨 生成中... 步骤: {params['steps']}", 0.3)
 
-            negative_prompt = getattr(self, '_last_negative', self._negative_templates["default"])
+            # 检测是否是动物主题，使用对应的负面提示词
+            keywords = intent.get("keywords", {})
+            is_animal = keywords.get("is_animal", False)
+            
+            if is_animal:
+                negative = self._negative_templates["animal"]
+            elif not negative:
+                negative = getattr(self, '_last_negative', self._negative_templates["default"])
 
             result = pipe(
                 prompt=prompt,
-                negative_prompt=negative_prompt,
+                negative_prompt=negative,
                 num_inference_steps=params["steps"],
                 guidance_scale=params["cfg"],
                 height=params["height"],
                 width=params["width"],
                 generator=generator,
-                num_images_per_prompt=4
+                num_images_per_prompt=1  # ✅ 改为1张，避免过多
             )
 
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -3355,6 +3680,7 @@ class ChatTab(BaseTab):
             filepath = os.path.join(output_dir, filename)
             result.images[0].save(filepath)
 
+            # ===== 图片后处理 =====
             try:
                 from utils.image_post_processor import post_process_image
                 final_path = post_process_image(
@@ -3377,7 +3703,14 @@ class ChatTab(BaseTab):
             self._append_image_result(filepath)
             self._append_message("assistant", f"✅ 图片已生成！\n📁 {os.path.basename(filepath)}\n\n💡 提示: 继续发送描述可以生成更多图片")
 
+            # ===== 【新增】保存上下文 =====
             self._update_context(intent, {"image_path": filepath, "prompt": prompt})
+            self._save_to_context({
+                "last_prompt": prompt,
+                "last_negative": negative,
+                "last_intent": "text_to_image",
+            })
+            
             self._update_status("✅ 生成完成", 1.0)
             self.app.add_to_preview(filepath, result.images[0])
             self._pending_intent = None
@@ -3388,7 +3721,90 @@ class ChatTab(BaseTab):
             import traceback
             traceback.print_exc()
             self._pending_intent = None
+        
+    def _enhance_with_context(self, prompt: str) -> str:
+        """使用上下文增强提示词（降级方案）"""
+        if not self.last_prompt:
+            return prompt
+        
+        # 如果当前提示词太短，可能是在延续
+        if len(prompt.split(',')) < 3:
+            # 从上次的提示词中提取主体标签
+            parts = self.last_prompt.split(',')
+            subject_tag = parts[0] if parts else "1girl"
+            
+            # 保留主题，添加当前描述
+            enhanced = f"{subject_tag}, {prompt}"
+            return enhanced
+        
+        return prompt
+    
+    def _get_conversation_context(self) -> str:
+        """获取对话上下文摘要"""
+        if not self.conversation_history:
+            return "无历史对话"
+        
+        # 获取最近 5 轮对话
+        recent = self.conversation_history[-5:] if len(self.conversation_history) > 5 else self.conversation_history
+        
+        context_parts = []
+        for item in recent:
+            intent = item.get("intent", {})
+            result = item.get("result", {})
+            
+            if intent.get("type") == "text_to_image":
+                prompt = intent.get("prompt", "")
+                if prompt:
+                    context_parts.append(f"用户要求生成: {prompt[:100]}...")
+            elif intent.get("type") == "image_to_image":
+                prompt = intent.get("prompt", "")
+                if prompt:
+                    context_parts.append(f"用户要求修改图片: {prompt[:100]}...")
+            elif intent.get("type") == "chat":
+                original = intent.get("original_text", "")
+                if original:
+                    context_parts.append(f"用户说: {original[:50]}...")
+        
+        if result and result.get("image_path"):
+            context_parts.append(f"已生成图片: {os.path.basename(result['image_path'])}")
+        
+        if not context_parts:
+            return "无历史对话"
+        
+        return "\n".join(context_parts)
 
+    def _is_continuation(self, text: str) -> bool:
+        """检测是否是延续性指令"""
+        continuation_keywords = ['再来', '继续', '换一个', '换一张', '再生成', 'another', 'continue', '再', '又']
+        text_lower = text.lower()
+        
+        # 检查是否包含延续关键词
+        if any(k in text_lower for k in continuation_keywords):
+            return True
+        
+        # 检查是否包含"也"、"和"等连接词（表示延续）
+        if any(k in text_lower for k in ['也', '和', '以及', '还有', '另外', '同样']):
+            # 如果之前有生成记录，可能是延续
+            if self.last_prompt:
+                return True
+        
+        # 检查是否是简短指令（少于5个字且没有明确主题）
+        if len(text) < 5 and self.last_prompt:
+            return True
+        
+        return False
+    
+    def _save_to_context(self, data: dict):
+        """保存上下文信息"""
+        if data.get("last_prompt"):
+            self.last_prompt = data["last_prompt"]
+        if data.get("last_negative"):
+            self._last_negative = data["last_negative"]
+        if data.get("last_intent"):
+            self.last_intent_type = data["last_intent"]
+        if data.get("subject"):
+            self.user_preferences["subject"] = data["subject"]
+            
     # ==================== 图生图处理 ====================
 
     def _handle_image_to_image(self, intent: dict):

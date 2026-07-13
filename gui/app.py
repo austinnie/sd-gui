@@ -570,9 +570,9 @@ class SDApp:
         if app_config.model.auto_load_first:
             self.root.after(100, self._auto_load_model)
 
-    #def get_sd_model_type(self) -> str:
-    #    """获取当前 SD 模型类型: 'sd15' 或 'sdxl'"""
-    #    return self.model_manager.get_sd_model_type()
+    def get_sd_model_type(self) -> str:
+        """获取当前 SD 模型类型: 'sd15' 或 'sdxl'"""
+        return self.model_manager.get_sd_model_type()
     
     # ===== 兼容旧代码的属性 =====
     @property
@@ -1052,7 +1052,7 @@ class SDApp:
 
 
     def _load_lora_from_ui(self):
-        """加载选中的 LoRA"""
+        """加载选中的 LoRA - 直接重新加载主模型"""
         lora_display = self.lora_var.get()
         if not lora_display:
             messagebox.showwarning("提示", "请先选择 LoRA 模型")
@@ -1077,63 +1077,34 @@ class SDApp:
 
         def load_thread():
             try:
-                pipe = app.model_manager._sd_pipe
-                if pipe is None:
-                    app.root.after(0, lambda: app._on_lora_load_error("Pipeline 未加载"))
+                model_name = self.model_var.get()
+                model_path = self._get_model_path(model_name)
+                
+                if not model_path:
+                    app.root.after(0, lambda: app._on_lora_load_error("找不到模型文件"))
                     return
                 
-                # ===== 检查是否已加载相同的 LoRA =====
-                if hasattr(app, '_current_lora_path') and app._current_lora_path == lora_path:
-                    app.root.after(0, lambda: app._on_lora_already_loaded(lora_display))
-                    return
+                def progress_cb(value, msg):
+                    app.root.after(0, lambda: app.update_progress(value, msg))
                 
-                # 如果加载了不同的 LoRA，先卸载
-                if hasattr(app, '_current_lora_path') and app._current_lora_path is not None:
-                    try:
-                        pipe.unload_lora_weights()
-                        print(f"   🗑️ 已卸载旧的 LoRA")
-                    except Exception as e:
-                        print(f"   ⚠️ 卸载旧 LoRA 失败: {e}")
-                
-                # ✅ 使用 ModelManager 的方法加载 LoRA（带兼容性检查）
-                is_sdxl = app.model_manager._sd_model_type == "sdxl"
-                success, is_compatible, detected_type = app.model_manager._load_lora(
-                    pipe, lora_path, lora_weight, is_sdxl
+                # ✅ 直接重新加载主模型，带上 LoRA
+                success = app.model_manager.load_sd(
+                    model_path, model_name, progress_cb,
+                    lora_path=lora_path,
+                    lora_weight=lora_weight
                 )
                 
                 if success:
                     app._current_lora_path = lora_path
-                    print(f"✅ LoRA 加载成功: {lora_display} (权重: {lora_weight})")
                     app.root.after(0, lambda: app._on_lora_load_success(lora_display))
                 else:
-                    if not is_compatible:
-                        expected = "SDXL" if is_sdxl else "SD1.5"
-                        error_msg = f"LoRA 与模型不兼容\n\n当前模型: {expected}\nLoRA 类型: {detected_type.upper()}"
-                        app.root.after(0, lambda: app._on_lora_load_error(error_msg))
-                    else:
-                        app.root.after(0, lambda: app._on_lora_load_error("加载失败，请查看控制台"))
-                
-                # ===== 更新 Pipeline 池的 LoRA 状态 =====
-                from utils.pipeline_pool import pipeline_pool
-                
-                model_name = app.model_var.get()
-                model_path = app.checkpoint_paths.get(model_name)
-                
-                if model_path and success:
-                    status = pipeline_pool.get_status()
-                    for pipe_info in status.get("pipes", []):
-                        if pipe_info["model"] == os.path.basename(model_path):
-                            key = pipe_info.get("key")
-                            if key:
-                                pipeline_pool.update_lora_status(key, lora_path, app.lora_weight_var.get())
-                                print(f"   🔗 Pipeline 状态已同步: {pipe_info['model']}")
-                                break
+                    app.root.after(0, lambda: app._on_lora_load_error("模型加载失败"))
                 
             except Exception as e:
                 app.root.after(0, lambda err=e: app._on_lora_load_error(str(err)))
         
         threading.Thread(target=load_thread, daemon=True).start()
-    
+        
     def _on_lora_already_loaded(self, lora_display):
         """LoRA 已经加载时的提示"""
         self.load_lora_btn.config(state=tk.NORMAL)
@@ -1170,8 +1141,6 @@ class SDApp:
         
         self.lora_var.set("")
         self.lora_weight_var.set(1.0)
-        
-        # ===== 清除记录的 LoRA 路径 =====
         self._current_lora_path = None
         
         model_name = self.model_var.get()
@@ -1184,6 +1153,7 @@ class SDApp:
                 def progress_cb(value, msg):
                     app.root.after(0, lambda: app.update_progress(value, msg))
                 
+                # ✅ 重新加载时不带 LoRA
                 success = app.model_manager.load_sd(
                     model_path, model_name, progress_cb,
                     lora_path=None, lora_weight=1.0
