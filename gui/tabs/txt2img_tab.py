@@ -304,6 +304,9 @@ class Txt2ImgTab(BaseTab):
         self.template_var = tk.StringVar(value="")
         self.template_category_var = tk.StringVar(value="美女")
         
+        # ✅ 添加 ControlNet 属性
+        self.use_controlnet = False        
+        
 
     def _load_templates(self):
         """加载提示词模板"""
@@ -496,7 +499,8 @@ class Txt2ImgTab(BaseTab):
         self.cancel_btn = ttk.Button(btn_frame, text="⏹️ 取消", command=self.cancel_generation_cmd, state=tk.DISABLED)
         self.cancel_btn.pack(side=tk.LEFT, padx=10)
         ttk.Button(btn_frame, text="📁 打开输出文件夹", command=self.app.open_output_folder).pack(side=tk.LEFT, padx=10)
-        row += 1
+        row += 1        
+     
     
     # ==================== 核心生成方法 ====================
 
@@ -793,9 +797,56 @@ class Txt2ImgTab(BaseTab):
         hires_enabled = self.params.hires_fix_var.get()
         hires_scale = self.params.hires_scale_var.get()
         hires_denoise = self.params.hires_denoise_var.get()
+
+        # ===== 获取 ControlNet 状态（从属性读取） =====
+        use_controlnet = getattr(self, 'use_controlnet', False)
+        controlnet_type = "openpose"
         
+        if use_controlnet and hasattr(self.app, 'img2img_tab'):
+            if hasattr(self.app.img2img_tab, 'controlnet_type_var'):
+                selected_type = self.app.img2img_tab.controlnet_type_var.get()
+                controlnet_type = selected_type.split(" ")[0] if " " in selected_type else "openpose"
+        
+        # ===== 先获取 pipe =====
         pipe = self.app.pipeline
         
+        # ===== 如果启用 ControlNet，创建 ControlNet Pipeline =====
+        if use_controlnet:
+            try:
+                from diffusers import ControlNetModel, StableDiffusionControlNetPipeline
+                from utils.controlnet_helper import get_controlnet_info
+                
+                info = get_controlnet_info(controlnet_type)
+                print(f"🧠 加载 ControlNet: {info['name']}")
+                
+                controlnet = ControlNetModel.from_pretrained(
+                    info["model_id"],
+                    torch_dtype=torch.float32,
+                    low_cpu_mem_usage=True
+                )
+                
+                controlnet_pipe = StableDiffusionControlNetPipeline(
+                    vae=pipe.vae,
+                    text_encoder=pipe.text_encoder,
+                    tokenizer=pipe.tokenizer,
+                    unet=pipe.unet,
+                    controlnet=controlnet,
+                    scheduler=pipe.scheduler,
+                    safety_checker=None,
+                    requires_safety_checker=False,
+                )
+                controlnet_pipe.to("cpu")
+                controlnet_pipe.enable_vae_slicing()
+                controlnet_pipe.enable_attention_slicing()
+                
+                pipe = controlnet_pipe
+                print(f"✅ ControlNet 加载完成: {info['name']}")
+                
+            except Exception as e:
+                print(f"⚠️ ControlNet 加载失败: {e}")
+                use_controlnet = False
+            
+       
         try:
             # 强制模型在 CPU
             self.app.pipeline = pipe.to("cpu")

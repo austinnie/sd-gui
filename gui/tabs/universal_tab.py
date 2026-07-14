@@ -243,6 +243,14 @@ class UniversalTab(BaseTab):
                 height=params["height"],
                 num_images=params["num_images"]
             )
+
+            # ✅ 获取 ControlNet 状态
+            use_controlnet = False
+            if hasattr(self.app, 'img2img_tab') and hasattr(self.app.img2img_tab, 'use_controlnet_var'):
+                use_controlnet = self.app.img2img_tab.use_controlnet_var.get()
+            
+            tab.use_controlnet = use_controlnet
+                
             tab.generate()
         else:
             messagebox.showwarning("提示", "文生图标签页未初始化")
@@ -282,7 +290,13 @@ class UniversalTab(BaseTab):
         self.is_generating = True
         
         params = self.params.get_params()
-        
+
+
+        # ✅ 获取 ControlNet 状态
+        use_controlnet = False
+        if hasattr(self.app, 'img2img_tab') and hasattr(self.app.img2img_tab, 'use_controlnet_var'):
+            use_controlnet = self.app.img2img_tab.use_controlnet_var.get()
+            
         for idx, prompt in enumerate(prompts_list):
             if self.cancel_generation:
                 break
@@ -298,6 +312,9 @@ class UniversalTab(BaseTab):
                     seed = random.randint(1, 2**32 - 1)
                 seed = seed + idx
                 
+                # ✅ 传递 ControlNet 状态
+                txt2img.use_controlnet = use_controlnet
+            
                 txt2img._generate_single_image(
                     prompt, self.uni_last_negative,
                     steps=params["steps"],

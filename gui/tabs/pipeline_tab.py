@@ -618,7 +618,54 @@ class PipelineTab(BaseTab):
             )
             
             self._append_log(f"📦 获取 Pipeline: {os.path.basename(model_path)}")
+
+            # ===== ✅ 新增：检查是否启用 ControlNet =====
+            use_controlnet = False
+            controlnet_pipe = None
+            controlnet_type = "openpose"
             
+            # 从 app 获取 ControlNet 状态
+            if hasattr(self.app, 'img2img_tab') and hasattr(self.app.img2img_tab, 'use_controlnet_var'):
+                use_controlnet = self.app.img2img_tab.use_controlnet_var.get()
+                if use_controlnet and hasattr(self.app.img2img_tab, 'controlnet_type_var'):
+                    selected_type = self.app.img2img_tab.controlnet_type_var.get()
+                    controlnet_type = selected_type.split(" ")[0] if " " in selected_type else "openpose"
+            
+            # ===== 如果启用 ControlNet，创建 ControlNet Pipeline =====
+            if use_controlnet:
+                try:
+                    from diffusers import ControlNetModel, StableDiffusionControlNetPipeline
+                    from utils.controlnet_helper import get_controlnet_info
+                    
+                    info = get_controlnet_info(controlnet_type)
+                    self._append_log(f"🧠 加载 ControlNet: {info['name']}")
+                    
+                    controlnet = ControlNetModel.from_pretrained(
+                        info["model_id"],
+                        torch_dtype=torch.float32,
+                        low_cpu_mem_usage=True
+                    )
+                    
+                    controlnet_pipe = StableDiffusionControlNetPipeline(
+                        vae=pipe.vae,
+                        text_encoder=pipe.text_encoder,
+                        tokenizer=pipe.tokenizer,
+                        unet=pipe.unet,
+                        controlnet=controlnet,
+                        scheduler=pipe.scheduler,
+                        safety_checker=None,
+                        requires_safety_checker=False,
+                    )
+                    controlnet_pipe.to("cpu")
+                    controlnet_pipe.enable_vae_slicing()
+                    controlnet_pipe.enable_attention_slicing()
+                    
+                    self._append_log(f"✅ ControlNet 加载完成: {info['name']}")
+                except Exception as e:
+                    self._append_log(f"⚠️ ControlNet 加载失败: {e}")
+                    use_controlnet = False
+                    controlnet_pipe = None
+                
             # 创建流水线
             pipeline = PipelineRegistry.create_pipeline_from_config(pipeline_config)
             
@@ -643,7 +690,12 @@ class PipelineTab(BaseTab):
                     "model_path": model_path,
                     "pipe": pipe,
                     "lora_path": lora_path,
-                    "lora_weight": lora_weight
+                    "lora_weight": lora_weight,
+                    # ✅ 新增：ControlNet 配置
+                    "use_controlnet": use_controlnet,
+                    "controlnet_pipe": controlnet_pipe,
+                    "controlnet_type": controlnet_type,
+                    "controlnet_preprocessor": None,  # 步骤内部会处理
                 }
             )
             

@@ -286,7 +286,8 @@ class Img2ImgTab(BaseTab):
         ttk.Checkbutton(
             controlnet_row,
             text="🧠 启用 ControlNet (姿态控制)",
-            variable=self.use_controlnet_var
+            variable=self.use_controlnet_var,
+            command=self._on_controlnet_toggle  # ← 添加这行
         ).pack(side=tk.LEFT, padx=5)
         
         # ✅ ControlNet 类型下拉选择
@@ -1380,7 +1381,18 @@ class Img2ImgTab(BaseTab):
         self.generate_btn.config(state=tk.NORMAL)
         self.update_status(f"❌ 测试失败: {error}")
         messagebox.showerror("错误", f"测试失败:\n{error}")
-    
+        
+
+    def _on_controlnet_toggle(self):
+        """ControlNet 开关切换"""
+        from utils.controlnet_helper import controlnet_config
+        enabled = self.use_controlnet_var.get()
+        controlnet_config.set_enabled(enabled)
+        if enabled:
+            selected = self.controlnet_type_var.get()
+            controlnet_type = selected.split(" ")[0] if " " in selected else "openpose"
+            controlnet_config.set_type(controlnet_type)
+        
 # ========== 辅助函数 ==========
 def safe_del(obj):
     try:

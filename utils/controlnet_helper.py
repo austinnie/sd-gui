@@ -467,3 +467,47 @@ _get_controlnet_pipeline = get_controlnet_pipeline
 _extract_pose = preprocess_image_for_controlnet  # 兼容旧名称
 # ✅ 添加 extract_pose 作为 preprocess_image_for_controlnet 的别名
 extract_pose = preprocess_image_for_controlnet
+
+
+# utils/controlnet_helper.py 末尾添加
+
+class ControlNetConfig:
+    """全局 ControlNet 配置"""
+    
+    _instance = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+    
+    def __init__(self):
+        if self._initialized:
+            return
+        self._initialized = True
+        self.enabled = False
+        self.type = "openpose"
+        self.strength = 0.8
+        self._listeners = []
+    
+    def set_enabled(self, enabled: bool):
+        self.enabled = enabled
+        self._notify()
+    
+    def set_type(self, controlnet_type: str):
+        self.type = controlnet_type
+        self._notify()
+    
+    def add_listener(self, callback):
+        self._listeners.append(callback)
+    
+    def _notify(self):
+        for cb in self._listeners:
+            try:
+                cb(self.enabled, self.type)
+            except:
+                pass
+
+# 全局实例
+controlnet_config = ControlNetConfig()

@@ -348,7 +348,20 @@ class SceneTab(BaseTab):
             height=smart_h,
             num_images=params["num_images"]
         )
-    
+        
+        # ✅ 获取 ControlNet 状态
+        use_controlnet = False
+        controlnet_type = "openpose"
+        if hasattr(self.app, 'img2img_tab'):
+            if hasattr(self.app.img2img_tab, 'use_controlnet_var'):
+                use_controlnet = self.app.img2img_tab.use_controlnet_var.get()
+                if use_controlnet and hasattr(self.app.img2img_tab, 'controlnet_type_var'):
+                    selected_type = self.app.img2img_tab.controlnet_type_var.get()
+                    controlnet_type = selected_type.split(" ")[0] if " " in selected_type else "openpose"
+        
+        # 传递到 txt2img
+        self.app.txt2img_tab.use_controlnet = use_controlnet
+        
         self.is_generating = True
         self.generate_image_btn.config(state=tk.DISABLED)
         self.cancel_scene_btn.config(state=tk.NORMAL)
