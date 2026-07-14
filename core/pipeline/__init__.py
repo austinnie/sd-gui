@@ -36,7 +36,7 @@ def register_all_steps():
     PipelineRegistry.register_step("sketch", SketchStep)
     PipelineRegistry.register_step("cyberpunk", CyberpunkStep)
     PipelineRegistry.register_step("vaporwave", VaporwaveStep)
-    PipelineRegistry.register_step("3d_render", ThreeDRenderStep)
+    PipelineRegistry.register_step("three_d_render", ThreeDRenderStep)
     
     # 场景/主题类
     PipelineRegistry.register_step("beach", BeachStep)
