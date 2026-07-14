@@ -36,47 +36,50 @@ MIRRORS = [
     "https://mirrors.aliyun.com/pypi/simple/",
 ]
 
-# ===== 核心依赖列表（完整兼容版本） =====
+# ===== 核心依赖列表（使用 DWposeDetector，不需要 mediapipe） =====
 REQUIRED_PACKAGES = [
-    # PyTorch (CPU 版本，与 NumPy 2.x 兼容)
-    "torch==2.5.1",
-    "torchvision==0.20.1",
+    # PyTorch (CPU 版本)
+    "torch==2.4.0",
+    "torchvision==0.19.0",
     
-    # ===== 核心库（版本锁定，保证兼容） =====
+    # ===== 核心库 =====
     "diffusers==0.26.0",
     "transformers==4.40.0",
-    "huggingface-hub==0.24.0",      # ✅ 固定版本，兼容 diffusers 0.26.0
+    "huggingface-hub==0.24.0",
     "accelerate==1.14.0",
     "safetensors==0.8.0",
-    "peft==0.10.0",                  # ✅ 新增，兼容 huggingface-hub 0.24.0
+    "peft==0.10.0",
     
     # ===== 图像处理与数据分析 =====
-    "numpy==2.4.6",
-    "pillow==12.2.0",
-    "opencv-python==4.13.0.92",
-    "scipy==1.18.0",
-    "scikit-image==0.26.0",
+    "numpy==1.26.4",
+    "pillow==11.2.1",
+    "opencv-python==4.9.0.80",
+    "scipy==1.13.1",
+    "scikit-image==0.24.0",
     
     # ===== 工具 =====
-    "psutil==7.2.2",
-    "packaging==26.2",
-    "tqdm==4.68.3",
-    "requests==2.34.2",
-    "filelock==3.29.0",
+    "psutil==7.0.0",
+    "packaging==25.0",
+    "tqdm==4.67.1",
+    "requests==2.32.5",
+    "filelock==3.19.1",
     
-    # ===== 遮罩与背景去除 (图生图换衣核心) =====
+    # ===== 遮罩与背景去除 =====
     "rembg==2.0.76",
     
-    # ===== CLIP 反推及打分功能 =====
+    # ===== CLIP 反推 =====
     "open_clip_torch==3.3.0",
-    # "clip-interrogator==0.6.0",  # 可选，有兼容性问题时注释
     
-    # ===== Janus-Pro 依赖 (多模态模型) =====
+    # ===== Janus-Pro 依赖 =====
     "attrdict==2.0.1",
     "einops==0.8.2",
     "timm==1.0.27",
     "ftfy==6.3.1",
     "sentencepiece==0.2.1",
+    
+    # ===== ✅ ControlNet 依赖（使用 DWposeDetector，不依赖 mediapipe） =====
+    "controlnet_aux==0.0.10",
+    "protobuf==3.20.3",
 ]
 
 # ===== 验证模块列表 =====
@@ -88,7 +91,7 @@ VERIFY_MODULES = [
     ("accelerate", "accelerate.__version__"),
     ("huggingface_hub", "huggingface_hub.__version__"),
     ("safetensors", "safetensors.__version__"),
-    ("peft", "peft.__version__"),                    # ✅ 新增
+    ("peft", "peft.__version__"),
     ("numpy", "numpy.__version__"),
     ("PIL", "PIL.__version__"),
     ("cv2", "cv2.__version__"),
@@ -96,13 +99,58 @@ VERIFY_MODULES = [
     ("tqdm", "tqdm.__version__"),
     ("rembg", "rembg.__version__"),
     ("open_clip", "open_clip.__version__"),
-    # Janus
     ("attrdict", "attrdict.__version__"),
     ("einops", "einops.__version__"),
     ("timm", "timm.__version__"),
     ("ftfy", "ftfy.__version__"),
     ("sentencepiece", "sentencepiece.__version__"),
+    ("controlnet_aux", "controlnet_aux.__version__"),
 ]
+
+# ===== 测试 DWposeDetector =====
+def test_dwpose_detector(venv_python):
+    """测试 DWposeDetector 是否可用"""
+    print_cyan("\n🔧 测试 DWposeDetector...")
+    
+    cmd = f'"{venv_python}" -c "from controlnet_aux import DWposeDetector; print(\'OK\')"'
+    success, output, _ = run_cmd(cmd, timeout=10)
+    
+    if success:
+        print_green("   ✅ DWposeDetector 可用（推荐使用）")
+        return True
+    else:
+        print_yellow("   ⚠️ DWposeDetector 不可用，将使用普通模式")
+        return False
+
+# ===== 测试所有检测器 =====
+def test_all_detectors(venv_python):
+    """测试所有 ControlNet 检测器"""
+    print_cyan("\n🔧 测试 ControlNet 检测器...")
+    
+    detectors = [
+        "CannyDetector",
+        "HEDdetector",
+        "MLSDdetector",
+        "MidasDetector",
+        "NormalBaeDetector",
+        "LineartDetector",
+        "PidiNetDetector",
+        "ZoeDetector",
+        "DWposeDetector",
+        "OpenposeDetector",
+        "MediapipeFaceDetector",
+    ]
+    
+    available = []
+    for det in detectors:
+        cmd = f'"{venv_python}" -c "from controlnet_aux import {det}; print(\'OK\')"'
+        success, _, _ = run_cmd(cmd, timeout=10)
+        if success:
+            available.append(det)
+            print(f"   ✅ {det}")
+    
+    print(f"\n   📊 可用检测器: {len(available)}/{len(detectors)}")
+    return available
 
 
 def run_cmd(cmd, capture=True, timeout=600, cwd=None):
@@ -132,7 +180,6 @@ def run_in_venv(venv_python, cmd, capture=True, timeout=600):
 
 
 def print_header(text):
-    """打印标题"""
     print()
     print("=" * 60)
     print_bold(f"  {text}")
@@ -141,7 +188,6 @@ def print_header(text):
 
 
 def get_venv_python(project_dir):
-    """获取 venv 的 python 路径"""
     venv_dir = project_dir / "venv"
     if sys.platform == "win32":
         return venv_dir / "Scripts" / "python.exe"
@@ -150,7 +196,6 @@ def get_venv_python(project_dir):
 
 
 def create_venv(project_dir):
-    """创建虚拟环境"""
     venv_dir = project_dir / "venv"
     
     if venv_dir.exists():
@@ -187,9 +232,9 @@ def install_pytorch(venv_python):
     print()
     
     if has_cuda:
-        cmd = 'install torch==2.5.1 torchvision==0.20.1'
+        cmd = 'install torch==2.4.0 torchvision==0.19.0'
     else:
-        cmd = f'install torch==2.5.1+cpu torchvision==0.20.1+cpu --index-url {PYTORCH_CPU}'
+        cmd = f'install torch==2.4.0+cpu torchvision==0.19.0+cpu --index-url {PYTORCH_CPU}'
     
     print_cyan(f"   {cmd}")
     success, _, _ = run_in_venv(venv_python, cmd, timeout=600)
@@ -209,13 +254,11 @@ def install_package(venv_python, pkg):
     if success:
         return True
     
-    # 尝试镜像
     cmd = f"install {pkg} -i {MIRRORS[0]}"
     success, _, _ = run_in_venv(venv_python, cmd, timeout=300)
     if success:
         return True
     
-    # 尝试无版本号
     if "==" in pkg:
         pkg_name = pkg.split("==")[0]
         cmd = f"install {pkg_name}"
@@ -285,9 +328,9 @@ def generate_requirements(project_dir):
     content += "# ============================================================\n\n"
     
     content += "# PyTorch (自动适配 CUDA/CPU)\n"
-    content += "# pip install torch==2.5.1 torchvision==0.20.1\n"
+    content += "# pip install torch==2.4.0 torchvision==0.19.0\n"
     content += "# 如果是 CPU 环境，请改为:\n"
-    content += "# pip install torch==2.5.1+cpu torchvision==0.20.1+cpu --index-url https://download.pytorch.org/whl/cpu\n\n"
+    content += "# pip install torch==2.4.0+cpu torchvision==0.19.0+cpu --index-url https://download.pytorch.org/whl/cpu\n\n"
     
     content += "# 核心依赖\n"
     for pkg in REQUIRED_PACKAGES:
@@ -302,6 +345,7 @@ def generate_requirements(project_dir):
 def main():
     print_header("通用人物生成器 - 全自动环境安装")
     print("  自动检测 CUDA，完美兼容 CPU 环境")
+    print("  ✅ 使用 DWposeDetector（不依赖 mediapipe）")
     print()
     
     project_dir = Path(__file__).parent.absolute()
@@ -327,7 +371,7 @@ def main():
         print_red("   ❌ PyTorch 安装失败")
         print()
         print("请手动执行以下命令后重新运行:")
-        print(f'   {venv_python} -m pip install torch==2.5.1+cpu torchvision==0.20.1+cpu --index-url https://download.pytorch.org/whl/cpu')
+        print(f'   {venv_python} -m pip install torch==2.4.0+cpu torchvision==0.19.0+cpu --index-url https://download.pytorch.org/whl/cpu')
         print()
         input("按 Enter 退出...")
         return
@@ -343,13 +387,23 @@ def main():
     all_ok = verify_installation(venv_python)
     print()
     
+    # 测试 DWposeDetector
+    dwpose_ok = test_dwpose_detector(venv_python)
+    
+    # 测试所有检测器
+    available = test_all_detectors(venv_python)
+    
     generate_requirements(project_dir)
     print()
     
     print_header("安装完成")
     
-    if all_ok:
-        print_green("   🎉 环境安装成功！")
+    if all_ok and dwpose_ok:
+        print_green("   🎉 环境安装成功！DWposeDetector 可用！")
+        print_cyan("   💡 推荐使用 DWposeDetector（比 OpenPose 更精准）")
+    elif all_ok:
+        print_yellow("   ⚠️ 基础环境安装成功，但 DWposeDetector 不可用")
+        print("   💡 将使用普通图生图模式")
     else:
         print_yellow("   ⚠️ 部分包验证失败，请检查")
     

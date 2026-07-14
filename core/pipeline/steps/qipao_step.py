@@ -2,10 +2,10 @@
 """旗袍风格转换步骤"""
 
 import os
-
+import torch
 from PIL import Image
 from datetime import datetime
-
+from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
 from ..step import PipelineStep, StepContext, StepResult, StepStatus
 
 
@@ -31,7 +31,6 @@ class QipaoStep(PipelineStep):
     
     def execute(self, context: StepContext) -> StepResult:
         """执行旗袍转换"""
-        import torch
         config = self._config
         image_path = context.input_path
         
@@ -51,7 +50,7 @@ class QipaoStep(PipelineStep):
             model_path = context.global_config.get('model_path')
             
             if pipe is None and model_path:
-                from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
+                
                 
                 
                 common_args = {

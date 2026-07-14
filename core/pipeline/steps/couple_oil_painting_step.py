@@ -1,0 +1,140 @@
+# core/pipeline/steps/couple_oil_painting_step.py
+"""情侣油画风格 - 普通模式"""
+
+import os
+import torch
+from PIL import Image
+from datetime import datetime
+from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
+
+from ..step import PipelineStep, StepContext, StepResult, StepStatus
+
+
+class CoupleOilPaintingStep(PipelineStep):
+    """情侣油画风格"""
+    
+    def __init__(self):
+        super().__init__("couple_oil_painting", "情侣油画风格")
+        self._config = {
+            "strength": 0.35,
+            "cfg": 8.0,
+            "steps": 35,
+            "model_path": "../models/sd-v1-5/aiiiiii01_v10.safetensors"
+        }
+    
+    def get_config_schema(self):
+        return {
+            "strength": {"type": "float", "default": 0.35, "min": 0.2, "max": 0.55},
+            "cfg": {"type": "float", "default": 8.0, "min": 6, "max": 12},
+            "steps": {"type": "int", "default": 35, "min": 25, "max": 60},
+            "model_path": {"type": "str", "default": "../models/sd-v1-5/aiiiiii01_v10.safetensors"}
+        }
+    
+    def _generate_prompts(self) -> list:
+        """生成情侣油画风格提示词"""
+        return [
+            {
+                "name": "情侣油画_古典",
+                "prompt": "oil painting, renaissance style, a loving couple, man and woman, two people, classical beauty, soft warm lighting, rich colors, elegant pose, velvet drapery, fine art, high quality, detailed, masterpiece",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, watermark, text, signature, cartoon, anime, modern, photography, photorealistic, 3d render, single person"
+            },
+            {
+                "name": "情侣油画_浪漫",
+                "prompt": "oil painting, romantic style, a loving couple, man and woman, two people, intimate embrace, soft warm lighting, rich colors, fine art, high quality, detailed, masterpiece",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, watermark, text, signature, cartoon, anime, modern, photography, photorealistic, 3d render, single person"
+            },
+            {
+                "name": "情侣油画_宫廷",
+                "prompt": "oil painting, baroque style, a noble couple, man and woman, two people, elegant clothing, dramatic lighting, rich colors, luxurious background, fine art, high quality, detailed, masterpiece",
+                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, watermark, text, signature, cartoon, anime, modern, photography, photorealistic, 3d render, single person"
+            }
+        ]
+    
+    def execute(self, context: StepContext) -> StepResult:
+        """执行情侣油画风格转换"""
+        config = self._config
+        image_path = context.input_path
+        
+        if not os.path.exists(image_path):
+            return StepResult(
+                status=StepStatus.FAILED,
+                error=f"图片不存在: {image_path}"
+            )
+        
+        output_dir = os.path.join(context.output_dir, "couple_oil_painting")
+        os.makedirs(output_dir, exist_ok=True)
+        
+        try:
+            pipe = context.global_config.get('pipe')
+            model_path = context.global_config.get('model_path')
+            
+            if pipe is None and model_path:
+                common_args = {
+                    "torch_dtype": torch.float32,
+                    "safety_checker": None,
+                    "requires_safety_checker": False,
+                    "use_safetensors": True,
+                    "low_cpu_mem_usage": True,
+                }
+                pipe = StableDiffusionPipeline.from_single_file(model_path, **common_args)
+                pipe.to("cpu")
+                pipe.enable_vae_slicing()
+                pipe.enable_attention_slicing()
+                pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
+            
+            if pipe is None:
+                return StepResult(
+                    status=StepStatus.FAILED,
+                    error="无法获取 Pipeline"
+                )
+            
+            prompts = self._generate_prompts()
+            strength = config.get("strength", 0.35)
+            steps = config.get("steps", 35)
+            cfg = config.get("cfg", 8.0)
+            
+            init_image = Image.open(image_path).convert('RGB')
+            w, h = init_image.size
+            width = ((w + 31) // 64) * 64
+            height = ((h + 31) // 64) * 64
+            if w != width or h != height:
+                init_image = init_image.resize((width, height), Image.Resampling.LANCZOS)
+            
+            generator = torch.Generator("cpu").manual_seed(42)
+            success_count = 0
+            
+            for idx, job in enumerate(prompts):
+                print(f"   [{idx+1}/{len(prompts)}] {job.get('name', 'unknown')}")
+                
+                result = pipe(
+                    prompt=job.get("prompt", ""),
+                    negative_prompt=job.get("negative", ""),
+                    image=init_image,
+                    strength=strength,
+                    num_inference_steps=steps,
+                    guidance_scale=cfg,
+                    generator=generator,
+                )
+                
+                output_path = os.path.join(output_dir, f"{idx+1:02d}_{job.get('name', 'couple_oil_painting')}.png")
+                result.images[0].save(output_path)
+                success_count += 1
+                print(f"      ✅ 已保存: {os.path.basename(output_path)}")
+            
+            return StepResult(
+                status=StepStatus.SUCCESS if success_count > 0 else StepStatus.FAILED,
+                output_path=output_dir,
+                metadata={
+                    "output_count": len(prompts),
+                    "output_dir": output_dir,
+                    "success_count": success_count
+                }
+            )
+                    
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return StepResult(
+                status=StepStatus.FAILED,
+                error=str(e)
+            )

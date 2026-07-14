@@ -92,75 +92,75 @@ class ParamsPanel:
         
         row = 0
         
-        # ===== 第一模块：基础参数 =====
+        # ================================================================
+        # 第一行：步数 | CFG | 种子
+        # ================================================================
         param_row1 = ttk.Frame(self.frame)
         param_row1.grid(row=row, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=2, padx=5)
         
-        # 在函数里加载配置
         from config.app_config import app_config
         gen_cfg = app_config.generation
 
-        # ✅ 修改步数 Spinbox
-        ttk.Label(param_row1, text="步数:").pack(side=tk.LEFT, padx=5)
+        ttk.Label(param_row1, text="步数:").pack(side=tk.LEFT, padx=2)
         ttk.Spinbox(param_row1, 
-                    from_=gen_cfg.steps["min"],       # 动态读取最小值
-                    to=gen_cfg.steps["max"],          # 动态读取最大值
+                    from_=gen_cfg.steps["min"],
+                    to=gen_cfg.steps["max"],
                     textvariable=self.steps_var, 
-                    width=5).pack(side=tk.LEFT)
+                    width=5).pack(side=tk.LEFT, padx=2)
 
-        # ✅ 修改 CFG Spinbox
-        ttk.Label(param_row1, text="CFG:").pack(side=tk.LEFT, padx=5)
+        ttk.Label(param_row1, text="CFG:").pack(side=tk.LEFT, padx=8)
         ttk.Spinbox(param_row1, 
-                    from_=gen_cfg.cfg["min"],         # 动态读取最小值
-                    to=gen_cfg.cfg["max"],            # 动态读取最大值
+                    from_=gen_cfg.cfg["min"],
+                    to=gen_cfg.cfg["max"],
                     textvariable=self.cfg_var, 
                     width=5, 
-                    increment=0.5).pack(side=tk.LEFT)
+                    increment=0.5).pack(side=tk.LEFT, padx=2)
         
-        ttk.Label(param_row1, text="种子:").pack(side=tk.LEFT, padx=5)
-        ttk.Spinbox(param_row1, from_=-1, to=999999, textvariable=self.seed_var, width=8).pack(side=tk.LEFT)
+        ttk.Label(param_row1, text="种子:").pack(side=tk.LEFT, padx=8)
+        ttk.Spinbox(param_row1, from_=-1, to=999999, textvariable=self.seed_var, width=8).pack(side=tk.LEFT, padx=2)
         
-        ttk.Label(param_row1, text="尺寸:").pack(side=tk.LEFT, padx=5)
-        # ✅ 修改：宽度从配置读取
-        ttk.Spinbox(param_row1, 
+        row += 1
+        
+        # ================================================================
+        # 第二行：尺寸 | 数量（✅ 使用独立的 param_row2）
+        # ================================================================
+        param_row2 = ttk.Frame(self.frame)  # ✅ 创建新的行
+        param_row2.grid(row=row, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=2, padx=5)
+        
+        ttk.Label(param_row2, text="尺寸:").pack(side=tk.LEFT, padx=2)
+        ttk.Spinbox(param_row2, 
                     from_=gen_cfg.size["min_width"], 
                     to=gen_cfg.size["max_width"], 
                     textvariable=self.width_var, 
                     width=5, 
-                    increment=64).pack(side=tk.LEFT)
-        ttk.Label(param_row1, text="x").pack(side=tk.LEFT)
-        # ✅ 修改：高度从配置读取
-        ttk.Spinbox(param_row1, 
+                    increment=64).pack(side=tk.LEFT, padx=2)
+        ttk.Label(param_row2, text="x").pack(side=tk.LEFT)
+        ttk.Spinbox(param_row2, 
                     from_=gen_cfg.size["min_height"], 
                     to=gen_cfg.size["max_height"], 
                     textvariable=self.height_var, 
                     width=5, 
-                    increment=64).pack(side=tk.LEFT)
+                    increment=64).pack(side=tk.LEFT, padx=2)
         
-        # ✅ 【修改】数量 Spinbox 从配置读取最大值
-        ttk.Label(param_row1, text="数量:").pack(side=tk.LEFT, padx=5)
-        ttk.Spinbox(param_row1, 
+        ttk.Label(param_row2, text="数量:").pack(side=tk.LEFT, padx=8)
+        ttk.Spinbox(param_row2, 
                     from_=1, 
-                    to=gen_cfg.max_images,      # ✅ 从 JSON 读取最大数量 (4)
+                    to=gen_cfg.max_images,
                     textvariable=self.num_images_var, 
-                    width=3).pack(side=tk.LEFT)
+                    width=3).pack(side=tk.LEFT, padx=2)
         
         row += 1
 
-        # ✅ 调度器选择（放在数量后面）
-        ttk.Label(param_row1, text="调度器:").pack(side=tk.LEFT, padx=5)
+        # ================================================================
+        # 第三行：调度器（✅ 使用独立的 param_row3）
+        # ================================================================
+        param_row3 = ttk.Frame(self.frame)  # ✅ 使用 param_row3
+        param_row3.grid(row=row, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=2, padx=5)
         
-        # ✅ 定义切换事件（必须在 bind 之前）
-        def on_scheduler_change(event):
-            from utils.scheduler_factory import get_scheduler_recommended_steps
-            scheduler = self.scheduler_var.get()
-            recommended = get_scheduler_recommended_steps(scheduler)
-            # 更新步数为推荐值
-            self.steps_var.set(recommended)
-            print(f"🔄 切换到 {scheduler}，推荐步数: {recommended}")
-    
+        ttk.Label(param_row3, text="调度器:").pack(side=tk.LEFT, padx=2)
+        
         scheduler_combo = ttk.Combobox(
-            param_row1,
+            param_row3,
             textvariable=self.scheduler_var,
             values=[
                 "euler",           # EulerDiscreteScheduler - 稳定写实
@@ -180,38 +180,45 @@ class ParamsPanel:
             width=10,
             state="readonly"
         )
-        scheduler_combo.pack(side=tk.LEFT, padx=5)
-        scheduler_combo.set("dpm")  # 默认
-        scheduler_combo.bind('<<ComboboxSelected>>', on_scheduler_change)
+        scheduler_combo.pack(side=tk.LEFT, padx=2)
+        scheduler_combo.set("dpm")
         
-        # ===== 第二模块：预设尺寸 =====
-        param_row2 = ttk.Frame(self.frame)
-        param_row2.grid(row=row, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=2, padx=5)
+        # 调度器说明标签
+        self.scheduler_desc_label = ttk.Label(
+            param_row3,  # ✅ 使用 param_row3
+            text="💡 速度快，质量均衡",
+            foreground="gray",
+            font=("", 8)
+        )
+        self.scheduler_desc_label.pack(side=tk.LEFT, padx=8)
         
-        # ✅ 第 1 步：把文字放在最左边（不再占用整行）
-        ttk.Label(param_row2, text="预设尺寸:").pack(side=tk.LEFT, padx=5)
+        scheduler_combo.bind('<<ComboboxSelected>>', self._on_scheduler_change)
         
-        # ✅ 第 2 步：创建一个专门装按钮的容器，放在文字的右边
-        btn_container = ttk.Frame(param_row2)
+        row += 1
+
+        # ================================================================
+        # 第四行：预设尺寸
+        # ================================================================
+        param_row4 = ttk.Frame(self.frame)
+        param_row4.grid(row=row, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=2, padx=5)
+        
+        ttk.Label(param_row4, text="预设尺寸:").pack(side=tk.LEFT, padx=5)
+        
+        btn_container = ttk.Frame(param_row4)
         btn_container.pack(side=tk.LEFT, fill=tk.X, expand=True)
         
-        # ✅ 第 3 步：在这个容器里分三行放按钮
-        
-        # 第一行：标全、细全、高全
         row2_top = ttk.Frame(btn_container)
         row2_top.pack(side=tk.TOP, fill=tk.X, pady=1)
         for label, w, h in self.preset_sizes[0:3]:
             btn = ttk.Button(row2_top, text=label, width=16, command=lambda w=w, h=h: self._set_size(w, h))
             btn.pack(side=tk.LEFT, padx=2)
         
-        # 第二行：极全、超长、方图
         row2_mid = ttk.Frame(btn_container)
         row2_mid.pack(side=tk.TOP, fill=tk.X, pady=1)
         for label, w, h in self.preset_sizes[3:6]:
             btn = ttk.Button(row2_mid, text=label, width=16, command=lambda w=w, h=h: self._set_size(w, h))
             btn.pack(side=tk.LEFT, padx=2)
         
-        # 第三行：横图、HD方图、宽屏
         row2_bottom = ttk.Frame(btn_container)
         row2_bottom.pack(side=tk.TOP, fill=tk.X, pady=1)
         for label, w, h in self.preset_sizes[6:9]:
@@ -220,7 +227,9 @@ class ParamsPanel:
         
         row += 1
 
-        # 第三模块：👇 【在此处新增高清修复的UI】 👇
+        # ================================================================
+        # 第五行：高清修复
+        # ================================================================
         hires_frame = ttk.LabelFrame(self.frame, text="🔍 高清修复 (Hires. fix)", padding=5)
         hires_frame.grid(row=row, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=2, padx=5)
         row += 1
@@ -231,40 +240,41 @@ class ParamsPanel:
         ttk.Label(hires_frame, text="重绘幅度:").pack(side=tk.LEFT, padx=5)
         ttk.Combobox(hires_frame, textvariable=self.hires_denoise_var, values=[0.3, 0.4, 0.5, 0.6], width=5).pack(side=tk.LEFT, padx=5)
         ttk.Label(hires_frame, text="💡 放大后重绘细节，适合全身照", foreground="gray", font=("", 8)).pack(side=tk.LEFT, padx=5)
-        # 👆 新增结束 👆  
         
-        # ===== 第四模块：水印去除 =====
-        param_row3 = ttk.Frame(self.frame)
-        param_row3.grid(row=row, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=2, padx=5)
+        # ================================================================
+        # 第六行：水印去除（✅ 使用独立的 param_row5）
+        # ================================================================
+        param_row5 = ttk.Frame(self.frame)
+        param_row5.grid(row=row, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=2, padx=5)
         
         ttk.Checkbutton(
-            param_row3,
+            param_row5,  # ✅ 使用 param_row5
             text="🚫 启用水印去除",
             variable=self.remove_watermark_var
         ).pack(side=tk.LEFT, padx=5)
         
-        ttk.Label(param_row3, text="强度:").pack(side=tk.LEFT, padx=5)
+        ttk.Label(param_row5, text="强度:").pack(side=tk.LEFT, padx=5)
         ttk.Combobox(
-            param_row3,
+            param_row5,
             textvariable=self.watermark_strength_var,
             values=["light", "medium", "strong", "extreme"],
             width=8
         ).pack(side=tk.LEFT, padx=5)
         
         ttk.Checkbutton(
-            param_row3,
+            param_row5,
             text="后处理",
             variable=self.watermark_post_process_var
         ).pack(side=tk.LEFT, padx=5)
         
         ttk.Checkbutton(
-            param_row3,
+            param_row5,  # ✅ 使用 param_row5
             text="自动检测",
             variable=self.watermark_auto_detect_var
         ).pack(side=tk.LEFT, padx=5)
         
         ttk.Label(
-            param_row3,
+            param_row5,  # ✅ 使用 param_row5
             text="💡 组合使用有效去除水印",
             foreground="gray",
             font=("", 8)
@@ -272,11 +282,12 @@ class ParamsPanel:
         
         row += 1
 
-        # ===== 【新增】第五模块：图片后期处理 =====
+        # ================================================================
+        # 第七行：图片后期处理
+        # ================================================================
         post_frame = ttk.LabelFrame(self.frame, text="🖼️ 图片后期处理", padding=5)
         post_frame.grid(row=row, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=2, padx=5)
 
-        # ===== 功能1：清除元数据 =====
         pp_row1 = ttk.Frame(post_frame)
         pp_row1.pack(fill=tk.X, pady=2)
 
@@ -293,7 +304,6 @@ class ParamsPanel:
             font=("", 8)
         ).pack(side=tk.LEFT, padx=15)
 
-        # ===== 功能2：注入 EXIF 信息 =====
         pp_row2 = ttk.Frame(post_frame)
         pp_row2.pack(fill=tk.X, pady=2)
 
@@ -321,7 +331,6 @@ class ParamsPanel:
             font=("", 8)
         ).pack(side=tk.LEFT, padx=15)
 
-        # ===== 功能3：照片真实化 =====
         pp_row3 = ttk.Frame(post_frame)
         pp_row3.pack(fill=tk.X, pady=2)
 
@@ -349,7 +358,25 @@ class ParamsPanel:
         row += 1
         
         return self.frame
-
+    
+    
+    def _on_scheduler_change(self, event):
+        """调度器切换时更新说明和步数（类方法）"""
+        from utils.scheduler_factory import get_scheduler_recommended_steps, get_scheduler_description
+        
+        scheduler = self.scheduler_var.get()
+        recommended = get_scheduler_recommended_steps(scheduler)
+        description = get_scheduler_description(scheduler)
+        
+        # 更新步数为推荐值
+        self.steps_var.set(recommended)
+        
+        # 更新说明标签
+        if hasattr(self, 'scheduler_desc_label'):
+            self.scheduler_desc_label.config(text=f"💡 {description}")
+        
+        print(f"🔄 切换到 {scheduler}，推荐步数: {recommended}，{description}")
+        
     def get_scheduler_type(self) -> str:
         """获取当前选择的调度器类型"""
         return self.scheduler_var.get()

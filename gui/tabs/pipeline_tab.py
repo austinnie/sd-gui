@@ -13,18 +13,194 @@ from PIL import Image, ImageTk
 
 from .base_tab import BaseTab
 from core.pipeline import PipelineRegistry, Pipeline, StepContext
-from core.pipeline.steps.marble_step import MarbleStep
+from core.pipeline.steps import (
+    MarbleStep, QipaoStep, CoupleStep, YogaStep,
+    OilPaintingStep, AnimeXxxStep, RemoveClothesStep
+)
 
 
 class PipelineTab(BaseTab):
     """流水线标签页"""
+    
+    # ✅ 内置流水线配置（不再依赖 JSON 文件）
+    BUILTIN_PIPELINES = {
+        # ===== 风格转换类 =====
+        "水彩风格": {
+            "description": "转换为水彩画风格",
+            "steps": [{"type": "watercolor", "config": {}}]
+        },
+        "国风水墨": {
+            "description": "转换为国风水墨风格",
+            "steps": [{"type": "ink_wash", "config": {}}]
+        },
+        "素描风格": {
+            "description": "转换为素描风格",
+            "steps": [{"type": "sketch", "config": {}}]
+        },
+        "赛博朋克": {
+            "description": "转换为赛博朋克风格",
+            "steps": [{"type": "cyberpunk", "config": {}}]
+        },
+        "蒸汽波": {
+            "description": "转换为蒸汽波风格",
+            "steps": [{"type": "vaporwave", "config": {}}]
+        },
+        "3D渲染": {
+            "description": "转换为3D渲染风格",
+            "steps": [{"type": "3d_render", "config": {}}]
+        },
+        
+        # ===== 场景/主题类 =====
+        "海滩场景": {
+            "description": "将人物放到海滩背景",
+            "steps": [{"type": "beach", "config": {}}]
+        },
+        "森林场景": {
+            "description": "将人物放到森林背景",
+            "steps": [{"type": "forest", "config": {}}]
+        },
+        "太空场景": {
+            "description": "将人物放到太空背景",
+            "steps": [{"type": "space", "config": {}}]
+        },
+        "古堡场景": {
+            "description": "将人物放到古堡背景",
+            "steps": [{"type": "castle", "config": {}}]
+        },
+        "婚纱风格": {
+            "description": "转换为婚纱/婚礼风格",
+            "steps": [{"type": "wedding", "config": {}}]
+        },
+        
+        # ===== 服装/造型类 =====
+        "洛丽塔": {
+            "description": "转换为洛丽塔风格",
+            "steps": [{"type": "lolita", "config": {}}]
+        },
+        "和服风格": {
+            "description": "转换为和服风格",
+            "steps": [{"type": "kimono", "config": {}}]
+        },
+        "晚礼服": {
+            "description": "转换为晚礼服风格",
+            "steps": [{"type": "evening_gown", "config": {}}]
+        },
+        "复古照片": {
+            "description": "转换为复古照片风格",
+            "steps": [{"type": "vintage", "config": {}}]
+        },
+        "电影质感": {
+            "description": "转换为电影质感风格",
+            "steps": [{"type": "cinematic", "config": {}}]
+        },
+        
+        # ===== ✅ 多人场景类 =====
+        "情侣水彩": {
+            "description": "情侣照片转换为水彩风格（双人优化）",
+            "steps": [{"type": "couple_watercolor", "config": {}}]
+        },
+        "情侣油画": {
+            "description": "情侣照片转换为油画风格（双人优化）",
+            "steps": [{"type": "couple_oil_painting", "config": {}}]
+        },
+        "家庭素描": {
+            "description": "家庭照片转换为素描风格（多人优化）",
+            "steps": [{"type": "family_sketch", "config": {}}]
+        },
+        "朋友聚会": {
+            "description": "朋友聚会照片风格化（多人优化）",
+            "steps": [{"type": "friends_style", "config": {}}]
+        },
+        "团队照片": {
+            "description": "团队照片风格化（多人优化）",
+            "steps": [{"type": "group_photo", "config": {}}]
+        },
+        "婚纱照双人": {
+            "description": "婚纱照风格（双人优化）",
+            "steps": [{"type": "couple_wedding", "config": {}}]
+        },
+    
+        # ✅ 新增：古风汉服风格
+        "古风汉服": {
+            "description": "将人物转换为古风汉服风格",
+            "steps": [{"type": "hanfu", "config": {}}]
+        },
+        "大理石雕像": {
+            "description": "将人物转换为大理石雕像风格（14种场景）",
+            "steps": [{"type": "marble", "config": {}}]
+        },
+        "大理石雕像_快速": {
+            "description": "快速版 - 只生成6种场景",
+            "steps": [{"type": "marble", "config": {"scenes": 6}}]
+        },
+        "旗袍风格": {
+            "description": "将人物转换为传统旗袍风格",
+            "steps": [{"type": "qipao", "config": {}}]
+        },
+        "情侣拥抱": {
+            "description": "生成情侣拥抱场景",
+            "steps": [{"type": "couple", "config": {}}]
+        },
+        "浪漫接吻": {
+            "description": "生成浪漫接吻场景",
+            "steps": [{"type": "couple", "config": {}}]
+        },
+        "瑜伽姿势": {
+            "description": "转换为瑜伽姿势",
+            "steps": [{"type": "yoga", "config": {}}]
+        },
+        "油画风格": {
+            "description": "转换为油画风格",
+            "steps": [{"type": "oil_painting", "config": {}}]
+        },
+        "动漫爱爱": {
+            "description": "转换为动漫爱爱风格",
+            "steps": [{"type": "anime_xxx", "config": {}}]
+        },
+        "去掉衣服_全部场景": {
+            "description": "去掉衣服 - 所有场景",
+            "steps": [{"type": "remove_clothes", "config": {}}]
+        },
+        "去掉衣服_比基尼": {
+            "description": "比基尼/泳装 → 裸体",
+            "steps": [{"type": "remove_clothes", "config": {"strength": 0.50, "steps": 30}}]
+        },
+        "去掉衣服_紧身衣": {
+            "description": "紧身衣/瑜伽服 → 裸体",
+            "steps": [{"type": "remove_clothes", "config": {"strength": 0.55, "steps": 30}}]
+        },
+        "去掉衣服_正装": {
+            "description": "正装/外套 → 裸体",
+            "steps": [{"type": "remove_clothes", "config": {"strength": 0.60, "steps": 35}}]
+        },
+        "去掉衣服_宽松": {
+            "description": "宽松衣物 → 裸体",
+            "steps": [{"type": "remove_clothes", "config": {"strength": 0.65, "steps": 40, "cfg": 6.5}}]
+        },
+        "去掉衣服_职业装": {
+            "description": "职业装 → 裸体",
+            "steps": [{"type": "remove_clothes", "config": {"strength": 0.60, "steps": 35}}]
+        },
+        "去掉衣服_校服": {
+            "description": "校服/学生装 → 裸体",
+            "steps": [{"type": "remove_clothes", "config": {"strength": 0.55, "steps": 30}}]
+        },
+        "去掉衣服_传统服装": {
+            "description": "传统服装 → 裸体",
+            "steps": [{"type": "remove_clothes", "config": {"strength": 0.60, "steps": 35}}]
+        },
+        "去掉衣服_内衣": {
+            "description": "内衣/情趣内衣 → 裸体",
+            "steps": [{"type": "remove_clothes", "config": {"strength": 0.45, "steps": 30}}]
+        }
+    }
     
     def __init__(self, parent, app):
         super().__init__(parent, app)
         self._init_vars()
         self._init_steps()
         self.setup_ui()
-        self._load_pipelines()
+        self._load_pipelines()  # 加载内置配置
         self.is_running = False
         self.cancel_flag = False
     
@@ -35,15 +211,18 @@ class PipelineTab(BaseTab):
         self.status_var = tk.StringVar(value="就绪")
         self.progress_var = tk.DoubleVar(value=0.0)
         self.progress_text_var = tk.StringVar(value="等待开始...")
-        self.config_path_var = tk.StringVar(value="pipelines_config.json")
-        # 【新增】批量处理变量
+        
+        # ✅ 场景数使用 StringVar（支持 "N/A"）
+        self.scenes_var = tk.StringVar(value="14")
+        
+        # 批量处理变量
         self.batch_dir_var = tk.StringVar(value="output/good")
         self.batch_status_var = tk.StringVar(value="就绪")
         self.batch_use_inpaint_var = tk.BooleanVar(value=False)
         self.batch_skip_existing_var = tk.BooleanVar(value=True)
         
         self.is_running = False
-        self.cancel_flag = False        
+        self.cancel_flag = False
     
     def _init_steps(self):
         """注册所有步骤"""
@@ -51,20 +230,8 @@ class PipelineTab(BaseTab):
         register_all_steps()
     
     def _load_pipelines(self):
-        """加载流水线配置"""
-        config_path = self.config_path_var.get()
-        
-        if not os.path.exists(config_path):
-            # 如果配置文件不存在，使用默认配置
-            self.pipelines_config = self._get_default_config()
-            self._save_default_config(config_path)
-        else:
-            try:
-                with open(config_path, 'r', encoding='utf-8') as f:
-                    self.pipelines_config = json.load(f)
-            except Exception as e:
-                print(f"⚠️ 加载流水线配置失败: {e}")
-                self.pipelines_config = self._get_default_config()
+        """加载流水线配置（使用内置配置）"""
+        self.pipelines_config = {"pipelines": self.BUILTIN_PIPELINES}
         
         # 更新下拉列表
         names = list(self.pipelines_config.get("pipelines", {}).keys())
@@ -72,52 +239,9 @@ class PipelineTab(BaseTab):
         if names:
             self.pipeline_var.set(names[0])
             self._update_info()
-    
-    def _get_default_config(self) -> dict:
-        """获取默认流水线配置"""
-        return {
-            "pipelines": {
-                "大理石雕像": {
-                    "description": "将人物转换为大理石雕像风格（14种场景）",
-                    "steps": [
-                        {
-                            "type": "marble",
-                            "config": {
-                                "strength": 0.25,
-                                "max_strength": 0.55,
-                                "cfg": 7.0,
-                                "steps": 15,
-                                "scenes": 14
-                            }
-                        }
-                    ]
-                },
-                "大理石雕像_快速": {
-                    "description": "快速版 - 只生成6种场景",
-                    "steps": [
-                        {
-                            "type": "marble",
-                            "config": {
-                                "strength": 0.25,
-                                "max_strength": 0.55,
-                                "cfg": 7.0,
-                                "steps": 15,
-                                "scenes": 6
-                            }
-                        }
-                    ]
-                }
-            }
-        }
-    
-    def _save_default_config(self, config_path: str):
-        """保存默认配置"""
-        try:
-            with open(config_path, 'w', encoding='utf-8') as f:
-                json.dump(self._get_default_config(), f, ensure_ascii=False, indent=2)
-            print(f"✅ 已创建默认流水线配置: {config_path}")
-        except Exception as e:
-            print(f"⚠️ 创建默认配置失败: {e}")
+            
+        # 更新场景数状态
+        self._update_scenes_state()
     
     def setup_ui(self):
         """设置 UI"""
@@ -144,7 +268,6 @@ class PipelineTab(BaseTab):
         btn_frame = ttk.Frame(frame)
         btn_frame.grid(row=row, column=2, sticky=tk.W, padx=5)
         ttk.Button(btn_frame, text="🔄 刷新", command=self._reload_pipelines).pack(side=tk.LEFT, padx=2)
-        ttk.Button(btn_frame, text="📁 编辑配置", command=self._edit_config).pack(side=tk.LEFT, padx=2)
         row += 1
         
         # ===== 流水线信息 =====
@@ -155,7 +278,7 @@ class PipelineTab(BaseTab):
         self.info_text.pack(fill=tk.BOTH, expand=True)
         row += 1
         
-        # ===== 图片选择（单张模式） =====
+        # ===== 图片选择 =====
         image_frame = ttk.LabelFrame(frame, text="📷 输入图片", padding=5)
         image_frame.grid(row=row, column=0, columnspan=3, sticky=(tk.W, tk.E), padx=5, pady=5)
         
@@ -174,7 +297,6 @@ class PipelineTab(BaseTab):
         ttk.Button(img_row, text="浏览", command=self._select_image).pack(side=tk.LEFT, padx=5)
         ttk.Button(img_row, text="清除", command=self._clear_image).pack(side=tk.LEFT, padx=5)
         
-        # 预览
         self.preview_label = ttk.Label(image_frame)
         self.preview_label.pack(pady=5)
         row += 1
@@ -188,71 +310,70 @@ class PipelineTab(BaseTab):
         strength_row.pack(fill=tk.X, pady=2)
         
         ttk.Label(strength_row, text="强度:").pack(side=tk.LEFT, padx=5)
-        self.strength_var = tk.DoubleVar(value=0.25)
+        self.strength_var = tk.DoubleVar(value=0.35)
         scale = ttk.Scale(
             strength_row,
-            from_=0.1, to=0.6,
+            from_=0.1, to=0.8,
             variable=self.strength_var,
             orient=tk.HORIZONTAL,
             length=150
         )
         scale.pack(side=tk.LEFT, padx=5)
-        self.strength_label = ttk.Label(strength_row, text="0.25", width=5)
+        self.strength_label = ttk.Label(strength_row, text="0.35", width=5)
         self.strength_label.pack(side=tk.LEFT, padx=5)
         self.strength_var.trace('w', lambda *_: self.strength_label.config(
             text=f"{self.strength_var.get():.2f}"
         ))
         
-        # 步数
+        # 步数 + CFG
         steps_row = ttk.Frame(param_frame)
         steps_row.pack(fill=tk.X, pady=2)
         
         ttk.Label(steps_row, text="步数:").pack(side=tk.LEFT, padx=5)
         self.steps_var = tk.IntVar(value=25)
-        ttk.Spinbox(steps_row, from_=10, to=50, textvariable=self.steps_var, width=5).pack(side=tk.LEFT, padx=5)
+        ttk.Spinbox(steps_row, from_=5, to=60, textvariable=self.steps_var, width=5).pack(side=tk.LEFT, padx=5)
         
         ttk.Label(steps_row, text="CFG:").pack(side=tk.LEFT, padx=15)
         self.cfg_var = tk.DoubleVar(value=7.0)
-        ttk.Spinbox(steps_row, from_=5.0, to=10.0, textvariable=self.cfg_var, width=5, increment=0.5).pack(side=tk.LEFT, padx=5)
+        ttk.Spinbox(steps_row, from_=5.0, to=12.0, textvariable=self.cfg_var, width=5, increment=0.5).pack(side=tk.LEFT, padx=5)
+
+        # 场景数（只有 marble 有效）
+        scenes_row = ttk.Frame(param_frame)
+        scenes_row.pack(fill=tk.X, pady=2)
         
-        ttk.Label(steps_row, text="场景数:").pack(side=tk.LEFT, padx=15)
-        self.scenes_var = tk.IntVar(value=14)
-        ttk.Combobox(
-            steps_row,
+        self.scenes_label = ttk.Label(scenes_row, text="场景数:", foreground="black")
+        self.scenes_label.pack(side=tk.LEFT, padx=5)
+        
+        self.scenes_var = tk.StringVar(value="14")
+        self.scenes_combobox = ttk.Combobox(
+            scenes_row,
             textvariable=self.scenes_var,
-            values=[6, 12, 14],
+            values=["6", "12", "14"],
             width=5,
             state="readonly"
-        ).pack(side=tk.LEFT, padx=5)
+        )
+        self.scenes_combobox.pack(side=tk.LEFT, padx=5)
+        
         row += 1
 
-        # ===== 【新增】批量处理模式 =====
-        batch_frame = ttk.LabelFrame(frame, text="📁 批量处理模式 (处理目录下所有图片)", padding=5)
+        # ===== 批量处理模式 =====
+        batch_frame = ttk.LabelFrame(frame, text="📁 批量处理模式", padding=5)
         batch_frame.grid(row=row, column=0, columnspan=3, sticky=(tk.W, tk.E), padx=5, pady=5)
         row += 1
         
-        # 目录选择
         batch_row1 = ttk.Frame(batch_frame)
         batch_row1.pack(fill=tk.X, pady=2)
         
         ttk.Label(batch_row1, text="图片目录:").pack(side=tk.LEFT, padx=5)
-        self.batch_dir_var = tk.StringVar(value="output/good")
         ttk.Entry(batch_row1, textvariable=self.batch_dir_var, width=40).pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
         ttk.Button(batch_row1, text="浏览", command=self._select_batch_dir).pack(side=tk.LEFT, padx=5)
         
-        # 批量选项
         batch_row2 = ttk.Frame(batch_frame)
         batch_row2.pack(fill=tk.X, pady=2)
         
-        self.batch_use_inpaint_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(batch_row2, text="启用局部重绘 (去除衣物)", variable=self.batch_use_inpaint_var).pack(side=tk.LEFT, padx=5)
-        
         self.batch_skip_existing_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(batch_row2, text="跳过已存在的图片", variable=self.batch_skip_existing_var).pack(side=tk.LEFT, padx=15)
+        ttk.Checkbutton(batch_row2, text="跳过已存在的图片", variable=self.batch_skip_existing_var).pack(side=tk.LEFT, padx=5)
         
-        ttk.Label(batch_row2, text=f"图片数: 0", foreground="gray").pack(side=tk.RIGHT, padx=5)
-        
-        # 批量按钮
         batch_row3 = ttk.Frame(batch_frame)
         batch_row3.pack(fill=tk.X, pady=5)
         
@@ -305,10 +426,33 @@ class PipelineTab(BaseTab):
         # ===== 底部提示 =====
         ttk.Label(
             frame,
-            text="💡 支持多步流水线组合，当前已支持: 大理石转换",
+            text="💡 选择流水线后点击运行，参数覆盖会应用到对应的 step",
             foreground="gray",
             font=("", 8)
         ).grid(row=row, column=0, columnspan=3, sticky=tk.W, padx=5, pady=5)
+    
+    def _update_scenes_state(self):
+        """更新场景数控件的状态（只有 marble 支持）"""
+        if not hasattr(self, 'pipelines_config'):
+            return
+        
+        name = self.pipeline_var.get()
+        pipelines = self.pipelines_config.get("pipelines", {})
+        pipeline = pipelines.get(name, {})
+        steps = pipeline.get("steps", [])
+        
+        has_marble = any(step.get("type") == "marble" for step in steps)
+        
+        if hasattr(self, 'scenes_combobox') and self.scenes_combobox:
+            if has_marble:
+                self.scenes_combobox.config(state="readonly")
+                self.scenes_label.config(foreground="black")
+                if self.scenes_var.get() == "N/A" or self.scenes_var.get() == "":
+                    self.scenes_var.set("14")
+            else:
+                self.scenes_combobox.config(state="disabled")
+                self.scenes_label.config(foreground="gray")
+                self.scenes_var.set("N/A")
     
     def _update_info(self):
         """更新流水线信息"""
@@ -328,24 +472,16 @@ class PipelineTab(BaseTab):
         
         self.info_text.delete("1.0", tk.END)
         self.info_text.insert("1.0", info)
+        
+        self._update_scenes_state()
     
     def _reload_pipelines(self):
-        """重新加载流水线配置"""
+        """重新加载流水线"""
         self._load_pipelines()
-        self._append_log("🔄 流水线配置已重新加载")
-        self.update_status("✅ 流水线配置已重新加载")
+        self._append_log("🔄 流水线已重新加载")
+        self.update_status("✅ 流水线已重新加载")
     
-    def _edit_config(self):
-        """编辑配置文件"""
-        config_path = self.config_path_var.get()
-        if os.path.exists(config_path):
-            try:
-                os.startfile(config_path)
-            except:
-                messagebox.showinfo("提示", f"请手动打开配置文件:\n{os.path.abspath(config_path)}")
-        else:
-            messagebox.showwarning("提示", f"配置文件不存在:\n{config_path}")
-    
+
     def _select_image(self):
         """选择图片"""
         file = filedialog.askopenfilename(
@@ -358,24 +494,26 @@ class PipelineTab(BaseTab):
         if file:
             self.image_path_var.set(file)
             self._show_preview(file)
-    
+
     def _clear_image(self):
         """清除图片"""
         self.image_path_var.set("")
         self.preview_label.config(image='')
         self.preview_label.image = None
-    
+
     def _show_preview(self, filepath):
         """显示图片预览"""
         try:
             img = Image.open(filepath)
-            # 限制最大尺寸
             img.thumbnail((300, 300), Image.Resampling.LANCZOS)
             photo = ImageTk.PhotoImage(img)
             self.preview_label.config(image=photo)
             self.preview_label.image = photo
         except Exception as e:
             print(f"⚠️ 预览失败: {e}")
+
+# ====================================
+
     
     def _run_pipeline(self):
         """运行流水线"""
@@ -400,22 +538,34 @@ class PipelineTab(BaseTab):
             messagebox.showerror("错误", "流水线配置无效")
             return
         
-        # 覆盖参数
+        # ===== 获取覆盖参数 =====
         override_strength = self.strength_var.get()
         override_steps = self.steps_var.get()
         override_cfg = self.cfg_var.get()
-        override_scenes = self.scenes_var.get()
         
+        # 场景数安全获取
+        try:
+            override_scenes = int(self.scenes_var.get())
+        except (ValueError, TypeError):
+            override_scenes = 14
+            self.scenes_var.set("14")
+        
+        # ===== 应用参数到每个 step =====
         for step in pipeline_config.get("steps", []):
+            step_type = step.get("type", "")
             config = step.get("config", {})
+            
+            # 只有 marble 支持 scenes
+            if step_type == "marble" and "scenes" in config:
+                config["scenes"] = override_scenes
+            
+            # 通用参数
             if "strength" in config:
                 config["strength"] = override_strength
             if "steps" in config:
                 config["steps"] = override_steps
             if "cfg" in config:
                 config["cfg"] = override_cfg
-            if "scenes" in config:
-                config["scenes"] = override_scenes
         
         self.is_running = True
         self.cancel_flag = False
@@ -440,14 +590,11 @@ class PipelineTab(BaseTab):
             daemon=True
         ).start()
     
-
-    # gui/tabs/pipeline_tab.py
-
     def _run_pipeline_thread(self, image_path, pipeline_config, output_dir):
-        """在后台线程运行流水线（使用独立 pipeline）"""
+        """在后台线程运行流水线"""
         from utils.pipeline_pool import pipeline_pool
-        # ✅ 生成 task_id
-        task_id = f"txt2img_{datetime.now().strftime('%H%M%S')}"        
+        task_id = f"pipeline_{datetime.now().strftime('%H%M%S')}"
+        
         try:
             # ===== 获取独立的 pipeline =====
             model_name = self.app.model_var.get()
@@ -467,7 +614,7 @@ class PipelineTab(BaseTab):
                 model_name=os.path.basename(model_path),
                 lora_path=lora_path,
                 lora_weight=lora_weight,
-                task_id=task_id  # ✅ 添加 task_id
+                task_id=task_id
             )
             
             self._append_log(f"📦 获取 Pipeline: {os.path.basename(model_path)}")
@@ -475,29 +622,26 @@ class PipelineTab(BaseTab):
             # 创建流水线
             pipeline = PipelineRegistry.create_pipeline_from_config(pipeline_config)
             
-            # 将 pipe 注入到流水线的上下文中
             def on_progress(current, total, msg):
-                # ✅ 带 source
                 self.app.root.after(0, lambda: self.app.progress_bar.update(
                     current / total,
                     f"{msg} ({current}/{total})",
                     "流水线"
                 ))
             
-            
             pipeline.set_progress_callback(on_progress)
             
             # 加载图片
             image = Image.open(image_path).convert('RGB')
             
-            # 创建上下文（传入 pipe）
+            # 创建上下文
             context = StepContext(
                 input_image=image,
                 input_path=image_path,
                 output_dir=output_dir,
                 global_config={
                     "model_path": model_path,
-                    "pipe": pipe,  # ✅ 传入独立 pipeline
+                    "pipe": pipe,
                     "lora_path": lora_path,
                     "lora_weight": lora_weight
                 }
@@ -506,27 +650,21 @@ class PipelineTab(BaseTab):
             # 运行流水线
             results = pipeline.run(context)
             
-            # ===== 释放 pipeline =====
-            pipeline_pool.release_pipeline(model_path, lora_path)
+            # 释放 pipeline
+            pipeline_pool.release_pipeline(model_path, lora_path, task_id)
             self._append_log("🗑️ Pipeline 已释放")
             
             # 显示结果
             self.app.root.after(0, lambda: self._show_results(results, output_dir))
             
         except Exception as e:
-           # ✅ 标记错误
             self.app.progress_bar.error_task(task_id, str(e))
-            
-            # 确保释放 pipeline
             if 'model_path' in locals() and model_path:
                 try:
-                    pipeline_pool.release_pipeline(model_path, lora_path, task_id)  # ✅ 传入 task_id
+                    pipeline_pool.release_pipeline(model_path, lora_path, task_id)
                 except:
                     pass
-            
-            error_msg = str(e)
-            self.app.root.after(0, lambda: self._on_error(error_msg))
-            
+            self.app.root.after(0, lambda: self._on_error(str(e)))
 
         
     def _update_progress(self, current, total, msg):
@@ -718,7 +856,8 @@ class PipelineTab(BaseTab):
             args=(images, dir_path),
             daemon=True
         ).start()
-    
+        
+        
     def _run_batch_pipeline_thread(self, images, dir_path):
         """后台线程运行批量处理"""
         # 生成任务 ID
@@ -736,7 +875,6 @@ class PipelineTab(BaseTab):
                 
                 # 检查是否跳过已存在的图片
                 if self.batch_skip_existing_var.get():
-                    # 检查输出目录是否已有对应图片
                     base_name = os.path.splitext(os.path.basename(image_path))[0]
                     output_dir = f"./output/pipeline_batch_{base_name}"
                     if os.path.exists(output_dir):
@@ -777,18 +915,28 @@ class PipelineTab(BaseTab):
                 override_strength = self.strength_var.get()
                 override_steps = self.steps_var.get()
                 override_cfg = self.cfg_var.get()
-                override_scenes = self.scenes_var.get()
+                
+                # ✅ 场景数安全转换
+                try:
+                    override_scenes = int(self.scenes_var.get())
+                except (ValueError, TypeError):
+                    override_scenes = 14
+                    self.scenes_var.set("14")
                 
                 for step in pipeline_config.get("steps", []):
+                    step_type = step.get("type", "")
                     config = step.get("config", {})
+                    
+                    # 只有 marble 支持 scenes
+                    if step_type == "marble" and "scenes" in config:
+                        config["scenes"] = override_scenes
+                    
                     if "strength" in config:
                         config["strength"] = override_strength
                     if "steps" in config:
                         config["steps"] = override_steps
                     if "cfg" in config:
                         config["cfg"] = override_cfg
-                    if "scenes" in config:
-                        config["scenes"] = override_scenes
                 
                 # 加载图片
                 image = Image.open(image_path).convert('RGB')
@@ -808,7 +956,6 @@ class PipelineTab(BaseTab):
                 # 运行流水线
                 pipeline = PipelineRegistry.create_pipeline_from_config(pipeline_config)
                 
-                # 进度回调
                 def batch_progress(current, total_steps, msg):
                     progress = (idx + current / total_steps) / total
                     self.app.root.after(0, lambda: self.app.progress_bar.update_task(
@@ -837,7 +984,7 @@ class PipelineTab(BaseTab):
         except Exception as e:
             self.app.progress_bar.error_task(task_id, str(e))
             self.app.root.after(0, lambda: self._on_batch_error(str(e)))
-    
+        
     def _on_batch_complete(self, success_count, total):
         """批量处理完成"""
         self.is_running = False

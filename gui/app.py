@@ -709,30 +709,30 @@ class SDApp:
         
         # ===== 模型选择 =====
         model_frame = ttk.Frame(main_frame)
-        model_frame.pack(fill=tk.X, pady=5)
+        model_frame.pack(fill=tk.X, pady=2, padx=5)
         
         ttk.Label(model_frame, text="📦 SD 模型:").pack(side=tk.LEFT, padx=5)
         
         self.model_var = tk.StringVar()
-        self.model_combo = ttk.Combobox(model_frame, textvariable=self.model_var, width=55)
-        self.model_combo.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
+        self.model_combo = ttk.Combobox(model_frame, textvariable=self.model_var, width=45)  # ✅ 固定宽度
+        self.model_combo.pack(side=tk.LEFT, padx=5)
         
         self.load_btn = ttk.Button(model_frame, text="加载 SD", command=self._load_sd_model)
-        self.load_btn.pack(side=tk.LEFT, padx=5)
+        self.load_btn.pack(side=tk.LEFT, padx=2)
         
         self.reload_btn = ttk.Button(model_frame, text="🔄 重载模块", command=self._reload_modules)
-        self.reload_btn.pack(side=tk.LEFT, padx=5)
-        
-        # ===== 【新增】LoRA 选择 =====
+        self.reload_btn.pack(side=tk.LEFT, padx=2)
+
+        # ===== LoRA 选择 =====
         lora_frame = ttk.Frame(main_frame)
         lora_frame.pack(fill=tk.X, pady=2, padx=5)
-
+        
         ttk.Label(lora_frame, text="🔗 LoRA 模型:").pack(side=tk.LEFT, padx=5)
-
+        
         self.lora_var = tk.StringVar(value="")
-        self.lora_combo = ttk.Combobox(lora_frame, textvariable=self.lora_var, width=40)
-        self.lora_combo.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
-
+        self.lora_combo = ttk.Combobox(lora_frame, textvariable=self.lora_var, width=45)  # ✅ 固定宽度
+        self.lora_combo.pack(side=tk.LEFT, padx=5)
+        
         ttk.Label(lora_frame, text="权重:").pack(side=tk.LEFT, padx=5)
         self.lora_weight_var = tk.DoubleVar(value=1.0)
         self.lora_weight_spinbox = ttk.Spinbox(
@@ -743,55 +743,41 @@ class SDApp:
             textvariable=self.lora_weight_var,
             width=6
         )
-        self.lora_weight_spinbox.pack(side=tk.LEFT, padx=5)
+        self.lora_weight_spinbox.pack(side=tk.LEFT, padx=2)
 
 
-        # ✅ 添加「加载 LoRA」按钮
-        self.load_lora_btn = ttk.Button(
-            lora_frame,
-            text="📦 加载 LoRA",
-            command=self._load_lora_from_ui  
-        )
-        self.load_lora_btn.pack(side=tk.LEFT, padx=5)
 
-        # ✅ 添加「卸载 LoRA」按钮
-        self.unload_lora_btn = ttk.Button(
-            lora_frame,
-            text="🗑️ 卸载 LoRA",
-            command=self._unload_lora,
-            state=tk.DISABLED
-        )
-        self.unload_lora_btn.pack(side=tk.LEFT, padx=5)
+        # ✅ 按钮放在右侧
+        btn_container = ttk.Frame(lora_frame)
+        btn_container.pack(side=tk.LEFT, padx=5)
+        
+        self.load_lora_btn = ttk.Button(btn_container, text="📦 加载 LoRA", command=self._load_lora_from_ui, width=12)
+        self.load_lora_btn.pack(side=tk.LEFT, padx=2)
+        
+        self.unload_lora_btn = ttk.Button(btn_container, text="🗑️ 卸载 LoRA", command=self._unload_lora, state=tk.DISABLED, width=12)
+        self.unload_lora_btn.pack(side=tk.LEFT, padx=2)
+        
+        self.clear_lora_btn = ttk.Button(btn_container, text="✖ 清除", command=self._clear_lora, width=8)
+        self.clear_lora_btn.pack(side=tk.LEFT, padx=2)
 
-        self.clear_lora_btn = ttk.Button(
-            lora_frame,
-            text="✖ 清除",
-            command=self._clear_lora
-        )
-        self.clear_lora_btn.pack(side=tk.LEFT, padx=5)
-
-        # ===== 【新增】VAE 选择 =====
+        # ===== VAE 选择 =====
         vae_frame = ttk.Frame(main_frame)
         vae_frame.pack(fill=tk.X, pady=2, padx=5)
-
-        ttk.Label(vae_frame, text="🎨 VAE 模型:").pack(side=tk.LEFT, padx=5)
-
-        self.vae_var = tk.StringVar(value="")
-        self.vae_combo = ttk.Combobox(vae_frame, textvariable=self.vae_var, width=40)
-        self.vae_combo.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
-
-        ttk.Button(
-            vae_frame,
-            text="📦 加载 VAE",
-            command=self._load_vae
-        ).pack(side=tk.LEFT, padx=5)
-
-        ttk.Button(
-            vae_frame,
-            text="✖ 清除",
-            command=self._clear_vae
-        ).pack(side=tk.LEFT, padx=5)
         
+        ttk.Label(vae_frame, text="🎨 VAE 模型:").pack(side=tk.LEFT, padx=5)
+        
+        self.vae_var = tk.StringVar(value="")
+        # ✅ 限制宽度
+        self.vae_combo = ttk.Combobox(vae_frame, textvariable=self.vae_var, width=45)
+        self.vae_combo.pack(side=tk.LEFT, padx=5)
+        
+        vae_btn_container = ttk.Frame(vae_frame)
+        vae_btn_container.pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(vae_btn_container, text="📦 加载 VAE", command=self._load_vae, width=12).pack(side=tk.LEFT, padx=2)
+        ttk.Button(vae_btn_container, text="🗑️ 卸载 VAE", command=self._unload_vae, width=12).pack(side=tk.LEFT, padx=2)
+        ttk.Button(vae_btn_container, text="✖ 清除 VAE", command=self._clear_vae, width=12).pack(side=tk.LEFT, padx=2)        
+            
         # ===== 状态信息 =====
         opt_info = self._get_optimization_info()
         ttk.Label(main_frame, text=opt_info, foreground="purple", font=("", 8)).pack(anchor=tk.W, padx=5)
@@ -1262,6 +1248,46 @@ class SDApp:
             self.update_status(f"❌ VAE 加载失败: {e}")
             messagebox.showerror("错误", f"VAE 加载失败:\n{str(e)}")
 
+    def _unload_vae(self):
+        """卸载 VAE（恢复默认 VAE）"""
+        if not self.model_manager.is_sd_loaded:
+            messagebox.showwarning("提示", "请先加载主模型")
+            return
+        
+        if not hasattr(self.model_manager, '_sd_pipe') or self.model_manager._sd_pipe is None:
+            messagebox.showwarning("提示", "没有加载的模型")
+            return
+        
+        try:
+            # 重新加载主模型（不带 VAE）
+            model_name = self.model_var.get()
+            model_path = self._get_model_path(model_name)
+            
+            if model_name and model_path:
+                self.update_status("🔄 正在卸载 VAE...")
+                
+                # 清除 VAE 选择
+                self.vae_var.set("")
+                
+                # 重新加载模型（不带 VAE）
+                def progress_cb(value, msg):
+                    self.root.after(0, lambda: self.update_progress(value, msg))
+                
+                # 使用当前模型重新加载，不带 VAE
+                success = self.model_manager.load_sd(
+                    model_path, model_name, progress_cb,
+                    lora_path=None, lora_weight=1.0
+                )
+                
+                if success:
+                    self.update_status("✅ VAE 已卸载（使用默认 VAE）")
+                else:
+                    self.update_status("❌ VAE 卸载失败")
+                    
+        except Exception as e:
+            self.update_status(f"❌ VAE 卸载失败: {e}")
+            messagebox.showerror("错误", f"VAE 卸载失败:\n{str(e)}")
+        
     def _clear_vae(self):
         """清除 VAE（恢复默认）"""
         if not self.model_manager.is_sd_loaded:
@@ -1411,6 +1437,7 @@ class SDApp:
 
         # ✅ 新增 LoRA 管理标签页
         self.lora_manager_tab = LoraManagerTab(self.notebook, self)
+        self.notebook.add(self.lora_manager_tab.get_frame(), text="🔧 LoRA 管理")
         
         # ✅ 新增智能会话标签页
         self.chat_tab = ChatTab(self.notebook, self)

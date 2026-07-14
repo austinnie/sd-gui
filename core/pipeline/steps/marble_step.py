@@ -1,44 +1,104 @@
 # core/pipeline/steps/marble_step.py
-"""大理石转换步骤 - 复用现有 run_marble.py"""
+"""大理石转换步骤 - 直接使用内部配置"""
 
 import os
 import json
-import subprocess
-import shutil
+import torch
 from PIL import Image
 from datetime import datetime
+from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
+
 from ..step import PipelineStep, StepContext, StepResult, StepStatus
-import torch
+
 
 class MarbleStep(PipelineStep):
-    """大理石雕像转换步骤 - 复用现有脚本"""
+    """大理石雕像转换步骤"""
     
     def __init__(self):
         super().__init__("marble", "将人物转换为大理石雕像")
-        # 默认配置
         self._config = {
-            "strength": 0.25,
+            "strength": 0.45,
             "max_strength": 0.55,
             "cfg": 7.0,
-            "steps": 15,
+            "steps": 20,
             "scenes": 14,
             "model_path": "../models/sd-v1-5/aiiiiii01_v10.safetensors"
         }
     
     def get_config_schema(self):
         return {
-            "strength": {"type": "float", "default": 0.25, "min": 0.1, "max": 0.5},
+            "strength": {"type": "float", "default": 0.45, "min": 0.1, "max": 0.8},
             "max_strength": {"type": "float", "default": 0.55, "min": 0.3, "max": 0.8},
             "cfg": {"type": "float", "default": 7.0, "min": 5, "max": 10},
-            "steps": {"type": "int", "default": 15, "min": 10, "max": 40},
+            "steps": {"type": "int", "default": 20, "min": 10, "max": 40},
             "scenes": {"type": "int", "default": 14, "choices": [6, 12, 14]},
             "model_path": {"type": "str", "default": "../models/sd-v1-5/aiiiiii01_v10.safetensors"}
         }
+    
+    def _generate_marble_jobs(self, scene_count: int) -> list:
+        """生成大理石场景的 jobs 列表"""
+        all_scenes = [
+            {"name": "纯白大理石雕像", 
+             "prompt": "same person, same pose, transform into pure white marble statue, classical sculpture, flawless white marble, smooth stone texture, elegant pose, dramatic lighting, no color, monochrome white, intricate carving details, high quality, masterpiece",
+             "negative": "color, skin tone, warm tones, beige, yellow, gray, painting, cartoon, 3d render, shiny, glossy, wet, oil, plastic, wax, different person, different face"},
+            
+            {"name": "纯白大理石半身像",
+             "prompt": "same person, same face, pure white marble bust, classical sculpture, white stone, smooth texture, detailed face, elegant expression, museum pedestal, soft dramatic lighting, monochrome white, high quality, masterpiece",
+             "negative": "color, skin tone, warm tones, beige, yellow, gray, painting, cartoon, 3d render, shiny, glossy, wet, oil, plastic, wax, different person"},
+            
+            {"name": "纯白希腊女神",
+             "prompt": "same person, same pose, pure white Greek goddess statue, classical Greek sculpture, flawless marble, flowing robes, elegant pose, ancient temple background, dramatic lighting, monochrome white, intricate details, high quality, masterpiece",
+             "negative": "color, skin tone, warm tones, beige, yellow, gray, painting, cartoon, 3d render, shiny, glossy, wet, oil, plastic, wax, different person"},
+            
+            {"name": "纯白大理石全身像",
+             "prompt": "same person, same pose, pure white marble statue, full body sculpture, flawless white stone, classical pose, museum gallery, marble pedestal, soft dramatic lighting, monochrome white, intricate carving details, high quality, masterpiece",
+             "negative": "color, skin tone, warm tones, beige, yellow, gray, painting, cartoon, 3d render, shiny, glossy, wet, oil, plastic, wax, different person"},
+            
+            {"name": "纯白大理石卧像",
+             "prompt": "same person, same pose, pure white marble reclining statue, lying down, classical sculpture, smooth white stone, peaceful expression, elegant pose, museum display, soft lighting, monochrome white, high quality, masterpiece",
+             "negative": "color, skin tone, warm tones, beige, yellow, gray, painting, cartoon, 3d render, shiny, glossy, wet, oil, plastic, wax, different person"},
+            
+            {"name": "纯白石膏雕像",
+             "prompt": "same person, same pose, pure white plaster cast statue, matte white finish, classical sculpture, smooth surface, elegant pose, studio photography, dramatic lighting, monochrome white, high quality, masterpiece",
+             "negative": "color, skin tone, warm tones, beige, yellow, gray, painting, cartoon, 3d render, shiny, glossy, wet, oil, plastic, wax, different person"},
+            
+            {"name": "纯白大理石坐像",
+             "prompt": "same person, same pose, pure white marble seated statue, sitting gracefully, classical sculpture, flawless white stone, elegant posture, museum pedestal, dramatic lighting, monochrome white, intricate carving details, high quality, masterpiece",
+             "negative": "color, skin tone, warm tones, beige, yellow, gray, painting, cartoon, 3d render, shiny, glossy, wet, oil, plastic, wax, different person"},
+            
+            {"name": "纯白大理石天使",
+             "prompt": "same person, same pose, pure white marble angel statue, wings, heavenly, classical sculpture, flawless white stone, ethereal pose, soft dramatic lighting, monochrome white, intricate details, high quality, masterpiece",
+             "negative": "color, skin tone, warm tones, beige, yellow, gray, painting, cartoon, 3d render, shiny, glossy, wet, oil, plastic, wax, different person"},
+            
+            {"name": "纯白大理石维纳斯",
+             "prompt": "same person, same pose, pure white marble Venus statue, goddess of beauty, classical sculpture, flawless white stone, elegant pose, soft dramatic lighting, monochrome white, intricate details, high quality, masterpiece, timeless beauty",
+             "negative": "color, skin tone, warm tones, beige, yellow, gray, painting, cartoon, 3d render, shiny, glossy, wet, oil, plastic, wax, different person"},
+            
+            {"name": "纯白大理石艺术裸体",
+             "prompt": "same person, same pose, pure white marble nude statue, classical sculpture, artistic nude, flawless white stone, elegant pose, museum display, dramatic lighting, monochrome white, intricate carving details, high quality, fine art",
+             "negative": "color, skin tone, warm tones, beige, yellow, gray, painting, cartoon, 3d render, shiny, glossy, wet, oil, plastic, wax, explicit, pornographic, different person"},
+            
+            {"name": "纯白大理石思考者",
+             "prompt": "same person, same pose, pure white marble thinker statue, classical sculpture, contemplative pose, flawless white stone, smooth texture, museum setting, dramatic lighting, monochrome white, high quality, masterpiece",
+             "negative": "color, skin tone, warm tones, beige, yellow, gray, painting, cartoon, 3d render, shiny, glossy, wet, oil, plastic, wax, different person"},
+            
+            {"name": "纯白大理石舞者",
+             "prompt": "same person, same pose, pure white marble dancer statue, dynamic pose, classical sculpture, flawless white stone, elegant movement, museum gallery, soft dramatic lighting, monochrome white, intricate details, high quality, masterpiece",
+             "negative": "color, skin tone, warm tones, beige, yellow, gray, painting, cartoon, 3d render, shiny, glossy, wet, oil, plastic, wax, different person"},
+            
+            {"name": "纯白大理石战士",
+             "prompt": "same person, same pose, pure white marble warrior statue, classical sculpture, heroic pose, flawless white stone, detailed armor, museum display, dramatic lighting, monochrome white, high quality, masterpiece",
+             "negative": "color, skin tone, warm tones, beige, yellow, gray, painting, cartoon, 3d render, shiny, glossy, wet, oil, plastic, wax, different person"},
+            
+            {"name": "纯白大理石母与子",
+             "prompt": "same people, same pose, pure white marble mother and child statue, classical sculpture, loving embrace, flawless white stone, smooth texture, museum setting, soft dramatic lighting, monochrome white, high quality, masterpiece",
+             "negative": "color, skin tone, warm tones, beige, yellow, gray, painting, cartoon, 3d render, shiny, glossy, wet, oil, plastic, wax, different people"},
+        ]
         
-    # core/pipeline/steps/marble_step.py
+        return all_scenes[:scene_count]
+    
     def execute(self, context: StepContext) -> StepResult:
         """执行大理石转换（使用上下文中的 pipe）"""
-        
         config = self._config
         image_path = context.input_path
         
@@ -59,10 +119,6 @@ class MarbleStep(PipelineStep):
             model_path = context.global_config.get('model_path')
             
             if pipe is None and model_path:
-                # 如果没有传入 pipe，独立加载（兼容旧逻辑）
-                from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
-
-                
                 common_args = {
                     "torch_dtype": torch.float32,
                     "safety_checker": None,
@@ -83,121 +139,69 @@ class MarbleStep(PipelineStep):
                 )
             
             # ============================================================
-            # 步骤 1: 生成配置文件
+            # 生成 jobs
             # ============================================================
-            config_cmd = (
-                f'python gen_config_marble_v2.py '
-                f'--target-image "{image_path}" '
-                f'--strength {config["strength"]} '
-                f'--max-strength {config["max_strength"]} '
-                f'--cfg {config["cfg"]} '
-                f'--steps {config["steps"]} '
-                f'--scenes {config["scenes"]}'
-            )
+            scene_count = config.get("scenes", 14)
+            jobs = self._generate_marble_jobs(scene_count)
             
-            print(f"\n📦 生成配置: {config_cmd}")
-            
-            result = subprocess.run(
-                config_cmd,
-                shell=True,
-                capture_output=False
-            )
-            
-            if result.returncode != 0:
-                return StepResult(
-                    status=StepStatus.FAILED,
-                    error=f"配置生成失败，返回码: {result.returncode}"
-                )
-            
-            # ============================================================
-            # 步骤 2: 查找最新生成的配置文件
-            # ============================================================
-            config_dir = "output/configs"
-            if not os.path.exists(config_dir):
-                return StepResult(
-                    status=StepStatus.FAILED,
-                    error=f"配置目录不存在: {config_dir}"
-                )
-            
-            config_files = sorted(
-                [f for f in os.listdir(config_dir) if f.startswith("marble_batch_config_")],
-                key=lambda x: os.path.getmtime(os.path.join(config_dir, x)),
-                reverse=True
-            )
-            
-            if not config_files:
-                return StepResult(
-                    status=StepStatus.FAILED,
-                    error="未找到生成的配置文件"
-                )
-            
-            latest_config = os.path.join(config_dir, config_files[0])
-            print(f"✅ 配置文件: {latest_config}")
-            
-            # ============================================================
-            # 步骤 3: 使用 pipe 执行生成（直接调用，不用 subprocess）
-            # ============================================================
-            with open(latest_config, 'r', encoding='utf-8') as f:
-                config_data = json.load(f)
-            
-            jobs = config_data.get('jobs', [])
-            target_image = config_data.get('target_image', image_path)
-            steps_override = config.get("steps", 15)
+            steps_override = config.get("steps", 20)
             cfg_override = config.get("cfg", 7.0)
-            strength_override = config.get("strength", 0.25)
+            strength_override = config.get("strength", 0.45)
             
-            print(f"\n🎨 执行生成: {len(jobs)} 个场景")
+            print(f"\n🎨 执行大理石转换: {len(jobs)} 个场景")
+            print(f"   步数: {steps_override}, CFG: {cfg_override}, 强度: {strength_override}")
+            print(f"   原图: {image_path}")
+            
+            success_count = 0
             
             for idx, job in enumerate(jobs):
                 print(f"   [{idx+1}/{len(jobs)}] {job.get('name', 'unknown')}")
                 
                 try:
                     # 加载图片
-                    init_image = Image.open(target_image).convert('RGB')
+                    init_image = Image.open(image_path).convert('RGB')
                     w, h = init_image.size
+                    print(f"   📐 原图尺寸: {w}x{h}")
+                    
                     width = ((w + 31) // 64) * 64
                     height = ((h + 31) // 64) * 64
                     if w != width or h != height:
                         init_image = init_image.resize((width, height), Image.Resampling.LANCZOS)
+                        print(f"   📐 调整后尺寸: {width}x{height}")
                     
-                    generator = torch.Generator("cpu").manual_seed(42)
+                    generator = torch.Generator("cpu").manual_seed(42 + idx)
                     
                     result = pipe(
                         prompt=job.get("prompt", ""),
                         negative_prompt=job.get("negative", ""),
                         image=init_image,
-                        strength=job.get("strength", strength_override),
+                        strength=strength_override,
                         num_inference_steps=steps_override,
                         guidance_scale=cfg_override,
                         generator=generator,
                     )
                     
-                    # 后处理为大理石效果
-                    temp_path = os.path.join(output_dir, f"temp_{idx}.png")
-                    result.images[0].save(temp_path)
-                    
-                    from run_marble import post_process_to_marble
+                    # 保存图片
                     output_path = os.path.join(output_dir, f"{idx+1:02d}_{job.get('name', 'marble')}.png")
-                    post_process_to_marble(temp_path, output_path, brightness_enhance=1.0)
+                    result.images[0].save(output_path)
                     
-                    if os.path.exists(temp_path):
-                        os.remove(temp_path)
-                    
+                    success_count += 1
                     print(f"      ✅ 已保存: {os.path.basename(output_path)}")
                     
                 except Exception as e:
                     print(f"      ❌ 失败: {e}")
+                    import traceback
+                    traceback.print_exc()
                     continue
             
             # 返回结果
             return StepResult(
-                status=StepStatus.SUCCESS,
+                status=StepStatus.SUCCESS if success_count > 0 else StepStatus.FAILED,
                 output_path=output_dir,
                 metadata={
-                    "config_file": latest_config,
                     "output_count": len(jobs),
                     "output_dir": output_dir,
-                    "success_count": len(jobs)
+                    "success_count": success_count
                 }
             )
                     
@@ -208,4 +212,3 @@ class MarbleStep(PipelineStep):
                 status=StepStatus.FAILED,
                 error=str(e)
             )
-        

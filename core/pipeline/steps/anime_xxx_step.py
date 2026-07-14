@@ -2,9 +2,11 @@
 """动漫爱爱风格转换步骤 - 扩展版"""
 
 import os
-
+import torch
 from PIL import Image
 from datetime import datetime
+from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
+
 
 from ..step import PipelineStep, StepContext, StepResult, StepStatus
 
@@ -31,7 +33,6 @@ class AnimeXxxStep(PipelineStep):
     
     def execute(self, context: StepContext) -> StepResult:
         """执行动漫爱爱转换"""
-        import torch
         config = self._config
         image_path = context.input_path
         
@@ -50,8 +51,6 @@ class AnimeXxxStep(PipelineStep):
             model_path = context.global_config.get('model_path')
             
             if pipe is None and model_path:
-                from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
-                
                 
                 common_args = {
                     "torch_dtype": torch.float32,
