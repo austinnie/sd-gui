@@ -322,7 +322,7 @@ class Img2ImgTab(BaseTab):
         param_row1.pack(fill=tk.X, pady=2)
 
         ttk.Label(param_row1, text="重绘强度:").pack(side=tk.LEFT, padx=5)
-        scale = ttk.Scale(param_row1, from_=0.2, to=0.5, variable=self.strength_var, 
+        scale = ttk.Scale(param_row1, from_=0.2, to=0.9, variable=self.strength_var, 
                           orient=tk.HORIZONTAL, length=120)
         scale.pack(side=tk.LEFT, padx=5)
         self.strength_label = ttk.Label(param_row1, text="0.20", width=5)
