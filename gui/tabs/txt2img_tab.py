@@ -727,8 +727,6 @@ class Txt2ImgTab(BaseTab):
     def _generate_single_image(self, prompt, negative, steps=None, cfg=None, seed=None,
                                 height=None, width=None, index=1, total=1, callback=None):
         """生成单张图片 - 核心生成逻辑"""
-
-       
         
         log(f"开始生成第 {index}/{total} 张")
         
@@ -756,18 +754,15 @@ class Txt2ImgTab(BaseTab):
         gen_cfg = app_config.generation
         size_cfg = gen_cfg.size
         
-        # 对齐到 64 的倍数
         width = ((width + 31) // 64) * 64
         height = ((height + 31) // 64) * 64
         
-        # CPU 安全上限
         max_cpu_w = size_cfg.get("cpu_safe_max_width", 1024)
         max_cpu_h = size_cfg.get("cpu_safe_max_height", 1024)
         
         width = min(max_cpu_w, max(size_cfg["min_width"], width))
         height = min(max_cpu_h, max(size_cfg["min_height"], height))
         
-        # 步数和 CFG 安全限制
         steps = max(gen_cfg.steps["min"], min(gen_cfg.steps["max"], steps))
         cfg = max(gen_cfg.cfg["min"], min(gen_cfg.cfg["max"], cfg))
         
@@ -801,6 +796,7 @@ class Txt2ImgTab(BaseTab):
         # ===== 获取 ControlNet 状态（从属性读取） =====
         use_controlnet = getattr(self, 'use_controlnet', False)
         controlnet_type = "openpose"
+        control_image = None  # 文生图默认没有控制图
         
         if use_controlnet and hasattr(self.app, 'img2img_tab'):
             if hasattr(self.app.img2img_tab, 'controlnet_type_var'):
@@ -845,8 +841,36 @@ class Txt2ImgTab(BaseTab):
             except Exception as e:
                 print(f"⚠️ ControlNet 加载失败: {e}")
                 use_controlnet = False
-            
-       
+
+        # ===== ControlNet 强度映射（按类型区分） =====
+        CONTROLNET_STRENGTH_MAP = {
+            # 姿态/骨架类
+            "openpose": 0.85,
+            "openpose_full": 0.85,
+            "dwpose": 0.90,
+            # 边缘/轮廓类
+            "canny": 0.70,
+            "hed": 0.75,
+            "lineart": 0.70,
+            "scribble": 0.70,
+            # 深度/空间类
+            "depth": 0.80,
+            "midas": 0.80,
+            "normal": 0.80,
+            # 风格/参考类
+            "reference": 0.55,
+            # 其他
+            "mlsd": 0.80,
+            "seg": 0.85,
+            "tile": 0.90,
+        }
+        
+        conditioning_scale = CONTROLNET_STRENGTH_MAP.get(controlnet_type, 0.80)
+        
+        # 如果有 control_image，打印强度信息
+        if use_controlnet and control_image is not None:
+            print(f"   🎛️ ControlNet 强度: {conditioning_scale:.2f} ({controlnet_type})")
+
         try:
             # 强制模型在 CPU
             self.app.pipeline = pipe.to("cpu")
@@ -858,19 +882,36 @@ class Txt2ImgTab(BaseTab):
             log("调用 pipeline...")
             with torch.no_grad():
                 if not hires_enabled:
-                    result = pipe(
-                        prompt=prompt,
-                        negative_prompt=enhanced_negative,
-                        num_inference_steps=steps,
-                        guidance_scale=cfg,
-                        generator=generator,
-                        height=height,
-                        width=width,
-                        num_images_per_prompt=1,
-                        callback_on_step_end=step_callback
-                    )
+                    # ===== 文生图模式（无高清修复） =====
+                    # 如果有 control_image，使用 ControlNet 模式，否则普通模式
+                    if use_controlnet and control_image is not None:
+                        result = pipe(
+                            prompt=prompt,
+                            negative_prompt=enhanced_negative,
+                            control_image=control_image,
+                            controlnet_conditioning_scale=conditioning_scale,
+                            num_inference_steps=steps,
+                            guidance_scale=cfg,
+                            generator=generator,
+                            height=height,
+                            width=width,
+                            num_images_per_prompt=1,
+                            callback_on_step_end=step_callback
+                        )
+                    else:
+                        result = pipe(
+                            prompt=prompt,
+                            negative_prompt=enhanced_negative,
+                            num_inference_steps=steps,
+                            guidance_scale=cfg,
+                            generator=generator,
+                            height=height,
+                            width=width,
+                            num_images_per_prompt=1,
+                            callback_on_step_end=step_callback
+                        )
                 else:
-                    # 高清修复模式
+                    # ===== 高清修复模式 =====
                     low_res_w = int(width / hires_scale)
                     low_res_h = int(height / hires_scale)
                     low_res_w = max(512, ((low_res_w + 31) // 64) * 64)
@@ -879,20 +920,42 @@ class Txt2ImgTab(BaseTab):
                     print(f"📐 启用高清修复: 初稿 {low_res_w}x{low_res_h} -> 最终 {width}x{height}")
                     progress_cb((index - 1) / total, f"🎨 生成初稿 ({low_res_w}x{low_res_h})...")
                     
-                    low_res_result = pipe(
-                        prompt=prompt,
-                        negative_prompt=enhanced_negative,
-                        num_inference_steps=steps,
-                        guidance_scale=cfg,
-                        generator=generator,
-                        height=low_res_w,
-                        width=low_res_h,
-                        num_images_per_prompt=1,
-                        callback_on_step_end=step_callback
-                    )
+                    # 第一阶段：生成低分辨率初稿
+                    if use_controlnet and control_image is not None:
+                        # ControlNet 模式生成初稿
+                        low_res_result = pipe(
+                            prompt=prompt,
+                            negative_prompt=enhanced_negative,
+                            control_image=control_image,
+                            controlnet_conditioning_scale=conditioning_scale,
+                            num_inference_steps=steps,
+                            guidance_scale=cfg,
+                            generator=generator,
+                            height=low_res_h,
+                            width=low_res_w,
+                            num_images_per_prompt=1,
+                            callback_on_step_end=step_callback
+                        )
+                    else:
+                        low_res_result = pipe(
+                            prompt=prompt,
+                            negative_prompt=enhanced_negative,
+                            num_inference_steps=steps,
+                            guidance_scale=cfg,
+                            generator=generator,
+                            height=low_res_h,
+                            width=low_res_w,
+                            num_images_per_prompt=1,
+                            callback_on_step_end=step_callback
+                        )
+                    
                     low_res_img = low_res_result.images[0]
                     
                     progress_cb((index - 1) / total, f"🔄 放大并重绘 (幅度 {hires_denoise})...")
+                    
+                    # 第二阶段：放大并重绘（图生图模式，不需要 control_image）
+                    # 注意：高清修复的第二阶段是图生图，不再需要 ControlNet 控制
+                    # 因为 control_image 是针对原始构图的控制，放大阶段不需要
                     result = pipe(
                         prompt=prompt,
                         negative_prompt=enhanced_negative,
@@ -923,7 +986,7 @@ class Txt2ImgTab(BaseTab):
             output_dir = app_config.paths.output_dir
             os.makedirs(output_dir, exist_ok=True)
             filepath = os.path.join(output_dir, filename)
-                        
+            
             # ===== 先处理水印去除（如果有） =====
             if self.params.remove_watermark_var.get() and self.params.watermark_post_process_var.get():
                 methods = ["opencv_inpaint", "opencv_blur"]
@@ -938,18 +1001,15 @@ class Txt2ImgTab(BaseTab):
             else:
                 image.save(filepath)
 
-            # ===== 【新增】图片后期处理 =====
+            # ===== 图片后期处理 =====
             from utils.image_post_processor import post_process_image
-
-            # 执行后期处理（注意：这里不要再次保存 image，因为上面已经保存过了）
             final_path = post_process_image(
-                filepath,  # ← 传入已保存的文件路径
+                filepath,
                 self.params,
                 prompt=prompt,
                 log_prefix="[文生图]"
             )
 
-            # 如果后期处理返回了不同路径，使用最终路径
             if final_path != filepath:
                 try:
                     os.remove(filepath)
@@ -984,7 +1044,7 @@ class Txt2ImgTab(BaseTab):
 
     def _generate_single_image_with_pipe(self, pipe, prompt, negative, steps=None, cfg=None, seed=None,
                                           height=None, width=None, index=1, total=1, callback=None):
-        """使用指定的 pipe 生成单张图片"""
+        """使用指定的 pipe 生成单张图片 - 支持 ControlNet"""
         from config.app_config import app_config
         from utils.watermark_remover import WatermarkRemover
         from utils.image_post_processor import post_process_image
@@ -1055,6 +1115,45 @@ class Txt2ImgTab(BaseTab):
         hires_scale = self.params.hires_scale_var.get()
         hires_denoise = self.params.hires_denoise_var.get()
         
+        # ===== 获取 ControlNet 状态 =====
+        use_controlnet = getattr(self, 'use_controlnet', False)
+        controlnet_type = "openpose"
+        control_image = None  # 文生图默认没有控制图
+        
+        if use_controlnet and hasattr(self.app, 'img2img_tab'):
+            if hasattr(self.app.img2img_tab, 'controlnet_type_var'):
+                selected_type = self.app.img2img_tab.controlnet_type_var.get()
+                controlnet_type = selected_type.split(" ")[0] if " " in selected_type else "openpose"
+        
+        # ===== ControlNet 强度映射（按类型区分） =====
+        CONTROLNET_STRENGTH_MAP = {
+            # 姿态/骨架类
+            "openpose": 0.85,
+            "openpose_full": 0.85,
+            "dwpose": 0.90,
+            # 边缘/轮廓类
+            "canny": 0.70,
+            "hed": 0.75,
+            "lineart": 0.70,
+            "scribble": 0.70,
+            # 深度/空间类
+            "depth": 0.80,
+            "midas": 0.80,
+            "normal": 0.80,
+            # 风格/参考类
+            "reference": 0.55,
+            # 其他
+            "mlsd": 0.80,
+            "seg": 0.85,
+            "tile": 0.90,
+        }
+        
+        conditioning_scale = CONTROLNET_STRENGTH_MAP.get(controlnet_type, 0.80)
+        
+        # 如果有 control_image，打印强度信息
+        if use_controlnet and control_image is not None:
+            print(f"   🎛️ ControlNet 强度: {conditioning_scale:.2f} ({controlnet_type})")
+        
         try:
             generator = torch.Generator("cpu").manual_seed(seed)
             
@@ -1069,18 +1168,36 @@ class Txt2ImgTab(BaseTab):
             log("调用 pipeline...")
             with torch.no_grad():
                 if not hires_enabled:
-                    result = pipe(
-                        prompt=prompt,
-                        negative_prompt=enhanced_negative,
-                        num_inference_steps=steps,
-                        guidance_scale=cfg,
-                        generator=generator,
-                        height=height,
-                        width=width,
-                        num_images_per_prompt=1,
-                        callback_on_step_end=step_callback
-                    )
+                    # ===== 文生图模式（无高清修复） =====
+                    # 如果有 control_image，使用 ControlNet 模式，否则普通模式
+                    if use_controlnet and control_image is not None:
+                        result = pipe(
+                            prompt=prompt,
+                            negative_prompt=enhanced_negative,
+                            control_image=control_image,
+                            controlnet_conditioning_scale=conditioning_scale,
+                            num_inference_steps=steps,
+                            guidance_scale=cfg,
+                            generator=generator,
+                            height=height,
+                            width=width,
+                            num_images_per_prompt=1,
+                            callback_on_step_end=step_callback
+                        )
+                    else:
+                        result = pipe(
+                            prompt=prompt,
+                            negative_prompt=enhanced_negative,
+                            num_inference_steps=steps,
+                            guidance_scale=cfg,
+                            generator=generator,
+                            height=height,
+                            width=width,
+                            num_images_per_prompt=1,
+                            callback_on_step_end=step_callback
+                        )
                 else:
+                    # ===== 高清修复模式 =====
                     low_res_w = int(width / hires_scale)
                     low_res_h = int(height / hires_scale)
                     low_res_w = max(512, ((low_res_w + 31) // 64) * 64)
@@ -1089,20 +1206,39 @@ class Txt2ImgTab(BaseTab):
                     print(f"📐 启用高清修复: 初稿 {low_res_w}x{low_res_h} -> 最终 {width}x{height}")
                     progress_cb((index - 1) / total, f"🎨 生成初稿 ({low_res_w}x{low_res_h})...")
                     
-                    low_res_result = pipe(
-                        prompt=prompt,
-                        negative_prompt=enhanced_negative,
-                        num_inference_steps=steps,
-                        guidance_scale=cfg,
-                        generator=generator,
-                        height=low_res_h,
-                        width=low_res_w,
-                        num_images_per_prompt=1,
-                        callback_on_step_end=step_callback
-                    )
+                    # 第一阶段：生成低分辨率初稿
+                    if use_controlnet and control_image is not None:
+                        low_res_result = pipe(
+                            prompt=prompt,
+                            negative_prompt=enhanced_negative,
+                            control_image=control_image,
+                            controlnet_conditioning_scale=conditioning_scale,
+                            num_inference_steps=steps,
+                            guidance_scale=cfg,
+                            generator=generator,
+                            height=low_res_h,
+                            width=low_res_w,
+                            num_images_per_prompt=1,
+                            callback_on_step_end=step_callback
+                        )
+                    else:
+                        low_res_result = pipe(
+                            prompt=prompt,
+                            negative_prompt=enhanced_negative,
+                            num_inference_steps=steps,
+                            guidance_scale=cfg,
+                            generator=generator,
+                            height=low_res_h,
+                            width=low_res_w,
+                            num_images_per_prompt=1,
+                            callback_on_step_end=step_callback
+                        )
+                    
                     low_res_img = low_res_result.images[0]
                     
                     progress_cb((index - 1) / total, f"🔄 放大并重绘 (幅度 {hires_denoise})...")
+                    
+                    # 第二阶段：放大并重绘（图生图模式，不需要 control_image）
                     result = pipe(
                         prompt=prompt,
                         negative_prompt=enhanced_negative,
@@ -1186,7 +1322,7 @@ class Txt2ImgTab(BaseTab):
             else:
                 self.app.root.after(0, lambda err=error_msg: self._on_generation_error(err))
                 raise
-                
+        
     def _on_generation_complete(self):
         """生成完成"""
         self.is_generating = False

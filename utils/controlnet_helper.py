@@ -311,7 +311,7 @@ def get_controlnet_pipeline(model_path, controlnet_type="openpose", controlnet_m
 
 def process_with_controlnet(selected_images, prompt, negative, steps, cfg, strength, 
                             seed, app, params, progress_callback, status_callback,
-                            controlnet_type="openpose"):  # ✅ 新增参数
+                            controlnet_type="openpose"):
     """
     使用 ControlNet 处理图生图
     
@@ -344,6 +344,33 @@ def process_with_controlnet(selected_images, prompt, negative, steps, cfg, stren
     if pipe is None:
         status_callback(f"❌ ControlNet Pipeline 加载失败")
         return False, []
+    
+    # ===== ✅ ControlNet 强度映射（按类型区分） =====
+    CONTROLNET_STRENGTH_MAP = {
+        # 姿态/骨架类（高强度锁定动作）
+        "openpose": 0.85,
+        "openpose_full": 0.85,
+        "dwpose": 0.90,
+        
+        # 边缘/轮廓类（中高强度，给模型一些自由）
+        "canny": 0.70,
+        "hed": 0.75,
+        "lineart": 0.70,
+        "scribble": 0.70,
+        
+        # 深度/空间类（高强度保持结构）
+        "depth": 0.80,
+        "midas": 0.80,
+        "normal": 0.80,
+        
+        # 风格/参考类（低强度，避免过度复制）
+        "reference": 0.55,
+        
+        # 其他
+        "mlsd": 0.80,      # 直线检测（建筑）
+        "seg": 0.85,       # 语义分割
+        "tile": 0.90,      # 图块（保留细节）
+    }
     
     generated_images = []
     total = len(selected_images)
@@ -379,7 +406,6 @@ def process_with_controlnet(selected_images, prompt, negative, steps, cfg, stren
             # Reference 模式：用原图作为控制图
             status_callback(f"🎨 使用 Reference ControlNet {img_idx+1}/{len(selected_images)}...")
             control_image = init_image.copy()
-            conditioning_scale = 0.7
         else:
             # 其他模式：预处理图片
             status_callback(f"🔄 预处理图片 {img_idx+1}/{len(selected_images)} ({info['name']})...")
@@ -392,8 +418,10 @@ def process_with_controlnet(selected_images, prompt, negative, steps, cfg, stren
             if control_image is None:
                 status_callback("⚠️ 预处理失败，跳过该图片")
                 continue
-            
-            conditioning_scale = 0.8
+        
+        # ===== ✅ 根据类型获取 ControlNet 强度 =====
+        conditioning_scale = CONTROLNET_STRENGTH_MAP.get(controlnet_type, 0.80)
+        print(f"   🎛️ ControlNet 强度: {conditioning_scale:.2f} ({controlnet_type})")
         
         status_callback(f"🎨 生成中 {img_idx+1}/{len(selected_images)}...")
         
@@ -458,7 +486,6 @@ def process_with_controlnet(selected_images, prompt, negative, steps, cfg, stren
         gc.collect()
     
     return True, generated_images
-
 
 # ============================================================
 # 向后兼容
