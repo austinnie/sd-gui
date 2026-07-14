@@ -51,6 +51,14 @@ from .pipeline_pool import PipelinePool, pipeline_pool  # ✅ 新
 
 from .vae_utils import load_vae
 
+# ✅ 新增：ControlNet 辅助函数
+from .controlnet_helper import (
+    process_with_controlnet,
+    get_controlnet_pipeline,
+    extract_pose,
+    is_controlnet_available
+)
+
 __all__ = [
     # watermark_remover
     'WatermarkRemover',
@@ -98,4 +106,11 @@ __all__ = [
     'pipeline_pool',
     
     'load_vae', 
+
+    # ✅ 新增：ControlNet
+    'process_with_controlnet',
+    'get_controlnet_pipeline',
+    'extract_pose',
+    'is_controlnet_available',
+    
 ]

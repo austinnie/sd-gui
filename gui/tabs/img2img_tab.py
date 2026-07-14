@@ -23,6 +23,10 @@ from datetime import datetime
 def log(msg):
     print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
 
+
+# ✅ 简化导入
+from utils import process_with_controlnet
+
 MAX_PIXELS = 1024 * 1024  # 限制总像素不超过 1024x1024
 
 # ========== 辅助函数 ==========
@@ -127,6 +131,7 @@ class Img2ImgTab(BaseTab):
         self.is_generating = False
         
         self.use_inpaint_var = tk.BooleanVar(value=False)  # 是否使用局部重绘
+        self.use_controlnet_var = tk.BooleanVar(value=False) 
         self.mask_image = None  # 存放用户涂抹的遮罩
         
         # ✅ 新增：图片选择模式
@@ -274,6 +279,22 @@ class Img2ImgTab(BaseTab):
             command=self._open_mask_editor
         ).pack(side=tk.LEFT, padx=5)
 
+        # --- 新增: ControlNet 控件 ---
+        controlnet_row = ttk.Frame(param_frame)
+        controlnet_row.pack(fill=tk.X, pady=2)
+        ttk.Checkbutton(
+            controlnet_row,
+            text="🧠 启用 ControlNet (姿态控制)",
+            variable=self.use_controlnet_var
+        ).pack(side=tk.LEFT, padx=5)
+        ttk.Label(
+            controlnet_row,
+            text="💡 自动提取姿态图，精准控制人物姿势",
+            foreground="gray",
+            font=("", 8)
+        ).pack(side=tk.LEFT, padx=5)
+        # --- 新增结束 ---
+        
         # 重绘强度
         param_row1 = ttk.Frame(param_frame)
         param_row1.pack(fill=tk.X, pady=2)
@@ -467,6 +488,9 @@ class Img2ImgTab(BaseTab):
         
         # 计算总任务数
         total_tasks = len(self.selected_images) * num_images_per
+
+        # 获取 ControlNet 开关状态
+        use_controlnet = self.use_controlnet_var.get()  # ✅ 新增
         
         self.update_status(f"🎨 开始图生图... (共 {total_tasks} 张)")
         self.generate_btn.config(state=tk.DISABLED)
@@ -476,9 +500,13 @@ class Img2ImgTab(BaseTab):
         threading.Thread(
             target=self._generate_images,
             args=(prompt, negative, strength, steps, cfg, seed, num_images_per, target_width, target_height),
+            kwargs={'use_controlnet': use_controlnet},  # <-- 修改: 传递 ControlNet 状态
             daemon=True
         ).start()
     
+    def _progress_callback(self, value, msg):
+        """进度回调 - 供 ControlNet 使用"""
+        self.app.root.after(0, lambda: self.update_progress(value, msg))
         
     def _adjust_image_size(self, image, original_w, original_h, has_prompt, target_width, target_height):
         """
@@ -568,7 +596,7 @@ class Img2ImgTab(BaseTab):
         return image
     
     def _generate_images(self, prompt, negative, strength, steps, cfg, seed, 
-                         num_images_per, target_width, target_height):
+                         num_images_per, target_width, target_height,use_controlnet=False):
         """在后台线程中生成图生图"""
         
         log("开始图生图...")
@@ -590,6 +618,48 @@ class Img2ImgTab(BaseTab):
             target_width = ((target_width + 31) // 64) * 64
         if target_height > 0:
             target_height = ((target_height + 31) // 64) * 64
+
+        # ================================================================
+        # ✅ 新增：ControlNet 模式处理（优先执行）
+        # ================================================================
+        if use_controlnet:
+            try:
+                log("🧠 启用 ControlNet 模式...")
+                self.update_status("🧠 正在启用 ControlNet 姿态控制...")
+                
+                # 调用 ControlNet 处理函数
+                success, controlnet_results = process_with_controlnet(
+                    selected_images=self.selected_images,
+                    prompt=prompt,
+                    negative=negative,
+                    steps=steps,
+                    cfg=cfg,
+                    strength=strength,
+                    seed=seed,
+                    app=self.app,
+                    params=self.params,
+                    progress_callback=self._progress_callback,
+                    status_callback=self.update_status
+                )
+                
+                if success and controlnet_results:
+                    self.update_status(f"✅ ControlNet 完成！共生成 {len(controlnet_results)} 张")
+                    self._on_generation_complete()
+                    return
+                else:
+                    self.update_status("⚠️ ControlNet 处理失败，回退到普通模式")
+                    # 继续执行普通图生图
+                    
+            except Exception as e:
+                log(f"❌ ControlNet 错误: {e}")
+                import traceback
+                traceback.print_exc()
+                self.update_status(f"⚠️ ControlNet 错误: {e}，回退到普通模式")
+                # 继续执行普通图生图
+
+        # ================================================================
+        # 普通图生图模式（原有逻辑）
+        # ================================================================
         
         try:
             # 加载所有图片

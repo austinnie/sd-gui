@@ -1551,6 +1551,7 @@ class SDApp:
             "utils.pipeline_pool",  # ✅ 新增
             
             "utils.vae_utils", 
+            "utils.controlnet_helper", 
         ]
         
         reloaded = []
