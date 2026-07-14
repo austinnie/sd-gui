@@ -282,17 +282,38 @@ class Img2ImgTab(BaseTab):
         # --- 新增: ControlNet 控件 ---
         controlnet_row = ttk.Frame(param_frame)
         controlnet_row.pack(fill=tk.X, pady=2)
+        
         ttk.Checkbutton(
             controlnet_row,
             text="🧠 启用 ControlNet (姿态控制)",
             variable=self.use_controlnet_var
         ).pack(side=tk.LEFT, padx=5)
-        ttk.Label(
+        
+        # ✅ ControlNet 类型下拉选择
+        ttk.Label(controlnet_row, text="类型:").pack(side=tk.LEFT, padx=5)
+
+        from utils.controlnet_helper import get_controlnet_display_names
+        self.controlnet_type_var = tk.StringVar(value="openpose (OpenPose (姿态))")
+        self.controlnet_combo = ttk.Combobox(
             controlnet_row,
-            text="💡 自动提取姿态图，精准控制人物姿势",
+            textvariable=self.controlnet_type_var,
+            values=get_controlnet_display_names(),
+            width=25,
+            state="readonly"
+        )
+        self.controlnet_combo.pack(side=tk.LEFT, padx=5)
+
+        # 提示标签
+        self.controlnet_hint = ttk.Label(
+            controlnet_row,
+            text="💡 锁定人体姿态",
             foreground="gray",
             font=("", 8)
-        ).pack(side=tk.LEFT, padx=5)
+        )
+        self.controlnet_hint.pack(side=tk.LEFT, padx=5)
+
+        # 绑定选择事件
+        self.controlnet_combo.bind('<<ComboboxSelected>>', self._on_controlnet_type_changed)
         # --- 新增结束 ---
         
         # 重绘强度
@@ -335,6 +356,19 @@ class Img2ImgTab(BaseTab):
             text="🎯 强度测试",
             command=self._run_strength_test
         ).pack(side=tk.LEFT, padx=5)       
+
+    # gui/tabs/img2img_tab.py
+
+    def _on_controlnet_type_changed(self, event):
+        """ControlNet 类型切换时更新提示"""
+        from utils.controlnet_helper import get_controlnet_info
+        
+        selected = self.controlnet_type_var.get()
+        # 从显示名称中提取 key
+        key = selected.split(" ")[0] if " " in selected else selected
+        info = get_controlnet_info(key)
+        
+        self.controlnet_hint.config(text=f"💡 {info['description']}")
         
     def _on_mode_changed(self):
         """切换图片选择模式"""

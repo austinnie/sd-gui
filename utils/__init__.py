@@ -52,10 +52,14 @@ from .pipeline_pool import PipelinePool, pipeline_pool  # ✅ 新
 from .vae_utils import load_vae
 
 # ✅ 新增：ControlNet 辅助函数
+# ✅ 修改：ControlNet 辅助函数
 from .controlnet_helper import (
     process_with_controlnet,
     get_controlnet_pipeline,
-    extract_pose,
+    preprocess_image_for_controlnet,  # 使用这个替代 extract_pose
+    get_controlnet_types,
+    get_controlnet_display_names,
+    get_controlnet_info,
     is_controlnet_available
 )
 
@@ -110,7 +114,10 @@ __all__ = [
     # ✅ 新增：ControlNet
     'process_with_controlnet',
     'get_controlnet_pipeline',
-    'extract_pose',
+    'preprocess_image_for_controlnet',  # 替代 extract_pose
+    'get_controlnet_types',
+    'get_controlnet_display_names',
+    'get_controlnet_info',
     'is_controlnet_available',
     
 ]
