@@ -660,6 +660,14 @@ class Img2ImgTab(BaseTab):
             try:
                 log("🧠 启用 ControlNet 模式...")
                 self.update_status("🧠 正在启用 ControlNet 姿态控制...")
+
+                # ✅ 获取用户选择的 ControlNet 类型
+                selected_type = self.controlnet_type_var.get()
+                controlnet_type = selected_type.split(" ")[0] if " " in selected_type else "openpose"
+
+                print(f"🔍 [ControlNet 调试] use_controlnet={use_controlnet}")
+                print(f"🔍 [ControlNet 调试] controlnet_type={controlnet_type}")
+                print(f"🔍 [ControlNet 调试] selected_images={len(self.selected_images)} 张")
                 
                 # 调用 ControlNet 处理函数
                 success, controlnet_results = process_with_controlnet(
@@ -673,12 +681,15 @@ class Img2ImgTab(BaseTab):
                     app=self.app,
                     params=self.params,
                     progress_callback=self._progress_callback,
-                    status_callback=self.update_status
+                    status_callback=self.update_status,
+                    controlnet_type=controlnet_type  # ✅ 传入用户选择的类型
                 )
                 
+                print(f"🔍 [ControlNet 调试] success={success}, results={len(controlnet_results) if controlnet_results else 0}")
+        
                 if success and controlnet_results:
                     self.update_status(f"✅ ControlNet 完成！共生成 {len(controlnet_results)} 张")
-                    self._on_generation_complete()
+                    self._on_generation_complete(0)  # ✅ 传入 elapsed=0
                     return
                 else:
                     self.update_status("⚠️ ControlNet 处理失败，回退到普通模式")
@@ -689,7 +700,7 @@ class Img2ImgTab(BaseTab):
                 import traceback
                 traceback.print_exc()
                 self.update_status(f"⚠️ ControlNet 错误: {e}，回退到普通模式")
-                # 继续执行普通图生图
+
 
         # ================================================================
         # 普通图生图模式（原有逻辑）
@@ -863,7 +874,6 @@ class Img2ImgTab(BaseTab):
                 log(f"原图尺寸: {original_w}x{original_h}")
                 aspect_ratio = original_w / original_h
                     
-                # ✅ 头像检测：降低强度
                 # ✅ 头像检测：使用 OpenCV 判断人脸占比
                 import cv2
                 import numpy as np
@@ -871,25 +881,38 @@ class Img2ImgTab(BaseTab):
                 # 将 PIL Image 转为 OpenCV 格式
                 img_cv = np.array(init_image.convert('RGB'))[:, :, ::-1].copy()
                 gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
-                face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-                faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(50, 50))
 
-                # 如果检测到人脸，计算面积占比
-                if len(faces) > 0:
-                    # 取最大的人脸
-                    x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
-                    face_area = w * h
-                    image_area = original_w * original_h
-                    face_ratio = face_area / image_area
+                # ✅ 修复：使用 try-except 处理 CascadeClassifier 不可用的情况
+                try:
+                    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+                    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(50, 50))
 
-                    # 如果人脸面积占整图超过 15%，判定为头像/特写
-                    if face_ratio > 0.15:
-                        strength = min(strength, 0.3)
-                        print(f"   🧑 检测到头像 (人脸占比 {face_ratio:.1%})，强度自动调整为: {strength:.2f}")
+                    # 如果检测到人脸，计算面积占比
+                    if len(faces) > 0:
+                        # 取最大的人脸
+                        x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
+                        face_area = w * h
+                        image_area = original_w * original_h
+                        face_ratio = face_area / image_area
+
+                        # 如果人脸面积占整图超过 15%，判定为头像/特写
+                        if face_ratio > 0.15:
+                            strength = min(strength, 0.3)
+                            print(f"   🧑 检测到头像 (人脸占比 {face_ratio:.1%})，强度自动调整为: {strength:.2f}")
+                        else:
+                            print(f"   👤 检测到人脸，但占比 {face_ratio:.1%}，不限制强度")
                     else:
-                        print(f"   👤 检测到人脸，但占比 {face_ratio:.1%}，不限制强度")
-                else:
-                    print("   ❕ 未检测到人脸，保持原强度")
+                        print("   ❕ 未检测到人脸，保持原强度")
+                        
+                except Exception as e:
+                    print(f"   ⚠️ 人脸检测失败 (使用简化方法): {e}")
+                    # 使用简化的人脸检测方法：基于图片比例判断
+                    if original_h > original_w * 1.3:
+                        # 竖图可能是全身照，降低强度
+                        strength = min(strength, 0.3)
+                        print(f"   📐 竖图检测，强度自动调整为: {strength:.2f}")
+                    else:
+                        print(f"   📐 保持原强度: {strength:.2f}")
 
                 # ===== 生成变体 =====
                 for i in range(num_images_per):

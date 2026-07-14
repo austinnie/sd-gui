@@ -318,6 +318,14 @@ def process_with_controlnet(selected_images, prompt, negative, steps, cfg, stren
     参数:
         controlnet_type: ControlNet 类型 (openpose, canny, depth, reference, etc.)
     """
+
+    print("=" * 60)
+    print("🔍 [ControlNet 调试] process_with_controlnet 被调用")
+    print(f"   selected_images: {len(selected_images)} 张")
+    print(f"   prompt: {prompt[:50]}...")
+    print(f"   controlnet_type: {controlnet_type}")
+    print("=" * 60)
+    
     if not selected_images:
         return False, []
     
@@ -334,6 +342,7 @@ def process_with_controlnet(selected_images, prompt, negative, steps, cfg, stren
     status_callback(f"📦 加载 ControlNet ({info['name']})...")
     pipe = get_controlnet_pipeline(model_path, controlnet_type=controlnet_type)
     if pipe is None:
+        status_callback(f"❌ ControlNet Pipeline 加载失败")
         return False, []
     
     generated_images = []
