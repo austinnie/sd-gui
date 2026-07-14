@@ -107,6 +107,12 @@ class ChatTab(BaseTab):
         self.lora_paths = {}
         self.current_lora_path = None
         self.lora_loaded = False
+        
+        # ===== ControlNet 相关变量 =====
+        self.use_controlnet_var = tk.BooleanVar(value=False)
+        self.controlnet_type_var = tk.StringVar(value="openpose (OpenPose (姿态))")
+        self.controlnet_available = False
+        self.controlnet_pipe = None        
 
         # 缓存
         self._enhanced_prompt_cache = {}
@@ -323,6 +329,41 @@ class ChatTab(BaseTab):
         # 分隔线
         ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=5)
 
+        # ===== ✅ 新增 ControlNet 控制区域 =====
+        controlnet_frame = ttk.Frame(toolbar)
+        controlnet_frame.pack(side=tk.LEFT, padx=5)
+
+        ttk.Checkbutton(
+            controlnet_frame,
+            text="🧠 ControlNet",
+            variable=self.use_controlnet_var,
+            command=self._on_controlnet_toggle
+        ).pack(side=tk.LEFT, padx=2)
+
+        # ControlNet 类型下拉
+        from utils.controlnet_helper import get_controlnet_display_names
+        self.controlnet_combo = ttk.Combobox(
+            controlnet_frame,
+            textvariable=self.controlnet_type_var,
+            values=get_controlnet_display_names(),
+            width=20,
+            state="readonly"
+        )
+        self.controlnet_combo.pack(side=tk.LEFT, padx=2)
+        self.controlnet_combo.bind('<<ComboboxSelected>>', self._on_controlnet_type_changed)
+
+        # ControlNet 状态提示
+        self.controlnet_status_label = ttk.Label(
+            controlnet_frame,
+            text="",
+            foreground="gray",
+            font=("", 8)
+        )
+        self.controlnet_status_label.pack(side=tk.LEFT, padx=2)
+
+        # 分隔线
+        ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=5)
+        
         # ===== 原有工具栏控件 =====
         self.clear_images_btn = ttk.Button(
             toolbar,
@@ -589,6 +630,37 @@ class ChatTab(BaseTab):
         self.progress_bar = ttk.Progressbar(status_frame, length=200, mode='determinate')
         self.progress_bar.pack(side=tk.RIGHT, padx=5)
 
+
+    def _on_controlnet_toggle(self):
+        """ControlNet 开关切换"""
+        enabled = self.use_controlnet_var.get()
+        if enabled:
+            self.controlnet_status_label.config(text="🟢 已启用", foreground="green")
+            # 预加载 ControlNet
+            if not self.controlnet_available:
+                self._setup_controlnet()
+        else:
+            self.controlnet_status_label.config(text="⚪ 已禁用", foreground="gray")
+            # 释放 ControlNet 资源
+            if hasattr(self, 'controlnet_pipe') and self.controlnet_pipe:
+                del self.controlnet_pipe
+                self.controlnet_pipe = None
+                self.controlnet_available = False
+
+    def _on_controlnet_type_changed(self, event):
+        """ControlNet 类型切换"""
+        from utils.controlnet_helper import get_controlnet_info
+        selected = self.controlnet_type_var.get()
+        key = selected.split(" ")[0] if " " in selected else selected
+        info = get_controlnet_info(key)
+        self.controlnet_status_label.config(
+            text=f"💡 {info['description']}",
+            foreground="blue"
+        )
+        # 如果 ControlNet 已启用，重新加载
+        if self.use_controlnet_var.get():
+            self._setup_controlnet()
+        
     def _refresh_lora_list(self):
         """刷新 LoRA 列表"""
         lora_files = self._scan_lora_files()
@@ -2596,41 +2668,37 @@ class ChatTab(BaseTab):
     # ==================== ControlNet 相关 ====================
 
     def _setup_controlnet(self):
+        """加载 ControlNet - 支持多种类型"""
+        if not self.use_controlnet_var.get():
+            return
+
         if hasattr(self, 'controlnet_available') and self.controlnet_available:
-            print("✅ ControlNet 已就绪（使用缓存）")
+            print("✅ ControlNet 已就绪")
             return
 
         try:
             from diffusers import ControlNetModel, StableDiffusionControlNetPipeline
+            from utils.controlnet_helper import get_controlnet_info, get_controlnet_display_names
 
-            print("📦 正在加载 ControlNet...")
+            # 获取用户选择的 ControlNet 类型
+            selected = self.controlnet_type_var.get()
+            controlnet_type = selected.split(" ")[0] if " " in selected else "openpose"
+            info = get_controlnet_info(controlnet_type)
+
+            print(f"📦 正在加载 ControlNet: {info['name']}...")
 
             hf_cache_dir = os.environ.get("HF_HOME", r"E:\hf_cache\.cache")
             controlnet_cache_dir = os.path.join(hf_cache_dir, "hub")
             os.makedirs(controlnet_cache_dir, exist_ok=True)
 
-            print(f"   📁 缓存目录: {controlnet_cache_dir}")
-
-            model_path = os.path.join(controlnet_cache_dir, "models--lllyasviel--sd-controlnet-openpose")
-            if os.path.exists(model_path):
-                print(f"   ✅ 找到本地缓存")
-                controlnet = ControlNetModel.from_pretrained(
-                    "lllyasviel/sd-controlnet-openpose",
-                    torch_dtype=torch.float32,
-                    low_cpu_mem_usage=True,
-                    cache_dir=controlnet_cache_dir,
-                    local_files_only=True,
-                )
-            else:
-                print("   📦 首次使用，下载 ControlNet (1.45GB)...")
-                controlnet = ControlNetModel.from_pretrained(
-                    "lllyasviel/sd-controlnet-openpose",
-                    torch_dtype=torch.float32,
-                    low_cpu_mem_usage=True,
-                    cache_dir=controlnet_cache_dir,
-                    resume_download=True,
-                )
-                print("   ✅ 下载完成，已缓存到本地")
+            # 加载 ControlNet 模型
+            controlnet = ControlNetModel.from_pretrained(
+                info["model_id"],
+                torch_dtype=torch.float32,
+                low_cpu_mem_usage=True,
+                cache_dir=controlnet_cache_dir,
+            )
+            print(f"   ✅ ControlNet 模型加载完成")
 
             from utils.pipeline_pool import pipeline_pool
 
@@ -2650,7 +2718,7 @@ class ChatTab(BaseTab):
             lora_path = self.current_lora_path if self.lora_loaded else None
             lora_weight = 1.0
 
-            task_id = f"controlnet_{datetime.now().strftime('%H%M%S')}"
+            task_id = f"chat_controlnet_{datetime.now().strftime('%H%M%S')}"
             pipe, is_new = pipeline_pool.get_pipeline(
                 model_path=model_path,
                 model_name=model_name,
@@ -2671,8 +2739,15 @@ class ChatTab(BaseTab):
                     feature_extractor=None,
                     requires_safety_checker=False,
                 )
+                self.controlnet_pipe.to("cpu")
+                self.controlnet_pipe.enable_vae_slicing()
+                self.controlnet_pipe.enable_attention_slicing()
                 self.controlnet_available = True
-                print(f"✅ ControlNet 已加载")
+                self.controlnet_status_label.config(
+                    text=f"✅ {info['name']} 就绪",
+                    foreground="green"
+                )
+                print(f"✅ ControlNet 已加载: {info['name']}")
             else:
                 print("⚠️ 无法获取 Pipeline，ControlNet 加载失败")
                 self.controlnet_available = False
@@ -2680,7 +2755,10 @@ class ChatTab(BaseTab):
         except Exception as e:
             print(f"⚠️ ControlNet 加载失败: {e}")
             self.controlnet_available = False
-
+            self.controlnet_status_label.config(
+                text=f"❌ 加载失败",
+                foreground="red"
+            )
     def _check_controlnet_cached(self) -> bool:
         hf_cache_dir = os.environ.get("HF_HOME", r"E:\hf_cache\.cache")
         controlnet_cache_dir = os.path.join(hf_cache_dir, "hub")
@@ -4233,7 +4311,20 @@ class ChatTab(BaseTab):
         if not params:
             params = self._optimize_parameters(prompt, "image_to_image", image_features)
 
-        self._setup_controlnet()
+        # ===== ✅ 检查是否启用 ControlNet =====
+        use_controlnet = self.use_controlnet_var.get()
+        controlnet_type = "openpose"
+        
+        if use_controlnet:
+            selected = self.controlnet_type_var.get()
+            controlnet_type = selected.split(" ")[0] if " " in selected else "openpose"
+            
+            # 确保 ControlNet 已加载
+            if not self.controlnet_available:
+                self._setup_controlnet()
+                if not self.controlnet_available:
+                    self._append_message("system", "⚠️ ControlNet 加载失败，使用普通图生图")
+                    use_controlnet = False
 
         user_text = intent.get("original_text", "").lower()
         pose_keywords = ['站立', '坐', '躺', '蹲', '跪', '弯腰', '回头', '侧身',
@@ -4243,16 +4334,26 @@ class ChatTab(BaseTab):
         keywords = intent.get("keywords", {})
         user_poses = keywords.get("poses", [])
 
-        use_controlnet = needs_pose_control and hasattr(self, 'controlnet_available') and self.controlnet_available
-
-        if use_controlnet and user_poses:
-            pose_image = self._extract_pose_from_image(self.uploaded_image_path)
-            if pose_image:
-                self._append_message("system", "🦴 已提取姿态图，使用 ControlNet 控制")
-                self._handle_controlnet_generation(prompt, pose_image, intent, params)
+        # ===== 如果启用 ControlNet 且有姿态需求，使用 ControlNet =====
+        if use_controlnet and (needs_pose_control or user_poses):
+            from utils.controlnet_helper import preprocess_image_for_controlnet
+            
+            self._append_message("system", f"🦴 正在提取姿态图 ({controlnet_type})...")
+            
+            # 预处理图片生成控制图
+            control_image = preprocess_image_for_controlnet(
+                self.uploaded_image_path,
+                controlnet_type=controlnet_type,
+                output_size=(512, 512)  # ControlNet 推荐尺寸
+            )
+            
+            if control_image:
+                self._append_message("system", "✅ 姿态图提取成功，使用 ControlNet 控制")
+                self._handle_controlnet_generation(prompt, control_image, intent, params)
                 return
             else:
                 self._append_message("system", "⚠️ 姿态提取失败，使用普通图生图")
+                use_controlnet = False
 
         steps = params.get("steps", 20)
         cfg = params.get("cfg", 7.5)
@@ -4458,11 +4559,12 @@ class ChatTab(BaseTab):
             import traceback
             traceback.print_exc()
             self._pending_intent = None
-
-    def _handle_controlnet_generation(self, prompt: str, pose_image: Image.Image,
+            
+            
+    def _handle_controlnet_generation(self, prompt: str, control_image: Image.Image,
                                       intent: dict, params: dict):
+        """ControlNet 生成 - 支持动态类型"""
         try:
-            from diffusers import StableDiffusionControlNetPipeline
             import torch
 
             if not hasattr(self, 'controlnet_pipe') or self.controlnet_pipe is None:
@@ -4472,23 +4574,89 @@ class ChatTab(BaseTab):
                     self._handle_image_to_image(intent)
                     return
 
-            model_name = self.app.model_var.get()
-            model_path = self.app._get_model_path(model_name)
+            # 获取 ControlNet 类型
+            selected = self.controlnet_type_var.get()
+            controlnet_type = selected.split(" ")[0] if " " in selected else "openpose"
+            from utils.controlnet_helper import get_controlnet_info
+            info = get_controlnet_info(controlnet_type)
+
+            self._append_message("system", f"🎨 使用 {info['name']} 生成...")
 
             steps = params.get("steps", 20)
             cfg = params.get("cfg", 7.5)
+            strength = params.get("strength", 0.4)
+
+            # 加载原图
+            init_image = Image.open(self.uploaded_image_path).convert('RGB')
+            w, h = init_image.size
+            new_w = ((w + 31) // 64) * 64
+            new_h = ((h + 31) // 64) * 64
+            if new_w != w or new_h != h:
+                init_image = init_image.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+            # 限制最大尺寸
+            max_size = 1024
+            if max(new_w, new_h) > max_size:
+                scale = max_size / max(new_w, new_h)
+                new_w = int(new_w * scale)
+                new_h = int(new_h * scale)
+                new_w = ((new_w + 31) // 64) * 64
+                new_h = ((new_h + 31) // 64) * 64
+                init_image = init_image.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                control_image = control_image.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+            # 种子
+            seed = random.randint(1, 2**32 - 1)
+            generator = torch.Generator("cpu").manual_seed(seed)
+
+            # ===== ✅ ControlNet 强度按类型区分 =====
+            controlnet_strength_map = {
+                # 姿态/骨架类（高强度锁定动作）
+                "openpose": 0.85,
+                "openpose_full": 0.85,
+                "dwpose": 0.90,
+                
+                # 边缘/轮廓类（中高强度）
+                "canny": 0.70,
+                "hed": 0.75,
+                "lineart": 0.70,
+                "scribble": 0.70,
+                
+                # 深度/空间类（高强度保持结构）
+                "depth": 0.80,
+                "midas": 0.80,
+                "normal": 0.80,
+                
+                # 风格/参考类（低强度，避免过度复制）
+                "reference": 0.55,
+                
+                # 其他
+                "mlsd": 0.80,      # 直线检测（建筑）
+                "seg": 0.85,       # 语义分割
+                "tile": 0.90,      # 图块（保留细节）
+            }
+            
+            conditioning_scale = controlnet_strength_map.get(controlnet_type, 0.80)
+            
+            # 打印当前使用的强度
+            print(f"   🎛️ ControlNet 强度: {conditioning_scale:.2f} ({controlnet_type})")
 
             result = self.controlnet_pipe(
                 prompt=prompt,
-                image=pose_image,
+                negative_prompt=self._negative_templates["default"],
+                image=init_image,
+                control_image=control_image,
+                strength=strength,
                 num_inference_steps=steps,
                 guidance_scale=cfg,
-                height=512,
-                width=512,
+                generator=generator,
+                controlnet_conditioning_scale=conditioning_scale,
+                num_images_per_prompt=1,
             )
 
+            # 保存图片
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"{timestamp}_controlnet_{intent.get('original_text', 'pose')[:20]}.png"
+            filename = f"{timestamp}_chat_controlnet_{controlnet_type}.png"
 
             from config.app_config import app_config
             output_dir = app_config.paths.output_dir
@@ -4496,14 +4664,37 @@ class ChatTab(BaseTab):
             filepath = os.path.join(output_dir, filename)
             result.images[0].save(filepath)
 
+            # 图片后处理
+            from utils.image_post_processor import post_process_image
+            final_path = post_process_image(
+                filepath,
+                self.params,
+                prompt=prompt,
+                log_prefix="[Chat-ControlNet]"
+            )
+            if final_path != filepath:
+                try:
+                    os.remove(filepath)
+                except:
+                    pass
+                filepath = final_path
+
             self._append_image_result(filepath)
-            self._append_message("assistant", f"✅ ControlNet 生成完成！\n📁 {os.path.basename(filepath)}")
+            self._append_message("assistant", 
+                f"✅ ControlNet ({info['name']}) 生成完成！\n📁 {os.path.basename(filepath)}")
+
+            self._update_context(intent, {"image_path": filepath, "prompt": prompt})
+            self._update_status("✅ 生成完成", 1.0)
             self.app.add_to_preview(filepath, result.images[0])
+            self._pending_intent = None
 
         except Exception as e:
             self._append_message("assistant", f"❌ ControlNet 生成失败: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            # 回退到普通图生图
             self._handle_image_to_image(intent)
-
+            
     def _generate_pose_image(self, image_path: str) -> str:
         try:
             temp_path = os.path.join(tempfile.gettempdir(), f"pose_{datetime.now().strftime('%H%M%S')}.png")
