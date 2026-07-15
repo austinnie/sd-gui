@@ -154,18 +154,19 @@ def get_controlnet_info(controlnet_type):
     """获取 ControlNet 类型信息"""
     return CONTROLNET_TYPES.get(controlnet_type, CONTROLNET_TYPES["openpose"])
 
-
+# ============================================================
+# ✅ ControlNet 预处理模式配置
+# ============================================================
+# 可选值:
+#   "pil"          - 使用 pil 输出（原图 + 骨架叠加）- 简单直接
+#   "skeleton"     - 提取纯骨架图（黑白线条）- 需要额外处理
+#   "np"           - 使用 numpy 数组输出
+#   "auto"         - 自动选择最佳模式
+CONTROLNET_PREPROCESS_MODE = "skeleton"  # ← 修改这里切换模式
+# ============================================================
 def preprocess_image_for_controlnet(image_path, controlnet_type="openpose", output_size=(512, 512)):
     """
     根据 ControlNet 类型预处理图片
-    
-    参数:
-        image_path: 图片路径
-        controlnet_type: ControlNet 类型
-        output_size: 输出尺寸
-    
-    返回:
-        预处理后的 PIL Image
     """
     try:
         from controlnet_aux import (
@@ -193,21 +194,27 @@ def preprocess_image_for_controlnet(image_path, controlnet_type="openpose", outp
     preprocessor = info.get("preprocessor")
     
     if preprocessor is None:
-        # 不需要预处理（如 reference）
         pil_image = Image.open(image_path).convert('RGB')
         return pil_image.resize(output_size, Image.Resampling.LANCZOS)
     
     try:
-        # 根据类型选择检测器
         if preprocessor == "openpose":
             detector = OpenposeDetector.from_pretrained("lllyasviel/ControlNet")
-            result = detector(image, output_type="pil")
+            result = _preprocess_openpose(detector, image, output_size)
         elif preprocessor == "openpose_full":
             detector = OpenposeDetector.from_pretrained("lllyasviel/ControlNet")
             result = detector(image, output_type="pil", include_hands=True, include_face=True)
         elif preprocessor == "dwpose":
             detector = DWposeDetector.from_pretrained("lllyasviel/ControlNet")
-            result = detector(image, output_type="pil")
+            # ✅ DWPose 支持参数过滤
+            result = detector(
+                image, 
+                output_type="pil",
+                detect_resolution=512,
+                image_resolution=512,
+                # ✅ 关键参数：只检测一个人
+                max_people=1  # 如果你用的 DWPose 版本支持这个参数
+            )
         elif preprocessor == "canny":
             detector = CannyDetector()
             result = detector(image, output_type="pil")
@@ -237,7 +244,6 @@ def preprocess_image_for_controlnet(image_path, controlnet_type="openpose", outp
             detector = SamDetector.from_pretrained("ybelkada/segment-anything", subfolder="checkpoints")
             result = detector(image, output_type="pil")
         else:
-            # 默认：直接返回原图
             result = Image.open(image_path).convert('RGB')
         
         if result:
@@ -249,6 +255,58 @@ def preprocess_image_for_controlnet(image_path, controlnet_type="openpose", outp
         return None
 
 
+# utils/controlnet_helper.py - 修改 _preprocess_openpose 函数
+
+def _preprocess_openpose(detector, image, output_size):
+    """
+    OpenPose 预处理 - 支持多种模式
+    模式由 CONTROLNET_PREPROCESS_MODE 控制
+    """
+    mode = CONTROLNET_PREPROCESS_MODE
+    
+    if mode == "pil":
+        # ===== 模式1: pil 输出（原图 + 骨架叠加）- 推荐 =====
+        print("   📌 OpenPose 模式: PIL (原图+骨架)")
+        result = detector(image, output_type="pil")
+        return result
+        
+    elif mode == "skeleton":
+        # ===== 模式2: 提取纯骨架图（黑白线条）- 【新增多人过滤】 =====
+        print("   📌 OpenPose 模式: Skeleton (纯骨架)")
+        try:
+            # ✅ 使用 include_hands=False, include_face=False 减少杂散点
+            result_pil = detector(image, output_type="pil", include_hands=False, include_face=False)
+            result_np = np.array(result_pil)
+            
+            # ✅ 【关键】只保留最大连通区域（即主体骨架）
+            gray = cv2.cvtColor(result_np, cv2.COLOR_RGB2GRAY)
+            _, thresh = cv2.threshold(gray, 30, 255, cv2.THRESH_BINARY)
+            
+            # 找连通域，只保留最大的那个
+            num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(thresh, connectivity=8)
+            if num_labels > 1:
+                # 面积最大的连通域（排除背景）
+                areas = stats[1:, cv2.CC_STAT_AREA]
+                if len(areas) > 0:
+                    max_area_idx = np.argmax(areas) + 1  # +1 因为背景是0
+                    # 只保留最大连通域
+                    filtered = np.zeros_like(thresh)
+                    filtered[labels == max_area_idx] = 255
+                    thresh = filtered
+            
+            # 生成纯白骨架图
+            skeleton = np.zeros_like(result_np)
+            skeleton[thresh > 0] = [255, 255, 255]
+            
+            # 形态学闭运算连接断点
+            kernel = np.ones((2, 2), np.uint8)
+            skeleton = cv2.morphologyEx(skeleton, cv2.MORPH_CLOSE, kernel)
+            return Image.fromarray(skeleton).convert('RGB')
+            
+        except Exception as e:
+            print(f"   ⚠️ 骨架提取失败: {e}，回退到 pil 模式")
+            return detector(image, output_type="pil")
+            
 def get_controlnet_pipeline(model_path, controlnet_type="openpose", controlnet_model_path=None, device="cpu"):
     """
     加载 ControlNet Pipeline
@@ -348,9 +406,9 @@ def process_with_controlnet(selected_images, prompt, negative, steps, cfg, stren
     # ===== ✅ ControlNet 强度映射（按类型区分） =====
     CONTROLNET_STRENGTH_MAP = {
         # 姿态/骨架类（高强度锁定动作）
-        "openpose": 0.85,
+        "openpose": 0.85,      # 从 0.95 改回 0.85
         "openpose_full": 0.85,
-        "dwpose": 0.90,
+        "dwpose": 0.90,        # 从 0.98 改回 0.90
         
         # 边缘/轮廓类（中高强度，给模型一些自由）
         "canny": 0.70,
@@ -432,7 +490,7 @@ def process_with_controlnet(selected_images, prompt, negative, steps, cfg, stren
         try:
             result = pipe(
                 prompt=prompt,
-                negative_prompt=negative,
+                negative_prompt=negative + ", multiple people, two people, group, crowd, couple",  # ← 强制负面,
                 image=init_image,
                 control_image=control_image,
                 strength=strength,

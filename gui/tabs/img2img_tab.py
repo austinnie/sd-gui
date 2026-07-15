@@ -657,22 +657,47 @@ class Img2ImgTab(BaseTab):
         # ================================================================
         # ✅ 新增：ControlNet 模式处理（优先执行）
         # ================================================================
+        # ================================================================
+        # ✅ 新增：ControlNet 模式处理（优先执行）
+        # ================================================================
         if use_controlnet:
             try:
                 log("🧠 启用 ControlNet 模式...")
                 self.update_status("🧠 正在启用 ControlNet 姿态控制...")
 
+                # ✅ 新增：预处理时强制过滤多人骨架
+                from utils.controlnet_helper import preprocess_image_for_controlnet
+                from config.app_config import app_config
+            
+                # 对每张选中的图片进行预处理，只保留主体
+                filtered_images = []
+                temp_dir = app_config.paths.output_dir
+                os.makedirs(temp_dir, exist_ok=True)
+                
+                for img_path in self.selected_images:
+                    # 先预处理，再传给 ControlNet
+                    control_img = preprocess_image_for_controlnet(
+                        img_path,
+                        controlnet_type="openpose",
+                        output_size=(512, 512)
+                    )
+                    if control_img is not None:
+                        # 保存过滤后的骨架图
+                        temp_path = os.path.join(temp_dir, f"_temp_pose_{os.path.basename(img_path)}")
+                        control_img.save(temp_path)
+                        filtered_images.append(temp_path)
+                    
                 # ✅ 获取用户选择的 ControlNet 类型
                 selected_type = self.controlnet_type_var.get()
                 controlnet_type = selected_type.split(" ")[0] if " " in selected_type else "openpose"
 
                 print(f"🔍 [ControlNet 调试] use_controlnet={use_controlnet}")
                 print(f"🔍 [ControlNet 调试] controlnet_type={controlnet_type}")
-                print(f"🔍 [ControlNet 调试] selected_images={len(self.selected_images)} 张")
+                print(f"🔍 [ControlNet 调试] filtered_images={len(filtered_images)} 张")
                 
                 # 调用 ControlNet 处理函数
                 success, controlnet_results = process_with_controlnet(
-                    selected_images=self.selected_images,
+                    selected_images=filtered_images,
                     prompt=prompt,
                     negative=negative,
                     steps=steps,
@@ -683,19 +708,26 @@ class Img2ImgTab(BaseTab):
                     params=self.params,
                     progress_callback=self._progress_callback,
                     status_callback=self.update_status,
-                    controlnet_type=controlnet_type  # ✅ 传入用户选择的类型
+                    controlnet_type=controlnet_type
                 )
+                
+                # 清理临时文件
+                for f in filtered_images:
+                    try:
+                        os.remove(f)
+                    except:
+                        pass                
                 
                 print(f"🔍 [ControlNet 调试] success={success}, results={len(controlnet_results) if controlnet_results else 0}")
         
                 if success and controlnet_results:
                     self.update_status(f"✅ ControlNet 完成！共生成 {len(controlnet_results)} 张")
-                    self._on_generation_complete(0)  # ✅ 传入 elapsed=0
+                    self._on_generation_complete(0)
                     return
                 else:
                     self.update_status("⚠️ ControlNet 处理失败，回退到普通模式")
                     # 继续执行普通图生图
-                    
+                        
             except Exception as e:
                 log(f"❌ ControlNet 错误: {e}")
                 import traceback
