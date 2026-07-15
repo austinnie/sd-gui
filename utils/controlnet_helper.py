@@ -204,17 +204,28 @@ def preprocess_image_for_controlnet(image_path, controlnet_type="openpose", outp
         elif preprocessor == "openpose_full":
             detector = OpenposeDetector.from_pretrained("lllyasviel/ControlNet")
             result = detector(image, output_type="pil", include_hands=True, include_face=True)
+
         elif preprocessor == "dwpose":
-            detector = DWposeDetector.from_pretrained("lllyasviel/ControlNet")
-            # ✅ DWPose 支持参数过滤
-            result = detector(
-                image, 
-                output_type="pil",
-                detect_resolution=512,
-                image_resolution=512,
-                # ✅ 关键参数：只检测一个人
-                max_people=1  # 如果你用的 DWPose 版本支持这个参数
-            )
+            # ✅ 修复：DWposeDetector 的正确使用方式
+            try:
+                # 尝试方式1：从 controlnet_aux 导入 DWposeDetector
+                from controlnet_aux import DWposeDetector
+                detector = DWposeDetector.from_pretrained("lllyasviel/ControlNet")
+                result = detector(
+                    image, 
+                    output_type="pil",
+                    detect_resolution=512,
+                    image_resolution=512,
+                    max_people=1
+                )
+            except (ImportError, AttributeError) as e:
+                print(f"   ⚠️ DWposeDetector 导入失败: {e}")
+                # 方式2：使用 OpenPose 作为替代
+                print("   🔄 回退到 OpenPose...")
+                from controlnet_aux import OpenposeDetector
+                detector = OpenposeDetector.from_pretrained("lllyasviel/ControlNet")
+                result = detector(image, output_type="pil", include_hands=False, include_face=False)
+                
         elif preprocessor == "canny":
             detector = CannyDetector()
             result = detector(image, output_type="pil")
@@ -268,6 +279,11 @@ def _preprocess_openpose(detector, image, output_size):
         # ===== 模式1: pil 输出（原图 + 骨架叠加）- 推荐 =====
         print("   📌 OpenPose 模式: PIL (原图+骨架)")
         result = detector(image, output_type="pil")
+
+        debug_path = f"debug_skeleton_{datetime.now().strftime('%H%M%S')}.png"
+        Image.fromarray(skeleton).save(debug_path)
+        print(f"   📸 骨架图已保存: {debug_path}")
+                
         return result
         
     elif mode == "skeleton":
@@ -301,6 +317,11 @@ def _preprocess_openpose(detector, image, output_size):
             # 形态学闭运算连接断点
             kernel = np.ones((2, 2), np.uint8)
             skeleton = cv2.morphologyEx(skeleton, cv2.MORPH_CLOSE, kernel)
+            
+            debug_path = f"debug_skeleton_{datetime.now().strftime('%H%M%S')}.png"
+            Image.fromarray(skeleton).save(debug_path)
+            print(f"   📸 骨架图已保存: {debug_path}")
+               
             return Image.fromarray(skeleton).convert('RGB')
             
         except Exception as e:

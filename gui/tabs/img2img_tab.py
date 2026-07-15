@@ -642,30 +642,31 @@ class Img2ImgTab(BaseTab):
         from utils.pipeline_pool import pipeline_pool
         from utils.scheduler_fix import fix_euler_scheduler_for_img2img
     
-        # ===== 【核心修改】图生图强制使用原图尺寸逻辑 =====
-        # 不管共享面板传什么尺寸过来，图生图强制设为 0
+        # ===== 图生图尺寸逻辑 =====
+        # 使用用户设定的尺寸（如果用户指定了）
+        user_width = self.params.width_var.get()
+        user_height = self.params.height_var.get()
         
-        target_width = 0
-        target_height = 0
-        
-        # ===== 强制对齐用户指定尺寸到 64 的倍数 =====
-        if target_width > 0:
-            target_width = ((target_width + 31) // 64) * 64
-        if target_height > 0:
-            target_height = ((target_height + 31) // 64) * 64
+        if user_width > 0 and user_height > 0:
+            # 用户指定了尺寸，使用用户尺寸
+            target_width = ((user_width + 31) // 64) * 64
+            target_height = ((user_height + 31) // 64) * 64
+            print(f"📐 使用用户指定尺寸: {target_width}x{target_height}")
+        else:
+            # 用户未指定，使用原图尺寸
+            target_width = 0
+            target_height = 0
+            print(f"📐 使用原图尺寸")
 
         # ================================================================
-        # ✅ 新增：ControlNet 模式处理（优先执行）
-        # ================================================================
-        # ================================================================
-        # ✅ 新增：ControlNet 模式处理（优先执行）
+        # ✅ ControlNet 模式处理（优先执行）
         # ================================================================
         if use_controlnet:
             try:
                 log("🧠 启用 ControlNet 模式...")
                 self.update_status("🧠 正在启用 ControlNet 姿态控制...")
 
-                # ✅ 新增：预处理时强制过滤多人骨架
+                # ✅ 预处理时强制过滤多人骨架
                 from utils.controlnet_helper import preprocess_image_for_controlnet
                 from config.app_config import app_config
             
@@ -675,11 +676,19 @@ class Img2ImgTab(BaseTab):
                 os.makedirs(temp_dir, exist_ok=True)
                 
                 for img_path in self.selected_images:
+                    # ✅ 获取原图尺寸作为预处理尺寸
+                    from PIL import Image as PILImage
+                    temp_img = PILImage.open(img_path)
+                    orig_w, orig_h = temp_img.size
+                    # 对齐到 64 的倍数
+                    proc_w = ((orig_w + 31) // 64) * 64
+                    proc_h = ((orig_h + 31) // 64) * 64
+                    
                     # 先预处理，再传给 ControlNet
                     control_img = preprocess_image_for_controlnet(
                         img_path,
                         controlnet_type="openpose",
-                        output_size=(512, 512)
+                        output_size=(proc_w, proc_h)  # ✅ 使用原图尺寸
                     )
                     if control_img is not None:
                         # 保存过滤后的骨架图
