@@ -205,26 +205,46 @@ def preprocess_image_for_controlnet(image_path, controlnet_type="openpose", outp
             detector = OpenposeDetector.from_pretrained("lllyasviel/ControlNet")
             result = detector(image, output_type="pil", include_hands=True, include_face=True)
 
+
         elif preprocessor == "dwpose":
-            # ✅ 修复：DWposeDetector 的正确使用方式
+            # ✅ DWPose 兼容性修复
             try:
-                # 尝试方式1：从 controlnet_aux 导入 DWposeDetector
                 from controlnet_aux import DWposeDetector
                 detector = DWposeDetector.from_pretrained("lllyasviel/ControlNet")
-                result = detector(
-                    image, 
-                    output_type="pil",
-                    detect_resolution=512,
-                    image_resolution=512,
-                    max_people=1
-                )
-            except (ImportError, AttributeError) as e:
-                print(f"   ⚠️ DWposeDetector 导入失败: {e}")
-                # 方式2：使用 OpenPose 作为替代
-                print("   🔄 回退到 OpenPose...")
+                
+                target_w, target_h = output_size if output_size and output_size[0] > 0 else (512, 512)
+                max_dim = max(target_w, target_h)
+                
+                # ✅ 尝试使用 max_people=1，如果不支持则忽略
+                try:
+                    result = detector(
+                        image, 
+                        output_type="pil",
+                        detect_resolution=max_dim,
+                        image_resolution=max_dim,
+                        max_people=1
+                    )
+                    print("   ✅ DWPose 使用 max_people=1")
+                except TypeError:
+                    # 版本不支持 max_people，去掉该参数重试
+                    print("   ℹ️ DWPose 版本不支持 max_people，使用默认行为")
+                    result = detector(
+                        image, 
+                        output_type="pil",
+                        detect_resolution=max_dim,
+                        image_resolution=max_dim
+                    )
+                
+                if result:
+                    result = result.resize((target_w, target_h), Image.Resampling.LANCZOS)
+                    
+            except Exception as e:
+                print(f"   ⚠️ DWPose 失败: {e}，回退到 OpenPose")
                 from controlnet_aux import OpenposeDetector
                 detector = OpenposeDetector.from_pretrained("lllyasviel/ControlNet")
                 result = detector(image, output_type="pil", include_hands=False, include_face=False)
+                if result and output_size and output_size[0] > 0:
+                    result = result.resize(output_size, Image.Resampling.LANCZOS)
                 
         elif preprocessor == "canny":
             detector = CannyDetector()

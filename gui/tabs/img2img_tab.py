@@ -924,33 +924,39 @@ class Img2ImgTab(BaseTab):
                 img_cv = np.array(init_image.convert('RGB'))[:, :, ::-1].copy()
                 gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
 
-                # ✅ 修复：使用 try-except 处理 CascadeClassifier 不可用的情况
+                # ✅ 修复人脸检测
                 try:
-                    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-                    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(50, 50))
+                    # 检查 cv2 是否有 CascadeClassifier
+                    if hasattr(cv2, 'CascadeClassifier'):
+                        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+                        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(50, 50))
 
-                    # 如果检测到人脸，计算面积占比
-                    if len(faces) > 0:
-                        # 取最大的人脸
-                        x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
-                        face_area = w * h
-                        image_area = original_w * original_h
-                        face_ratio = face_area / image_area
+                        if len(faces) > 0:
+                            x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
+                            face_area = w * h
+                            image_area = original_w * original_h
+                            face_ratio = face_area / image_area
 
-                        # 如果人脸面积占整图超过 15%，判定为头像/特写
-                        if face_ratio > 0.15:
-                            strength = min(strength, 0.3)
-                            print(f"   🧑 检测到头像 (人脸占比 {face_ratio:.1%})，强度自动调整为: {strength:.2f}")
+                            if face_ratio > 0.15:
+                                strength = min(strength, 0.3)
+                                print(f"   🧑 检测到头像 (人脸占比 {face_ratio:.1%})，强度自动调整为: {strength:.2f}")
+                            else:
+                                print(f"   👤 检测到人脸，但占比 {face_ratio:.1%}，不限制强度")
                         else:
-                            print(f"   👤 检测到人脸，但占比 {face_ratio:.1%}，不限制强度")
+                            print("   ❕ 未检测到人脸，保持原强度")
                     else:
-                        print("   ❕ 未检测到人脸，保持原强度")
+                        print("   ⚠️ OpenCV CascadeClassifier 不可用，使用简化检测")
+                        # 使用简化检测：竖图可能是全身照
+                        if original_h > original_w * 1.3:
+                            strength = min(strength, 0.3)
+                            print(f"   📐 竖图检测，强度自动调整为: {strength:.2f}")
+                        else:
+                            print(f"   📐 保持原强度: {strength:.2f}")
                         
                 except Exception as e:
-                    print(f"   ⚠️ 人脸检测失败 (使用简化方法): {e}")
+                    print(f"   ⚠️ 人脸检测失败: {e}")
                     # 使用简化的人脸检测方法：基于图片比例判断
                     if original_h > original_w * 1.3:
-                        # 竖图可能是全身照，降低强度
                         strength = min(strength, 0.3)
                         print(f"   📐 竖图检测，强度自动调整为: {strength:.2f}")
                     else:
