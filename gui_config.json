@@ -8,6 +8,12 @@
             "../models/sd15-lora",
             "../models/sdxl-lora"
         ],
+        "sd15_lora_paths": [
+            "../models/sd15-lora"
+        ],
+        "sdxl_lora_paths": [
+            "../models/sdxl-lora"
+        ],		
         "output_dir": "./output"
     },
     "janus": {

@@ -41,7 +41,7 @@ from gui.tabs.pipeline_tab import PipelineTab
 from utils.scheduler_factory import get_scheduler, get_scheduler_description 
 from gui.tabs.lora_manager_tab import LoraManagerTab
 from gui.tabs.chat_tab import ChatTab  # 顶部导入
-
+from gui.components import LoraInfoViewer
 class ModelType(Enum):
     """模型类型枚举"""
     SD = "sd"
@@ -278,22 +278,80 @@ class ModelManager:
                 self._loading = False
 
 
+    # gui/app.py - ModelManager._detect_lora_type 改进
 
-    def _load_lora(self, pipe, lora_path: str, lora_weight: float, is_sdxl: bool) -> tuple:
+    def _detect_lora_type(self, lora_state_dict: dict) -> str:
         """
-        加载 LoRA（完整区分 SD1.5 / SDXL）
+        更精确地检测 LoRA 类型
         
-        参数:
-            pipe: diffusers pipeline
-            lora_path: LoRA 文件路径
-            lora_weight: LoRA 权重 (0.0 - 2.0)
-            is_sdxl: 是否为 SDXL 模型
+        返回:
+            'sdxl', 'sd15', 'both', 或 'unknown'
+        """
+        keys = list(lora_state_dict.keys())
+        
+        if not keys:
+            return 'unknown'
+        
+        # SDXL 特有 key 模式
+        sdxl_patterns = [
+            'base_unet',
+            'lora_te1',
+            'text_encoder',
+            'time_embedding',
+            'transformer_blocks',
+        ]
+        
+        # SD1.5 特有 key 模式
+        sd15_patterns = [
+            'lora_unet',
+            'lora_te',
+            'down_blocks',
+            'up_blocks',
+            'mid_block',
+        ]
+        
+        keys_str = " ".join(keys)
+        keys_lower = keys_str.lower()
+        
+        sdxl_score = sum(1 for p in sdxl_patterns if p in keys_lower)
+        sd15_score = sum(1 for p in sd15_patterns if p in keys_lower)
+        
+        # 检查是否有 SDXL 特有的维度前缀
+        has_sdxl_dim = any(k.startswith('base_unet') or k.startswith('lora_te1') for k in keys)
+        has_sd15_dim = any(k.startswith('lora_unet') or k.startswith('lora_te') for k in keys)
+        
+        # ✅ 新增：检测是否同时包含两种特征（双兼容）
+        has_both_features = has_sdxl_dim and has_sd15_dim
+        has_both_patterns = (sdxl_score >= 2 and sd15_score >= 2)
+        
+        if has_both_features or has_both_patterns:
+            return 'both'  # 双兼容
+        
+        if has_sdxl_dim or (sdxl_score > sd15_score and sdxl_score >= 2):
+            return 'sdxl'
+        elif has_sd15_dim or (sd15_score > sdxl_score and sd15_score >= 2):
+            return 'sd15'
+        else:
+            # 尝试通过文件名判断
+            return 'unknown'
+        
+
+    # gui/app.py - ModelManager._load_lora 兼容性检查
+    # gui/app.py - ModelManager._load_lora 中的 BOTH 处理
+
+    def _load_lora(
+        self, 
+        pipe, 
+        lora_path: str, 
+        lora_weight: float, 
+        is_sdxl: bool,
+        skip_compatibility_check: bool = False
+    ) -> tuple:
+        """
+        加载 LoRA
         
         返回:
             (success: bool, is_compatible: bool, detected_type: str)
-            - success: 是否加载成功
-            - is_compatible: LoRA 是否与模型兼容
-            - detected_type: 检测到的 LoRA 类型 ('sd15', 'sdxl', 'unknown')
         """
         import safetensors.torch
         
@@ -303,39 +361,16 @@ class ModelManager:
             print(f"   📦 模型类型: {'SDXL' if is_sdxl else 'SD1.5'}")
 
             # ============================================================
-            # 步骤 1: 检测 LoRA 类型（通过读取文件内容）
+            # 步骤 1: 检测 LoRA 类型
             # ============================================================
             detected_type = 'unknown'
+            file_size_mb = os.path.getsize(lora_path) / (1024 * 1024)
+            lora_state_dict = None
+            
             try:
                 lora_state_dict = safetensors.torch.load_file(lora_path)
-                first_keys = list(lora_state_dict.keys())[:5]
-                print(f"   🔍 LoRA 层前缀: {[k.split('.')[0] for k in first_keys]}")
-                
-                # 判断 LoRA 类型
-                # SDXL LoRA 通常包含: base_unet, lora_te1, text_encoder
-                # SD1.5 LoRA 通常包含: lora_unet, lora_te
-                is_lora_sdxl = any(
-                    k.startswith('base_unet') or 
-                    k.startswith('lora_te1') or 
-                    k.startswith('text_encoder') or
-                    ('unet' in k and 'time_embedding' in k)
-                    for k in lora_state_dict.keys()
-                )
-                
-                # 进一步判断：检查是否有 SDXL 特有的 key
-                has_sdxl_keys = any(
-                    'mid_block' in k and ('time_embedding' in k or 'resnets' in k)
-                    for k in lora_state_dict.keys()
-                )
-                
-                if is_lora_sdxl or has_sdxl_keys:
-                    detected_type = 'sdxl'
-                else:
-                    # SD1.5 的 key 通常是 lora_unet_xxx 或 lora_te_xxx
-                    detected_type = 'sd15'
-                
+                detected_type = self._detect_lora_type(lora_state_dict)
                 print(f"   🏷️ 检测到 LoRA 类型: {detected_type.upper()}")
-                
             except Exception as e:
                 print(f"   ⚠️ 无法检测 LoRA 类型: {e}")
                 detected_type = 'unknown'
@@ -345,91 +380,133 @@ class ModelManager:
             # ============================================================
             is_compatible = True
             
-            if detected_type == 'sdxl' and not is_sdxl:
-                print(f"   ❌ 不兼容: LoRA 是 SDXL 格式，但当前模型是 SD1.5")
-                print(f"   💡 请将 {lora_name} 移动到 sdxl-lora 目录")
-                return False, False, detected_type
-            
-            elif detected_type == 'sd15' and is_sdxl:
-                print(f"   ❌ 不兼容: LoRA 是 SD1.5 格式，但当前模型是 SDXL")
-                print(f"   💡 请将 {lora_name} 移动到 sd15-lora 目录")
-                return False, False, detected_type
-            
-            elif detected_type == 'unknown':
-                print(f"   ⚠️ 无法确定 LoRA 类型，尝试加载...")
+            if not skip_compatibility_check:
+                if detected_type == 'both':
+                    print(f"   ✅ 双兼容 LoRA (支持 SD1.5 和 SDXL)")
+                    # 不返回 False，继续尝试加载
+                elif detected_type == 'sdxl' and not is_sdxl:
+                    print(f"   ❌ 不兼容: LoRA 是 SDXL 格式，但当前模型是 SD1.5")
+                    print(f"   💡 请将 {lora_name} 移动到 sdxl-lora 目录")
+                    return False, False, detected_type
+                elif detected_type == 'sd15' and is_sdxl:
+                    print(f"   ❌ 不兼容: LoRA 是 SD1.5 格式，但当前模型是 SDXL")
+                    print(f"   💡 请将 {lora_name} 移动到 sd15-lora 目录")
+                    return False, False, detected_type
+                elif detected_type == 'unknown':
+                    print(f"   ⚠️ 无法确定 LoRA 类型，尝试加载...")
 
             # ============================================================
-            # 步骤 3: 尝试加载 LoRA（多种方法）
+            # 步骤 3: 尝试加载 LoRA
             # ============================================================
             
-            # 方法 1: 使用 load_lora_weights + adapter_name (推荐)
+            # ✅ 对于 BOTH 类型，先尝试用 safetensors 手动加载
+            # 这是因为 diffusers 的 load_lora_weights 可能无法正确处理混合格式
+            if detected_type == 'both':
+                try:
+                    if lora_state_dict is None:
+                        lora_state_dict = safetensors.torch.load_file(lora_path)
+                    
+                    # ✅ 关键：对于 BOTH 类型，直接使用 load_lora_weights 传入 state_dict
+                    # 让 diffusers 自己判断哪些 key 可以加载
+                    pipe.load_lora_weights(lora_state_dict)
+                    
+                    # 如果成功，设置权重
+                    if lora_weight != 1.0:
+                        try:
+                            if hasattr(pipe, 'set_adapters'):
+                                pipe.set_adapters(["default"], adapter_weights=[lora_weight])
+                        except:
+                            pass
+                    
+                    print(f"   ✅ BOTH LoRA 加载成功 (直接加载 state_dict)")
+                    return True, is_compatible, detected_type
+                except Exception as e:
+                    print(f"   ⚠️ 直接加载 state_dict 失败: {e}")
+                
+                # 方法 A: 尝试用当前模型类型加载（只加载匹配的 key）
+                try:
+                    if lora_state_dict is None:
+                        lora_state_dict = safetensors.torch.load_file(lora_path)
+                    
+                    # 过滤 key
+                    filtered_dict = {}
+                    for k, v in lora_state_dict.items():
+                        if not is_sdxl:
+                            # SD1.5: 只保留 lora_unet 和 lora_te
+                            if k.startswith('lora_unet') or k.startswith('lora_te'):
+                                filtered_dict[k] = v
+                        else:
+                            # SDXL: 只保留 base_unet 和 lora_te1
+                            if k.startswith('base_unet') or k.startswith('lora_te1'):
+                                filtered_dict[k] = v
+                    
+                    if filtered_dict:
+                        print(f"   🔧 手动加载 {len(filtered_dict)} 个匹配的权重")
+                        pipe.load_lora_weights(filtered_dict)
+                        print(f"   ✅ BOTH LoRA 加载成功 (手动过滤)")
+                        return True, is_compatible, detected_type
+                    else:
+                        print(f"   ⚠️ 没有找到匹配的权重，尝试其他方法...")
+                except Exception as e2:
+                    print(f"   ⚠️ 手动过滤加载失败: {e2}")
+
+            # ============================================================
+            # 普通 LoRA 加载（原有逻辑）
+            # ============================================================
+            
+            # 方法 1: load_lora_weights + adapter_name
             try:
                 pipe.load_lora_weights(lora_path, adapter_name="lora_adapter")
                 pipe.set_adapters(["lora_adapter"], adapter_weights=[lora_weight])
-                print(f"   ✅ LoRA 加载成功 (方法1: load_lora_weights + adapter_name)")
+                print(f"   ✅ LoRA 加载成功 (方法1)")
                 return True, is_compatible, detected_type
             except Exception as e:
                 print(f"   ⚠️ 方法1 失败: {e}")
 
-            # 方法 2: 使用 load_lora_weights (不加 adapter_name)
+            # 方法 2: load_lora_weights (无 adapter_name)
             try:
                 pipe.load_lora_weights(lora_path)
-                if lora_weight != 1.0 and hasattr(pipe, 'lora_weights'):
-                    for key in pipe.lora_weights.keys():
-                        pipe.lora_weights[key] = lora_weight
-                print(f"   ✅ LoRA 加载成功 (方法2: load_lora_weights 无 adapter_name)")
+                if lora_weight != 1.0:
+                    try:
+                        if hasattr(pipe, 'set_adapters'):
+                            pipe.set_adapters(["default"], adapter_weights=[lora_weight])
+                    except:
+                        pass
+                print(f"   ✅ LoRA 加载成功 (方法2)")
                 return True, is_compatible, detected_type
             except Exception as e:
                 print(f"   ⚠️ 方法2 失败: {e}")
 
-            # 方法 3: SDXL 专用 - 使用 fuse_lora
+            # 方法 3: 使用 safetensors state_dict 直接加载（所有类型通用）
+            try:
+                if lora_state_dict is None:
+                    lora_state_dict = safetensors.torch.load_file(lora_path)
+                
+                # ✅ 直接使用 state_dict，让 diffusers 自动适配
+                pipe.load_lora_weights(lora_state_dict)
+                
+                if lora_weight != 1.0:
+                    try:
+                        if hasattr(pipe, 'set_adapters'):
+                            pipe.set_adapters(["default"], adapter_weights=[lora_weight])
+                    except:
+                        pass
+                
+                print(f"   ✅ LoRA 加载成功 (方法3: state_dict)")
+                return True, is_compatible, detected_type
+            except Exception as e:
+                print(f"   ⚠️ 方法3 (state_dict) 失败: {e}")
+
+            # 方法 4: SDXL 专用 - fuse_lora
             if is_sdxl:
                 try:
                     pipe.load_lora_weights(lora_path)
                     pipe.fuse_lora(lora_weight)
-                    print(f"   ✅ LoRA 加载成功 (方法3: fuse_lora, 权重 {lora_weight})")
+                    print(f"   ✅ LoRA 加载成功 (方法4: fuse_lora)")
                     return True, is_compatible, detected_type
                 except Exception as e:
-                    print(f"   ⚠️ 方法3 (fuse_lora) 失败: {e}")
+                    print(f"   ⚠️ 方法4 (fuse_lora) 失败: {e}")
 
-                try:
-                    from diffusers.loaders import LoraLoaderMixin
-                    pipe = LoraLoaderMixin.load_lora_weights(pipe, lora_path)
-                    print(f"   ✅ LoRA 加载成功 (方法3备用: LoraLoaderMixin)")
-                    return True, is_compatible, detected_type
-                except Exception as e:
-                    print(f"   ⚠️ 方法3备用 失败: {e}")
-
-            # 方法 4: 使用 peft (需要 pip install peft)
-            try:
-                from peft import PeftModel
-                pipe.unet.load_adapter(lora_path, adapter_name="lora")
-                pipe.unet.set_adapter("lora")
-                if lora_weight != 1.0:
-                    pipe.unet.set_adapters(["lora"], adapter_weights=[lora_weight])
-                print(f"   ✅ LoRA 加载成功 (方法4: peft)")
-                return True, is_compatible, detected_type
-            except ImportError:
-                print(f"   ⚠️ peft 未安装，跳过方法4")
-            except Exception as e:
-                print(f"   ⚠️ 方法4 (peft) 失败: {e}")
-
-            # 方法 5: 手动加载 .safetensors 权重 (最后手段)
-            try:
-                if 'lora_state_dict' not in locals():
-                    lora_state_dict = safetensors.torch.load_file(lora_path)
-                
-                pipe.load_lora_weights(lora_state_dict)
-                if lora_weight != 1.0 and hasattr(pipe, 'lora_weights'):
-                    for key in pipe.lora_weights.keys():
-                        pipe.lora_weights[key] = lora_weight
-                print(f"   ✅ LoRA 加载成功 (方法5: 手动加载)")
-                return True, is_compatible, detected_type
-                
-            except Exception as e:
-                print(f"   ⚠️ 方法5 (手动加载) 失败: {e}")
-
-            # ===== 所有方法都失败 =====
             print(f"   ❌ 所有 LoRA 加载方法均失败")
             return False, is_compatible, detected_type
 
@@ -440,6 +517,68 @@ class ModelManager:
             return False, False, 'unknown'
         
 
+  
+    def load_lora_to_existing_pipe(
+        self, 
+        lora_path: str, 
+        lora_weight: float = 1.0
+    ) -> tuple:
+        """
+        直接加载 LoRA 到现有的 pipe（无需重新加载主模型）
+        
+        返回:
+            (success: bool, message: str)
+        """
+        if not self.is_sd_loaded or self._sd_pipe is None:
+            return False, "主模型未加载"
+        
+        if not lora_path or not os.path.exists(lora_path):
+            return False, f"LoRA 文件不存在: {lora_path}"
+        
+        is_sdxl = self._sd_model_type == "sdxl"
+        
+        success, is_compatible, detected_type = self._load_lora(
+            self._sd_pipe, 
+            lora_path, 
+            lora_weight, 
+            is_sdxl
+        )
+        
+        if success:
+            self._loaded_lora_path = lora_path
+            self._loaded_lora_type = detected_type
+            self._loaded_lora_compatible = is_compatible
+            return True, f"LoRA 加载成功 ({detected_type.upper()})"
+        else:
+            return False, f"LoRA 加载失败"
+    
+    def unload_lora_from_pipe(self) -> bool:
+        """从当前 pipe 卸载 LoRA（不重新加载主模型）"""
+        if not self.is_sd_loaded or self._sd_pipe is None:
+            return False
+        
+        try:
+            # 尝试卸载 LoRA
+            if hasattr(self._sd_pipe, 'unload_lora_weights'):
+                self._sd_pipe.unload_lora_weights()
+                self._loaded_lora_path = None
+                self._loaded_lora_type = None
+                self._loaded_lora_compatible = True
+                print("   ✅ LoRA 已从 pipe 卸载")
+                return True
+            
+            # 如果 unload_lora_weights 不可用，尝试清除 adapter
+            if hasattr(self._sd_pipe, 'set_adapters'):
+                self._sd_pipe.set_adapters([])
+                self._loaded_lora_path = None
+                print("   ✅ LoRA adapter 已清除")
+                return True
+                
+        except Exception as e:
+            print(f"   ⚠️ LoRA 卸载失败: {e}")
+        
+        return False
+        
     def load_janus(self, model_key: str = "1B", progress_callback=None) -> bool:
         """加载 Janus 模型，自动卸载 SD"""
         with self._lock:
@@ -653,6 +792,8 @@ class SDApp:
         self._current_lora_path = None  # 记录当前加载的 LoRA 路径
         self._sd_model_type = None      # ✅ 新增：记录模型类型
     
+    # gui/app.py - 修复 _setup_ui 方法
+
     def _setup_ui(self):
         main_canvas = tk.Canvas(self.root)
         scrollbar = ttk.Scrollbar(self.root, orient="vertical", command=main_canvas.yview)
@@ -714,7 +855,7 @@ class SDApp:
         ttk.Label(model_frame, text="📦 SD 模型:").pack(side=tk.LEFT, padx=5)
         
         self.model_var = tk.StringVar()
-        self.model_combo = ttk.Combobox(model_frame, textvariable=self.model_var, width=45)  # ✅ 固定宽度
+        self.model_combo = ttk.Combobox(model_frame, textvariable=self.model_var, width=45)
         self.model_combo.pack(side=tk.LEFT, padx=5)
         
         self.load_btn = ttk.Button(model_frame, text="加载 SD", command=self._load_sd_model)
@@ -723,14 +864,14 @@ class SDApp:
         self.reload_btn = ttk.Button(model_frame, text="🔄 重载模块", command=self._reload_modules)
         self.reload_btn.pack(side=tk.LEFT, padx=2)
 
-        # ===== LoRA 选择 =====
+        # ===== LoRA 选择（优化版） =====
         lora_frame = ttk.Frame(main_frame)
         lora_frame.pack(fill=tk.X, pady=2, padx=5)
         
         ttk.Label(lora_frame, text="🔗 LoRA 模型:").pack(side=tk.LEFT, padx=5)
         
         self.lora_var = tk.StringVar(value="")
-        self.lora_combo = ttk.Combobox(lora_frame, textvariable=self.lora_var, width=45)  # ✅ 固定宽度
+        self.lora_combo = ttk.Combobox(lora_frame, textvariable=self.lora_var, width=45)
         self.lora_combo.pack(side=tk.LEFT, padx=5)
         
         ttk.Label(lora_frame, text="权重:").pack(side=tk.LEFT, padx=5)
@@ -744,10 +885,16 @@ class SDApp:
             width=6
         )
         self.lora_weight_spinbox.pack(side=tk.LEFT, padx=2)
-
-
-
-        # ✅ 按钮放在右侧
+        
+        # ✅ 模型类型提示标签
+        self.lora_model_type_label = ttk.Label(
+            lora_frame,
+            text="",
+            foreground="gray",
+            font=("", 8)
+        )
+        self.lora_model_type_label.pack(side=tk.LEFT, padx=5)
+        
         btn_container = ttk.Frame(lora_frame)
         btn_container.pack(side=tk.LEFT, padx=5)
         
@@ -759,6 +906,12 @@ class SDApp:
         
         self.clear_lora_btn = ttk.Button(btn_container, text="✖ 清除", command=self._clear_lora, width=8)
         self.clear_lora_btn.pack(side=tk.LEFT, padx=2)
+        
+        # ===== LoRA 信息查看器面板 =====
+        from gui.components.lora_info_viewer import LoraInfoViewer
+        
+        self.lora_info_viewer = LoraInfoViewer(main_frame, self)
+        self.lora_info_viewer.get_frame().pack(fill=tk.X, padx=10, pady=5)
 
         # ===== VAE 选择 =====
         vae_frame = ttk.Frame(main_frame)
@@ -767,7 +920,6 @@ class SDApp:
         ttk.Label(vae_frame, text="🎨 VAE 模型:").pack(side=tk.LEFT, padx=5)
         
         self.vae_var = tk.StringVar(value="")
-        # ✅ 限制宽度
         self.vae_combo = ttk.Combobox(vae_frame, textvariable=self.vae_var, width=45)
         self.vae_combo.pack(side=tk.LEFT, padx=5)
         
@@ -776,7 +928,7 @@ class SDApp:
         
         ttk.Button(vae_btn_container, text="📦 加载 VAE", command=self._load_vae, width=12).pack(side=tk.LEFT, padx=2)
         ttk.Button(vae_btn_container, text="🗑️ 卸载 VAE", command=self._unload_vae, width=12).pack(side=tk.LEFT, padx=2)
-        ttk.Button(vae_btn_container, text="✖ 清除 VAE", command=self._clear_vae, width=12).pack(side=tk.LEFT, padx=2)        
+        ttk.Button(vae_btn_container, text="✖ 清除 VAE", command=self._clear_vae, width=12).pack(side=tk.LEFT, padx=2)
             
         # ===== 状态信息 =====
         opt_info = self._get_optimization_info()
@@ -787,16 +939,11 @@ class SDApp:
         self.params_panel.create_widgets(main_frame)
         self.params_panel.get_frame().pack(fill=tk.X, padx=10, pady=5)
 
-        # ════════════════════════════════════════════════════════════
-        # ║  【在这里添加 NSFW 控制面板】                           ║
-        # ║  位置：参数面板之后，标签页之前                        ║
-        # ════════════════════════════════════════════════════════════
-        
         # ===== NSFW 控制面板 =====
         from gui.components.nsfw_panel import NSFWPanel
         self.nsfw_panel = NSFWPanel(main_frame, self)
         self.nsfw_panel.get_frame().pack(fill=tk.X, padx=10, pady=5)
-    
+
         # ===== 标签页 =====
         notebook = ttk.Notebook(main_frame)
         notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
@@ -804,34 +951,29 @@ class SDApp:
         
         self._create_tabs()
         
-        # ===== 批量面板 =====
-        #self.batch_panel = BatchPanel(main_frame, self)
-        #self.batch_panel.get_frame().pack(fill=tk.X, padx=10, pady=5)
-        #self.batch_panel.set_start_callback(self._on_batch_start)
-        
         # ===== 进度条和预览 =====
         self.progress_bar.create_widgets(main_frame)
         self.image_preview.create_widgets(main_frame)
         
-        # 扫描模型
+        # ===== 扫描模型 =====
         self.checkpoints, self.checkpoint_paths = self._scan_checkpoints()
         self.model_combo['values'] = self.checkpoints
         if self.checkpoints:
             self.model_var.set(self.checkpoints[0])
 
-
-        # ✅ 扫描 LoRA
-        self.lora_files, self.lora_paths = self._scan_loras()
+        # ✅ 扫描 LoRA（只调用一次，接收 3 个返回值）
+        self.lora_files, self.lora_paths, self.lora_types = self._scan_loras()
         self.lora_combo['values'] = self.lora_files
         if self.lora_files:
-            self.lora_var.set("")  # 默认不选择
+            self.lora_var.set("")
+            self._update_lora_status()
 
         # ✅ 扫描 VAE
         self.vae_files, self.vae_paths = self._scan_vaes()
         self.vae_combo['values'] = self.vae_files
         if self.vae_files:
-            self.vae_var.set("")  # 默认不选择
-    
+            self.vae_var.set("")
+
         self._update_model_ui()
     
     def _update_model_ui(self):
@@ -967,48 +1109,6 @@ class SDApp:
         threading.Thread(target=load_thread, daemon=True).start()
 
 
-
-    def _on_load_sd_complete(self, success: bool):
-        self.load_btn.config(state=tk.NORMAL)
-        self._update_model_ui()
-        
-        if success:
-            mem_gb = self._get_memory_usage()
-            model_type = self.model_manager.get_sd_model_type()
-            self.update_status(f"✅ SD 模型加载完成 ({model_type.upper()}, 内存: {mem_gb:.1f} GB)")
-            self.update_progress(1.0, "✅ SD 模型就绪")
-            
-            # ✅ 显示 LoRA 状态
-            lora_status = self.model_manager.get_lora_status()
-            if lora_status["loaded"]:
-                lora_name = os.path.basename(lora_status["path"])
-                lora_type = lora_status["type"] or "unknown"
-                
-                if lora_status["compatible"]:
-                    self.update_status(f"✅ SD 模型加载完成 | 🔗 LoRA: {lora_name} ({lora_type.upper()})")
-                else:
-                    self.update_status(f"⚠️ LoRA 不兼容 ({lora_name})，已跳过")
-                    # 弹窗提示
-                    expected = "SDXL" if model_type == "sdxl" else "SD1.5"
-                    messagebox.showwarning(
-                        "LoRA 不兼容",
-                        f"LoRA 与当前模型不兼容\n\n"
-                        f"当前模型: {model_type.upper()}\n"
-                        f"LoRA 类型: {lora_type.upper()}\n\n"
-                        f"请将 LoRA 移动到正确的目录:\n"
-                        f"• {expected} LoRA → {'sdxl-lora' if model_type == 'sdxl' else 'sd15-lora'}"
-                    )
-            
-            # ✅ 更新 LoRA 状态
-            self._update_lora_status()
-
-            # ✅ VAE 加载状态（如果之前选过 VAE，自动加载）
-            if hasattr(self, 'vae_var') and self.vae_var.get():
-                self._load_vae()            
-        else:
-            self.update_status("❌ SD 模型加载失败")
-            messagebox.showerror("错误", "SD 模型加载失败，请查看控制台输出")
-        
     def _auto_load_model(self):
         if self.checkpoints:
             first_model = self.checkpoints[0]
@@ -1018,27 +1118,129 @@ class SDApp:
         else:
             self.update_status("⚠️ 未找到模型文件，请检查模型目录")
 
+    # gui/app.py - 修改 _scan_loras 方法
+
     def _scan_loras(self):
-        """扫描所有 LoRA 文件"""
+        """
+        扫描所有 LoRA 文件（区分 SD1.5 和 SDXL）
+        
+        返回:
+            (lora_files, lora_paths, lora_types)
+            - lora_files: 显示名称列表
+            - lora_paths: 路径映射 {显示名称: 文件路径}
+            - lora_types: 类型映射 {显示名称: 'sd15' 或 'sdxl'}
+        """
         lora_files = []
         lora_paths = {}
+        lora_types = {}
         
-        for search_dir in app_config.paths.lora_base_paths:
+        # 使用配置中的 LoRA 路径
+        from config.app_config import app_config
+        
+        # 获取 SD1.5 和 SDXL 的 LoRA 路径
+        sd15_paths = app_config.paths.get_resolved_sd15_lora_paths()
+        sdxl_paths = app_config.paths.get_resolved_sdxl_lora_paths()
+        
+        # 如果没有配置单独的路径，使用默认的 lora_base_paths
+        if not sd15_paths and not sdxl_paths:
+            for search_dir in app_config.paths.get_resolved_lora_paths():
+                if not os.path.exists(search_dir):
+                    continue
+                # 根据目录名判断类型
+                dir_name = os.path.basename(search_dir).lower()
+                if 'sdxl' in dir_name:
+                    sdxl_paths.append(search_dir)
+                else:
+                    sd15_paths.append(search_dir)
+        
+        # 扫描 SD1.5 LoRA 目录
+        for search_dir in sd15_paths:
             if not os.path.exists(search_dir):
                 continue
             for item in os.listdir(search_dir):
                 if item.endswith('.safetensors'):
                     file_path = os.path.join(search_dir, item)
                     size_mb = os.path.getsize(file_path) // (1024 * 1024)
-                    display_name = f"{item} ({size_mb}MB)"
-                    lora_files.append(display_name)
-                    lora_paths[display_name] = file_path
+                    display_name = f"🟢 [SD1.5] {item} ({size_mb}MB)"
+                    
+                    # 确保唯一性
+                    if display_name not in lora_paths:
+                        lora_files.append(display_name)
+                        lora_paths[display_name] = file_path
+                        lora_types[display_name] = 'sd15'
         
-        return lora_files, lora_paths
+        # 扫描 SDXL LoRA 目录
+        for search_dir in sdxl_paths:
+            if not os.path.exists(search_dir):
+                continue
+            for item in os.listdir(search_dir):
+                if item.endswith('.safetensors'):
+                    file_path = os.path.join(search_dir, item)
+                    size_mb = os.path.getsize(file_path) // (1024 * 1024)
+                    display_name = f"🔵 [SDXL] {item} ({size_mb}MB)"
+                    
+                    # 确保唯一性
+                    if display_name not in lora_paths:
+                        lora_files.append(display_name)
+                        lora_paths[display_name] = file_path
+                        lora_types[display_name] = 'sdxl'
+        
+        # 按类型排序（SD1.5 在前）
+        lora_files.sort(key=lambda x: 0 if '[SD1.5]' in x else 1)
+        
+        return lora_files, lora_paths, lora_types
 
 
+    # gui/app.py - 修复 _update_lora_list 方法
+
+    def _update_lora_list(self):
+        """根据当前模型类型更新 LoRA 下拉列表"""
+        if not hasattr(self, 'lora_files') or not self.lora_files:
+            return
+        
+        if not self.model_manager.is_sd_loaded:
+            self.lora_combo['values'] = self.lora_files
+            if self.lora_files:
+                current = self.lora_var.get()
+                if current not in self.lora_files:
+                    self.lora_var.set(self.lora_files[0])
+            # ✅ 同步 LoRA 信息查看器
+            self._refresh_lora_viewer()
+            return
+        
+        model_type = self.model_manager.get_sd_model_type()
+        if model_type == "sdxl":
+            filtered = [f for f in self.lora_files if "[SDXL]" in f]
+        else:
+            filtered = [f for f in self.lora_files if "[SD1.5]" in f]
+        
+        self.lora_combo['values'] = filtered
+        
+        current = self.lora_var.get()
+        if current and current not in filtered:
+            if filtered:
+                self.lora_var.set(filtered[0])
+            else:
+                self.lora_var.set("")
+                self.lora_combo.set("")
+        
+        if hasattr(self, 'lora_model_type_label'):
+            if filtered:
+                self.lora_model_type_label.config(
+                    text=f"✅ 显示 {len(filtered)} 个 {model_type.upper()} LoRA",
+                    foreground="green"
+                )
+            else:
+                self.lora_model_type_label.config(
+                    text=f"⚠️ 没有找到 {model_type.upper()} LoRA",
+                    foreground="orange"
+                )
+        
+        # ✅ 同步 LoRA 信息查看器
+        self._refresh_lora_viewer()
+            
     def _load_lora_from_ui(self):
-        """加载选中的 LoRA - 直接重新加载主模型"""
+        """加载选中的 LoRA - 优化版"""
         lora_display = self.lora_var.get()
         if not lora_display:
             messagebox.showwarning("提示", "请先选择 LoRA 模型")
@@ -1055,14 +1257,41 @@ class SDApp:
         
         lora_path = self.lora_paths[lora_display]
         lora_weight = self.lora_weight_var.get()
+        lora_type = self.lora_types.get(lora_display, 'unknown')
+        current_model_type = self.model_manager.get_sd_model_type()
+        
+        # ✅ 检查兼容性（提前提示）
+        if lora_type != 'unknown' and lora_type != current_model_type:
+            if not messagebox.askyesno(
+                "LoRA 类型不匹配",
+                f"当前模型是 {current_model_type.upper()}，\n"
+                f"但 LoRA 标记为 {lora_type.upper()}。\n\n"
+                f"这可能导致生成失败或效果不佳。\n"
+                f"是否继续尝试加载？"
+            ):
+                return
         
         self.update_status(f"🔗 正在加载 LoRA: {lora_display}...")
         self.load_lora_btn.config(state=tk.DISABLED)
         
         app = self
-
+        
         def load_thread():
             try:
+                # ✅ 先尝试直接加载到现有 pipe
+                success, msg = app.model_manager.load_lora_to_existing_pipe(
+                    lora_path, lora_weight
+                )
+                
+                if success:
+                    app._current_lora_path = lora_path
+                    app.root.after(0, lambda: app._on_lora_load_success(lora_display))
+                    return
+                
+                # 如果直接加载失败，尝试重新加载主模型
+                print(f"   ⚠️ 直接加载失败: {msg}")
+                print(f"   🔄 尝试重新加载主模型...")
+                
                 model_name = self.model_var.get()
                 model_path = self._get_model_path(model_name)
                 
@@ -1073,7 +1302,6 @@ class SDApp:
                 def progress_cb(value, msg):
                     app.root.after(0, lambda: app.update_progress(value, msg))
                 
-                # ✅ 直接重新加载主模型，带上 LoRA
                 success = app.model_manager.load_sd(
                     model_path, model_name, progress_cb,
                     lora_path=lora_path,
@@ -1115,11 +1343,24 @@ class SDApp:
         messagebox.showerror("错误", f"LoRA 加载失败:\n{error}")
 
     def _unload_lora(self):
-        """卸载 LoRA（重新加载主模型，不带 LoRA）"""
+        """卸载 LoRA - 优化版（尝试不重新加载主模型）"""
         if not self.model_manager.is_sd_loaded:
             return
         
-        if not messagebox.askyesno("确认卸载", "卸载 LoRA 将重新加载主模型，确定吗？"):
+        # ✅ 先尝试从现有 pipe 卸载
+        if self.model_manager.unload_lora_from_pipe():
+            self._current_lora_path = None
+            self.lora_var.set("")
+            self.lora_weight_var.set(1.0)
+            self.unload_lora_btn.config(state=tk.DISABLED)
+            self.update_status("✅ LoRA 已卸载")
+            return
+        
+        # 如果卸载失败，询问是否重新加载主模型
+        if not messagebox.askyesno("确认卸载", 
+            "无法直接卸载 LoRA，需要重新加载主模型。\n\n"
+            "确定要继续吗？"
+        ):
             return
         
         self.update_status("🔄 正在卸载 LoRA...")
@@ -1139,7 +1380,6 @@ class SDApp:
                 def progress_cb(value, msg):
                     app.root.after(0, lambda: app.update_progress(value, msg))
                 
-                # ✅ 重新加载时不带 LoRA
                 success = app.model_manager.load_sd(
                     model_path, model_name, progress_cb,
                     lora_path=None, lora_weight=1.0
@@ -1150,15 +1390,51 @@ class SDApp:
         else:
             self.unload_lora_btn.config(state=tk.NORMAL)
             
-    def _on_lora_unload_complete(self, success):
-        """LoRA 卸载完成"""
-        self.unload_lora_btn.config(state=tk.DISABLED)
-        self.load_lora_btn.config(state=tk.NORMAL)
+    # gui/app.py - 修复 _on_load_sd_complete 方法
+
+    def _on_load_sd_complete(self, success: bool):
+        """SD 模型加载完成回调 - 优化版"""
+        self.load_btn.config(state=tk.NORMAL)
+        self._update_model_ui()
         
         if success:
-            self.update_status("✅ LoRA 已卸载")
+            mem_gb = self._get_memory_usage()
+            model_type = self.model_manager.get_sd_model_type()
+            self.update_status(f"✅ SD 模型加载完成 ({model_type.upper()}, 内存: {mem_gb:.1f} GB)")
+            self.update_progress(1.0, "✅ SD 模型就绪")
+            
+            # ✅ 更新 LoRA 列表（根据模型类型过滤）
+            self._update_lora_list()
+            
+            # ✅ 显示 LoRA 状态
+            lora_status = self.model_manager.get_lora_status()
+            if lora_status["loaded"]:
+                lora_name = os.path.basename(lora_status["path"])
+                lora_type = lora_status["type"] or "unknown"
+                
+                if lora_status["compatible"]:
+                    self.update_status(f"✅ SD 模型加载完成 | 🔗 LoRA: {lora_name} ({lora_type.upper()})")
+                else:
+                    self.update_status(f"⚠️ LoRA 不兼容 ({lora_name})，已跳过")
+                    expected = "SDXL" if model_type == "sdxl" else "SD1.5"
+                    messagebox.showwarning(
+                        "LoRA 不兼容",
+                        f"LoRA 与当前模型不兼容\n\n"
+                        f"当前模型: {model_type.upper()}\n"
+                        f"LoRA 类型: {lora_type.upper()}\n\n"
+                        f"请将 LoRA 移动到正确的目录:\n"
+                        f"• {expected} LoRA → {'sdxl-lora' if model_type == 'sdxl' else 'sd15-lora'}"
+                    )
+            
+            # ✅ 更新 LoRA 状态
+            self._update_lora_status()
+            
+            # ✅ VAE 加载状态
+            if hasattr(self, 'vae_var') and self.vae_var.get():
+                self._load_vae()
         else:
-            self.update_status("❌ LoRA 卸载失败")
+            self.update_status("❌ SD 模型加载失败")
+            messagebox.showerror("错误", "SD 模型加载失败，请查看控制台输出")
         
         
     def _clear_lora(self):
@@ -1500,6 +1776,7 @@ class SDApp:
             "gui.components.params_panel",
             "gui.components.batch_panel",
             "gui.components.nsfw_panel", 
+            "gui.components.lora_info_viewer",  # ✅ 新增 LoRA 信息查看器
             
             # ===== GUI 标签页 =====
             "gui.tabs.base_tab",
@@ -1655,6 +1932,11 @@ class SDApp:
         self.update_status(f"✅ 热重载完成！已重载 {len(reloaded)} 个模块")
 
 
+    def _refresh_lora_viewer(self):
+        """刷新 LoRA 信息查看器的列表"""
+        if hasattr(self, 'lora_info_viewer') and self.lora_info_viewer:
+            self.lora_info_viewer._refresh_list()
+        
     # gui/app.py - 新增方法
 
     def _recreate_nsfw_panel(self):

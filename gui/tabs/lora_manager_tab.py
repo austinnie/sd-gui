@@ -19,7 +19,7 @@ import gc
 
 from .base_tab import BaseTab
 from gui.components.memory_monitor import force_memory_cleanup
-
+from gui.components import LoraInfoViewer
 
 class LoraManagerTab(BaseTab):
     """LoRA 管理标签页"""
@@ -292,10 +292,7 @@ class LoraManagerTab(BaseTab):
         # ===== 测试模式 (核心：用户选择要测试的维度) =====
         mode_frame = ttk.LabelFrame(frame, text="🔧 测试模式 (选择要测试的维度)", padding=5)
         mode_frame.grid(row=row, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=5, padx=5)
-        row += 1
-
-
-                
+        row += 1               
         
         # 第一行：基础模式
         mode_row1 = ttk.Frame(mode_frame)
@@ -432,7 +429,6 @@ class LoraManagerTab(BaseTab):
         
         row += 1
 
-
         # ===== 测试范围（新增） =====
         scope_frame = ttk.LabelFrame(frame, text="🎯 测试范围", padding=5)
         scope_frame.grid(row=row, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=5, padx=5)
@@ -481,7 +477,15 @@ class LoraManagerTab(BaseTab):
         self.scope_status_label.pack(side=tk.LEFT, padx=15)
 
         row += 1
-        
+
+        # ===== 【新增】LoRA 信息查看器 =====
+        self.lora_info_viewer = LoraInfoViewer(frame, self.app)
+        self.lora_info_viewer.get_frame().grid(
+            row=row, column=0, columnspan=4, 
+            sticky=(tk.W, tk.E), pady=10, padx=5
+        )
+        row += 1
+    
         # ===== 操作按钮 =====
         btn_frame = ttk.Frame(frame)
         btn_frame.grid(row=row, column=0, columnspan=4, pady=10)

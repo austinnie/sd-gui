@@ -43,6 +43,10 @@ class PathsConfig:
     janus_model_path: str = "./models/janus-pro-7b"
     janus_model_1b_path: str = "./models/janus-pro-1b"
     janus_model_7b_path: str = "./models/janus-pro-7b"
+
+    # ✅ 新增：LoRA 类型路径映射
+    _resolved_sd15_lora_paths: list = field(default_factory=list, repr=False)
+    _resolved_sdxl_lora_paths: list = field(default_factory=list, repr=False)
     
     # 解析后的绝对路径（运行时计算）
     _resolved_model_base_paths: list = field(default_factory=list, repr=False)
@@ -67,6 +71,24 @@ class PathsConfig:
         resolved_output = resolve_path(data.get("output_dir", "./output"), base_dir)
         resolved_janus_1b = resolve_path(data.get("janus_model_1b_path", "./models/janus-pro-1b"), base_dir)
         resolved_janus_7b = resolve_path(data.get("janus_model_7b_path", "./models/janus-pro-7b"), base_dir)
+
+        # ✅ 解析 SD1.5 和 SDXL 的 LoRA 路径
+        sd15_lora_paths = data.get("sd15_lora_paths", [])
+        sdxl_lora_paths = data.get("sdxl_lora_paths", [])
+        
+        # 如果没有单独配置，从 lora_base_paths 中推断
+        if not sd15_lora_paths and not sdxl_lora_paths:
+            for p in resolved_lora_paths:
+                if "sd15" in p.lower() or "sd-1.5" in p.lower():
+                    sd15_lora_paths.append(p)
+                elif "sdxl" in p.lower():
+                    sdxl_lora_paths.append(p)
+                else:
+                    # 默认全部当作 SD1.5
+                    sd15_lora_paths.append(p)
+        
+        resolved_sd15 = [resolve_path(p, base_dir) for p in sd15_lora_paths]
+        resolved_sdxl = [resolve_path(p, base_dir) for p in sdxl_lora_paths]
         
         # 创建实例，同时保存解析后的路径
         instance = cls(
@@ -84,6 +106,8 @@ class PathsConfig:
         instance._resolved_output_dir = resolved_output
         instance._resolved_janus_1b_path = resolved_janus_1b
         instance._resolved_janus_7b_path = resolved_janus_7b
+        instance._resolved_sd15_lora_paths = resolved_sd15
+        instance._resolved_sdxl_lora_paths = resolved_sdxl        
         
         return instance
     
@@ -106,6 +130,21 @@ class PathsConfig:
     def get_resolved_janus_7b_path(self) -> str:
         """获取解析后的 Janus 7B 模型路径"""
         return self._resolved_janus_7b_path
+
+    def get_resolved_sd15_lora_paths(self) -> list:
+        """获取解析后的 SD1.5 LoRA 路径列表"""
+        return self._resolved_sd15_lora_paths
+    
+    def get_resolved_sdxl_lora_paths(self) -> list:
+        """获取解析后的 SDXL LoRA 路径列表"""
+        return self._resolved_sdxl_lora_paths
+    
+    def get_lora_paths_by_type(self, model_type: str) -> list:
+        """根据模型类型获取对应的 LoRA 路径列表"""
+        if model_type == "sdxl":
+            return self._resolved_sdxl_lora_paths
+        else:
+            return self._resolved_sd15_lora_paths        
 
 @dataclass
 class GenerationConfig:
