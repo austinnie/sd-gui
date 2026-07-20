@@ -118,7 +118,7 @@ class Img2ImgTab(BaseTab):
         self.params = self.app.params_panel
     
         self.img_paths_var = tk.StringVar(value="")
-        self.strength_var = tk.DoubleVar(value=0.15)
+        self.strength_var = tk.DoubleVar(value=0.35)
         self.per_image_var = tk.IntVar(value=1)  # 图生图特有：每张图片生成几个变体
         self.size_var = tk.StringVar(value="自动(保持比例)")
         
@@ -131,14 +131,43 @@ class Img2ImgTab(BaseTab):
         self.is_generating = False
         
         self.use_inpaint_var = tk.BooleanVar(value=False)  # 是否使用局部重绘
-        self.use_controlnet_var = tk.BooleanVar(value=False) 
+        self.use_controlnet_var = tk.BooleanVar(value=True) 
+        # ✅ 添加多层 ControlNet 组合变量
+        self.controlnet_combo_var = tk.StringVar(value="姿态+边缘+深度")
+    
         self.mask_image = None  # 存放用户涂抹的遮罩
         
         # ✅ 新增：图片选择模式
         self.image_mode_var = tk.StringVar(value="single")  # single, multiple, directory
         self.selected_images = []
         self.batch_prompts = []    
-    
+        
+    def _auto_adjust_strength(self, image_path):
+        """根据图片内容自动调整强度"""
+        try:
+            from PIL import Image
+            import cv2
+            import numpy as np
+            
+            img = cv2.imread(image_path)
+            h, w = img.shape[:2]
+            
+            # 检测人脸
+            face_cascade = cv2.CascadeClassifier(
+                cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+            )
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            faces = face_cascade.detectMultiScale(gray, 1.1, 5, minSize=(50, 50))
+            
+            if len(faces) > 0:
+                # 有人脸 → 低强度保护面部
+                return 0.30
+            else:
+                # 无检测到人脸 → 中等强度
+                return 0.45
+        except:
+            return 0.35  # 默认值
+        
     def setup_ui(self):
         frame = self.frame
         row = 0
@@ -280,26 +309,31 @@ class Img2ImgTab(BaseTab):
         ).pack(side=tk.LEFT, padx=5)
 
         # --- 新增: ControlNet 控件 ---
+        # --- ControlNet 控件 ---
         controlnet_row = ttk.Frame(param_frame)
         controlnet_row.pack(fill=tk.X, pady=2)
-        
+
         ttk.Checkbutton(
             controlnet_row,
-            text="🧠 启用 ControlNet (姿态控制)",
+            text="🧠 启用 ControlNet",
             variable=self.use_controlnet_var,
-            command=self._on_controlnet_toggle  # ← 添加这行
+            command=self._on_controlnet_toggle
         ).pack(side=tk.LEFT, padx=5)
-        
-        # ✅ ControlNet 类型下拉选择
-        ttk.Label(controlnet_row, text="类型:").pack(side=tk.LEFT, padx=5)
 
-        from utils.controlnet_helper import get_controlnet_display_names
-        self.controlnet_type_var = tk.StringVar(value="openpose (OpenPose (姿态))")
+        # ✅ 多层 ControlNet 组合选择
+        from utils.controlnet_helper import get_recommended_multi_controlnet_combos
+
+        ttk.Label(controlnet_row, text="模式:").pack(side=tk.LEFT, padx=5)
+
+        # 获取推荐组合
+        combos = get_recommended_multi_controlnet_combos()
+        combo_names = list(combos.keys())
+
         self.controlnet_combo = ttk.Combobox(
             controlnet_row,
-            textvariable=self.controlnet_type_var,
-            values=get_controlnet_display_names(),
-            width=25,
+            textvariable=self.controlnet_combo_var,  # ✅ 使用正确的变量
+            values=combo_names,
+            width=18,
             state="readonly"
         )
         self.controlnet_combo.pack(side=tk.LEFT, padx=5)
@@ -307,14 +341,14 @@ class Img2ImgTab(BaseTab):
         # 提示标签
         self.controlnet_hint = ttk.Label(
             controlnet_row,
-            text="💡 锁定人体姿态",
+            text="💡 多层锁定：姿态+边缘+深度",
             foreground="gray",
             font=("", 8)
         )
         self.controlnet_hint.pack(side=tk.LEFT, padx=5)
 
         # 绑定选择事件
-        self.controlnet_combo.bind('<<ComboboxSelected>>', self._on_controlnet_type_changed)
+        self.controlnet_combo.bind('<<ComboboxSelected>>', self._on_controlnet_combo_changed)
         # --- 新增结束 ---
         
         # 重绘强度
@@ -359,7 +393,21 @@ class Img2ImgTab(BaseTab):
         ).pack(side=tk.LEFT, padx=5)       
 
     # gui/tabs/img2img_tab.py
-
+    def _on_controlnet_combo_changed(self, event):
+        """ControlNet 组合切换时更新提示"""
+        from utils.controlnet_helper import get_recommended_multi_controlnet_combos
+        
+        combos = get_recommended_multi_controlnet_combos()
+        selected = self.controlnet_combo_var.get()
+        combo_info = combos.get(selected)
+        
+        if combo_info:
+            types_str = " + ".join(combo_info["types"])
+            scales_str = ", ".join([str(s) for s in combo_info["scales"]])
+            self.controlnet_hint.config(
+                text=f"💡 {combo_info['description']} | 权重: [{scales_str}]"
+            )
+        
     def _on_controlnet_type_changed(self, event):
         """ControlNet 类型切换时更新提示"""
         from utils.controlnet_helper import get_controlnet_info
@@ -518,7 +566,15 @@ class Img2ImgTab(BaseTab):
         target_width = params["width"]
         target_height = params["height"]
         
+
+        # ✅ 自动调整强度
+        if self.selected_images:
+            auto_strength = self._auto_adjust_strength(self.selected_images[0])
+            self.strength_var.set(auto_strength)
+            self.update_status(f"🔄 自动调整强度为: {auto_strength:.2f}")
+        
         strength = self.strength_var.get()
+        
         num_images_per = self.per_image_var.get()
         
         # 计算总任务数
@@ -526,7 +582,26 @@ class Img2ImgTab(BaseTab):
 
         # 获取 ControlNet 开关状态
         use_controlnet = self.use_controlnet_var.get()  # ✅ 新增
+        controlnet_types = []
+        conditioning_scales = []        
         
+        if use_controlnet:
+            from utils.controlnet_helper import get_recommended_multi_controlnet_combos
+            
+            combo_name = self.controlnet_combo_var.get()
+            combos = get_recommended_multi_controlnet_combos()
+            combo_info = combos.get(combo_name, list(combos.values())[0])
+            
+            controlnet_types = combo_info["types"]
+            conditioning_scales = combo_info["scales"]
+            
+            print(f"🧠 ControlNet 组合: {combo_name}")
+            print(f"   类型: {controlnet_types}")
+            print(f"   权重: {conditioning_scales}")
+        else:
+            controlnet_types = []
+            conditioning_scales = []
+    
         self.update_status(f"🎨 开始图生图... (共 {total_tasks} 张)")
         self.generate_btn.config(state=tk.DISABLED)
         self.cancel_btn.config(state=tk.NORMAL)
@@ -659,53 +734,54 @@ class Img2ImgTab(BaseTab):
             print(f"📐 使用原图尺寸")
 
         # ================================================================
-        # ✅ ControlNet 模式处理（优先执行）
+        # ✅ ControlNet 模式处理（修复版）
         # ================================================================
         if use_controlnet:
             try:
-                log("🧠 启用 ControlNet 模式...")
-                self.update_status("🧠 正在启用 ControlNet 姿态控制...")
-
-                # ✅ 预处理时强制过滤多人骨架
+                log("🧠 启用多层 ControlNet 模式...")
+                
+                # ✅ 获取 controlnet_types 和 conditioning_scales
+                # 注意：这些变量需要从外部传入，或者从 self 获取
+                from utils.controlnet_helper import get_recommended_multi_controlnet_combos
+                
+                combo_name = self.controlnet_combo_var.get()
+                combos = get_recommended_multi_controlnet_combos()
+                combo_info = combos.get(combo_name, list(combos.values())[0])
+                
+                controlnet_types = combo_info["types"]
+                conditioning_scales = combo_info["scales"]
+                
+                self.update_status(f"🧠 启用 ControlNet: {combo_name}")
+                
                 from utils.controlnet_helper import preprocess_image_for_controlnet
                 from config.app_config import app_config
-            
-                # 对每张选中的图片进行预处理，只保留主体
+                
+                # 预处理图片
                 filtered_images = []
                 temp_dir = app_config.paths.output_dir
                 os.makedirs(temp_dir, exist_ok=True)
                 
                 for img_path in self.selected_images:
-                    # ✅ 获取原图尺寸作为预处理尺寸
                     from PIL import Image as PILImage
                     temp_img = PILImage.open(img_path)
                     orig_w, orig_h = temp_img.size
-                    # 对齐到 64 的倍数
                     proc_w = ((orig_w + 31) // 64) * 64
                     proc_h = ((orig_h + 31) // 64) * 64
                     
-                    # 先预处理，再传给 ControlNet
                     control_img = preprocess_image_for_controlnet(
                         img_path,
-                        controlnet_type="openpose",
-                        output_size=(proc_w, proc_h)  # ✅ 使用原图尺寸
+                        controlnet_type="openpose",  # 用 openpose 作为基础
+                        output_size=(proc_w, proc_h)
                     )
                     if control_img is not None:
-                        # 保存过滤后的骨架图
                         temp_path = os.path.join(temp_dir, f"_temp_pose_{os.path.basename(img_path)}")
                         control_img.save(temp_path)
                         filtered_images.append(temp_path)
-                    
-                # ✅ 获取用户选择的 ControlNet 类型
-                selected_type = self.controlnet_type_var.get()
-                controlnet_type = selected_type.split(" ")[0] if " " in selected_type else "openpose"
-
-                print(f"🔍 [ControlNet 调试] use_controlnet={use_controlnet}")
-                print(f"🔍 [ControlNet 调试] controlnet_type={controlnet_type}")
-                print(f"🔍 [ControlNet 调试] filtered_images={len(filtered_images)} 张")
                 
-                # 调用 ControlNet 处理函数
-                success, controlnet_results = process_with_controlnet(
+                # ✅ 调用多层 ControlNet
+                from utils.controlnet_helper import process_with_multi_controlnet
+                
+                success, controlnet_results = process_with_multi_controlnet(
                     selected_images=filtered_images,
                     prompt=prompt,
                     negative=negative,
@@ -717,7 +793,8 @@ class Img2ImgTab(BaseTab):
                     params=self.params,
                     progress_callback=self._progress_callback,
                     status_callback=self.update_status,
-                    controlnet_type=controlnet_type
+                    controlnet_types=controlnet_types,
+                    conditioning_scales=conditioning_scales
                 )
                 
                 # 清理临时文件
@@ -725,24 +802,20 @@ class Img2ImgTab(BaseTab):
                     try:
                         os.remove(f)
                     except:
-                        pass                
+                        pass
                 
-                print(f"🔍 [ControlNet 调试] success={success}, results={len(controlnet_results) if controlnet_results else 0}")
-        
                 if success and controlnet_results:
                     self.update_status(f"✅ ControlNet 完成！共生成 {len(controlnet_results)} 张")
                     self._on_generation_complete(0)
                     return
                 else:
                     self.update_status("⚠️ ControlNet 处理失败，回退到普通模式")
-                    # 继续执行普通图生图
-                        
+                    
             except Exception as e:
                 log(f"❌ ControlNet 错误: {e}")
                 import traceback
                 traceback.print_exc()
                 self.update_status(f"⚠️ ControlNet 错误: {e}，回退到普通模式")
-
 
         # ================================================================
         # 普通图生图模式（原有逻辑）

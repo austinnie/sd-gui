@@ -586,6 +586,308 @@ def process_with_controlnet(selected_images, prompt, negative, steps, cfg, stren
     
     return True, generated_images
 
+
+# ============================================================
+# 🆕 多层 ControlNet 支持
+# ============================================================
+
+def get_multi_controlnet_pipeline(model_path, controlnet_types=None, device="cpu"):
+    """
+    加载多层 ControlNet Pipeline
+    
+    参数:
+        model_path: 主模型路径
+        controlnet_types: ControlNet 类型列表，如 ["openpose", "canny", "depth"]
+                        默认使用 ["openpose", "canny", "depth"]
+        device: 设备
+    
+    返回:
+        pipe, controlnet_list
+    """
+    if controlnet_types is None:
+        controlnet_types = ["openpose", "canny", "depth"]
+    
+    try:
+        from diffusers import ControlNetModel, StableDiffusionControlNetPipeline
+        from diffusers import EulerDiscreteScheduler
+        
+        # 1. 加载多个 ControlNet 模型
+        controlnets = []
+        print(f"\n📦 加载多层 ControlNet ({len(controlnet_types)} 层)...")
+        
+        for ctype in controlnet_types:
+            info = get_controlnet_info(ctype)
+            print(f"   📦 {info['name']}...")
+            
+            cn = ControlNetModel.from_pretrained(
+                info["model_id"],
+                torch_dtype=torch.float32,
+                low_cpu_mem_usage=True
+            )
+            controlnets.append(cn)
+            print(f"      ✅ 加载完成")
+        
+        # 2. 加载主模型
+        print(f"   📦 加载主模型...")
+        pipe = StableDiffusionControlNetPipeline.from_single_file(
+            model_path,
+            controlnet=controlnets,  # 传入列表
+            torch_dtype=torch.float32,
+            safety_checker=None,
+            requires_safety_checker=False,
+            use_safetensors=True,
+            low_cpu_mem_usage=True
+        )
+        
+        # 3. 优化配置
+        pipe.to(device)
+        pipe.enable_vae_slicing()
+        pipe.enable_attention_slicing()
+        if hasattr(pipe.vae, 'enable_tiling'):
+            pipe.vae.enable_tiling()
+        pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
+        
+        print(f"   ✅ 多层 ControlNet Pipeline 加载完成")
+        return pipe, controlnets
+        
+    except Exception as e:
+        print(f"❌ 多层 ControlNet Pipeline 加载失败: {e}")
+        import traceback
+        traceback.print_exc()
+        return None, None
+
+
+def process_with_multi_controlnet(
+    selected_images, prompt, negative, steps, cfg, strength, 
+    seed, app, params, progress_callback, status_callback,
+    controlnet_types=None,
+    conditioning_scales=None
+):
+    """
+    使用多层 ControlNet 处理图生图
+    
+    参数:
+        controlnet_types: ControlNet 类型列表，如 ["openpose", "canny", "depth"]
+        conditioning_scales: 每个 ControlNet 的权重，如 [0.6, 0.5, 0.4]
+    """
+    if controlnet_types is None:
+        controlnet_types = ["openpose", "canny", "depth"]
+    
+    if conditioning_scales is None:
+        # 根据数量自动分配权重
+        if len(controlnet_types) == 1:
+            conditioning_scales = [0.8]
+        elif len(controlnet_types) == 2:
+            conditioning_scales = [0.6, 0.5]
+        elif len(controlnet_types) == 3:
+            conditioning_scales = [0.6, 0.5, 0.4]
+        else:
+            conditioning_scales = [0.5] * len(controlnet_types)
+    
+    print("=" * 60)
+    print("🔍 [多层 ControlNet 调试] process_with_multi_controlnet 被调用")
+    print(f"   selected_images: {len(selected_images)} 张")
+    print(f"   controlnet_types: {controlnet_types}")
+    print(f"   conditioning_scales: {conditioning_scales}")
+    print("=" * 60)
+    
+    if not selected_images:
+        return False, []
+    
+    # 获取模型路径
+    model_name = app.model_var.get()
+    model_path = app._get_model_path(model_name)
+    if not model_path:
+        status_callback("❌ 找不到模型文件")
+        return False, []
+    
+    # 加载多层 ControlNet Pipeline
+    status_callback(f"📦 加载多层 ControlNet ({len(controlnet_types)} 层)...")
+    pipe, controlnets = get_multi_controlnet_pipeline(model_path, controlnet_types)
+    if pipe is None:
+        status_callback("❌ ControlNet Pipeline 加载失败")
+        return False, []
+    
+    generated_images = []
+    total = len(selected_images)
+    
+    for img_idx, image_path in enumerate(selected_images):
+        if hasattr(app, 'txt2img_tab') and app.txt2img_tab.cancel_generation:
+            break
+        
+        # 加载原图
+        init_image = Image.open(image_path).convert('RGB')
+        w, h = init_image.size
+        
+        # 对齐尺寸
+        new_w = ((w + 31) // 64) * 64
+        new_h = ((h + 31) // 64) * 64
+        if new_w != w or new_h != h:
+            init_image = init_image.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        
+        # 限制最大尺寸
+        max_size = 1024
+        if max(new_w, new_h) > max_size:
+            scale = max_size / max(new_w, new_h)
+            new_w = int(new_w * scale)
+            new_h = int(new_h * scale)
+            new_w = ((new_w + 31) // 64) * 64
+            new_h = ((new_h + 31) // 64) * 64
+            init_image = init_image.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        
+        # ===== 生成多个控制图 =====
+        status_callback(f"🔄 预处理图片 {img_idx+1}/{total}...")
+        control_images = []
+        
+        for ctype in controlnet_types:
+            info = get_controlnet_info(ctype)
+            print(f"   🎨 生成 {info['name']} 控制图...")
+            
+            control_img = preprocess_image_for_controlnet(
+                image_path,
+                controlnet_type=ctype,
+                output_size=(new_w, new_h)
+            )
+            if control_img is not None:
+                control_images.append(control_img)
+                print(f"      ✅ {ctype} 控制图已生成")
+            else:
+                # 如果某个控制图生成失败，用原图替代
+                print(f"      ⚠️ {ctype} 控制图生成失败，使用原图")
+                control_images.append(init_image.copy())
+        
+        if not control_images:
+            status_callback("⚠️ 所有控制图生成失败，跳过")
+            continue
+        
+        # ===== 生成 =====
+        status_callback(f"🎨 生成中 {img_idx+1}/{total} (多层 ControlNet)...")
+        
+        current_seed = seed if seed != -1 else random.randint(1, 2**32 - 1)
+        generator = torch.Generator("cpu").manual_seed(current_seed + img_idx)
+        
+        try:
+            # 构建负面提示词（包含多人过滤）
+            negative_full = negative + ", multiple people, two people, group, crowd, couple"
+            
+            result = pipe(
+                prompt=prompt,
+                negative_prompt=negative_full,
+                image=init_image,
+                control_image=control_images,  # 传入多个控制图
+                controlnet_conditioning_scale=conditioning_scales,  # 每个对应的权重
+                strength=strength,
+                num_inference_steps=steps,
+                guidance_scale=cfg,
+                generator=generator,
+                num_images_per_prompt=1,
+            )
+            
+            image = result.images[0]
+            
+            # 保存图片
+            from config.app_config import app_config
+            output_dir = app_config.paths.output_dir
+            os.makedirs(output_dir, exist_ok=True)
+            
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            types_str = "_".join(controlnet_types)
+            filename = f"{timestamp}_multi_controlnet_{types_str}_img{img_idx+1}.png"
+            filepath = os.path.join(output_dir, filename)
+            image.save(filepath)
+            
+            # 添加到预览
+            app.root.after(0, lambda fp=filepath, img=image: app.add_to_preview(fp, img))
+            
+            # 后处理
+            from utils.image_post_processor import post_process_image
+            final_path = post_process_image(filepath, params, prompt=prompt, log_prefix="[Multi-ControlNet]")
+            if final_path != filepath:
+                try:
+                    os.remove(filepath)
+                except:
+                    pass
+            
+            generated_images.append(final_path)
+            progress_callback((img_idx + 1) / total, f"✅ 完成 {img_idx+1}/{total}")
+            
+            # 清理内存
+            del result
+            gc.collect()
+            
+        except Exception as e:
+            status_callback(f"❌ 生成失败: {e}")
+            import traceback
+            traceback.print_exc()
+            continue
+    
+    # 释放 Pipeline
+    if pipe:
+        del pipe
+        gc.collect()
+    
+    return True, generated_images
+
+
+# ============================================================
+# 便捷函数：获取推荐的多层组合
+# ============================================================
+
+def get_recommended_multi_controlnet_combos():
+    """
+    获取推荐的多层 ControlNet 组合
+    
+    返回:
+        字典，key 为组合名称，value 为 (类型列表, 权重列表)
+    """
+    return {
+        "姿态+边缘+深度": {
+            "types": ["openpose", "canny", "depth"],
+            "scales": [0.6, 0.5, 0.4],
+            "description": "最全面锁定：姿态 + 轮廓 + 空间"
+        },
+        "姿态+边缘": {
+            "types": ["openpose", "canny"],
+            "scales": [0.7, 0.5],
+            "description": "锁定姿态 + 边缘轮廓"
+        },
+        "姿态+深度": {
+            "types": ["openpose", "depth"],
+            "scales": [0.7, 0.6],
+            "description": "锁定姿态 + 深度空间"
+        },
+        "边缘+深度": {
+            "types": ["canny", "depth"],
+            "scales": [0.6, 0.5],
+            "description": "锁定边缘 + 深度空间"
+        },
+        "仅姿态": {
+            "types": ["openpose"],
+            "scales": [0.85],
+            "description": "仅锁定姿态（最快）"
+        },
+        "仅边缘": {
+            "types": ["canny"],
+            "scales": [0.7],
+            "description": "仅锁定边缘轮廓"
+        },
+        "姿态+软边缘": {
+            "types": ["openpose", "hed"],
+            "scales": [0.7, 0.5],
+            "description": "姿态 + 软边缘"
+        },
+        "姿态+法线": {
+            "types": ["openpose", "normal"],
+            "scales": [0.7, 0.6],
+            "description": "姿态 + 法线图"
+        },
+        "DWpose+深度": {
+            "types": ["dwpose", "depth"],
+            "scales": [0.8, 0.6],
+            "description": "增强姿态 + 深度"
+        },
+    }
+    
 # ============================================================
 # 向后兼容
 # ============================================================
