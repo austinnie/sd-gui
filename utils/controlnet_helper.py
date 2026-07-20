@@ -773,6 +773,7 @@ def process_with_multi_controlnet(
             result = pipe(
                 prompt=prompt,
                 negative_prompt=negative_full,
+                #image=[init_image] * len(control_images),  # ✅ 列表，数量与 control_images 匹配
                 image=init_image,
                 control_image=control_images,  # 传入多个控制图
                 controlnet_conditioning_scale=conditioning_scales,  # 每个对应的权重
@@ -841,50 +842,106 @@ def get_recommended_multi_controlnet_combos():
         字典，key 为组合名称，value 为 (类型列表, 权重列表)
     """
     return {
-        "姿态+边缘+深度": {
-            "types": ["openpose", "canny", "depth"],
-            "scales": [0.6, 0.5, 0.4],
-            "description": "最全面锁定：姿态 + 轮廓 + 空间"
+        # ============================================================
+        # ⭐ 单层（最稳定，速度最快）
+        # ============================================================
+        "仅姿态 (换装)": {
+            "types": ["openpose"],
+            "scales": [0.6],
+            "description": "换衣服专用：只锁姿态，自由度最高"
         },
-        "姿态+边缘": {
-            "types": ["openpose", "canny"],
-            "scales": [0.7, 0.5],
-            "description": "锁定姿态 + 边缘轮廓"
-        },
-        "姿态+深度": {
-            "types": ["openpose", "depth"],
-            "scales": [0.7, 0.6],
-            "description": "锁定姿态 + 深度空间"
-        },
-        "边缘+深度": {
-            "types": ["canny", "depth"],
-            "scales": [0.6, 0.5],
-            "description": "锁定边缘 + 深度空间"
-        },
-        "仅姿态": {
+        "仅姿态 (强锁)": {
             "types": ["openpose"],
             "scales": [0.85],
-            "description": "仅锁定姿态（最快）"
+            "description": "强锁姿态，适合保持原姿势"
         },
-        "仅边缘": {
+        "仅边缘 (换装)": {
+            "types": ["canny"],
+            "scales": [0.5],
+            "description": "换衣服专用：只锁轮廓"
+        },
+        "仅边缘 (强锁)": {
             "types": ["canny"],
             "scales": [0.7],
-            "description": "仅锁定边缘轮廓"
+            "description": "强锁轮廓，适合保持构图"
         },
-        "姿态+软边缘": {
-            "types": ["openpose", "hed"],
+        "仅深度 (换背景)": {
+            "types": ["depth"],
+            "scales": [0.5],
+            "description": "换背景专用：只锁空间深度"
+        },
+        
+        # ============================================================
+        # 🟡 双层（效果更好，速度适中）
+        # ============================================================
+        "姿态+边缘 (换装)": {
+            "types": ["openpose", "canny"],
+            "scales": [0.5, 0.3],
+            "description": "换衣服专用：姿态锁定 + 轻度边缘"
+        },
+        "姿态+边缘 (强锁)": {
+            "types": ["openpose", "canny"],
             "scales": [0.7, 0.5],
-            "description": "姿态 + 软边缘"
+            "description": "强锁定：姿态 + 轮廓"
         },
-        "姿态+法线": {
-            "types": ["openpose", "normal"],
+        "姿态+深度 (换背景)": {
+            "types": ["openpose", "depth"],
+            "scales": [0.5, 0.4],
+            "description": "换背景专用：姿态 + 空间深度"
+        },
+        "姿态+深度 (强锁)": {
+            "types": ["openpose", "depth"],
             "scales": [0.7, 0.6],
-            "description": "姿态 + 法线图"
+            "description": "强锁定：姿态 + 深度空间"
         },
-        "DWpose+深度": {
+        "边缘+深度 (换背景)": {
+            "types": ["canny", "depth"],
+            "scales": [0.4, 0.5],
+            "description": "换背景专用：轮廓 + 空间深度"
+        },
+        "姿态+软边缘 (风格)": {
+            "types": ["openpose", "hed"],
+            "scales": [0.4, 0.3],
+            "description": "风格转换：姿态 + 软边缘"
+        },
+        "姿态+法线 (细节)": {
+            "types": ["openpose", "normal"],
+            "scales": [0.5, 0.4],
+            "description": "细节保留：姿态 + 法线图"
+        },
+        "DWpose+深度 (精准)": {
             "types": ["dwpose", "depth"],
-            "scales": [0.8, 0.6],
-            "description": "增强姿态 + 深度"
+            "scales": [0.6, 0.4],
+            "description": "精准姿态 + 深度空间"
+        },
+        
+        # ============================================================
+        # 🔴 三层（效果最强，但可能不稳定，速度慢）
+        # ============================================================
+        "姿态+边缘+深度 (换装)": {
+            "types": ["openpose", "canny", "depth"],
+            "scales": [0.4, 0.25, 0.15],
+            "description": "换衣服专用：三轻锁，给模型更大自由度"
+        },
+        "姿态+边缘+深度 (强锁)": {
+            "types": ["openpose", "canny", "depth"],
+            "scales": [0.6, 0.5, 0.4],
+            "description": "强锁定：保留原图结构（慎用）"
+        },
+        "姿态+边缘+深度 (极强锁)": {
+            "types": ["openpose", "canny", "depth"],
+            "scales": [0.8, 0.7, 0.6],
+            "description": "极强锁定：几乎完全保留原图（仅微调）"
+        },
+        "姿态+软边缘+深度 (风格)": {
+            "types": ["openpose", "hed", "depth"],
+            "scales": [0.4, 0.3, 0.2],
+            "description": "风格转换：姿态 + 软边缘 + 深度"
+        },
+        "DWpose+Canny+深度 (精准)": {
+            "types": ["dwpose", "canny", "depth"],
+            "scales": [0.5, 0.3, 0.3],
+            "description": "精准控制：增强姿态 + 边缘 + 深度"
         },
     }
     
