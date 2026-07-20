@@ -164,6 +164,7 @@ def get_controlnet_info(controlnet_type):
 #   "auto"         - 自动选择最佳模式
 CONTROLNET_PREPROCESS_MODE = "skeleton"  # ← 修改这里切换模式
 # ============================================================
+
 def preprocess_image_for_controlnet(image_path, controlnet_type="openpose", output_size=(512, 512)):
     """
     根据 ControlNet 类型预处理图片
@@ -286,8 +287,6 @@ def preprocess_image_for_controlnet(image_path, controlnet_type="openpose", outp
         return None
 
 
-# utils/controlnet_helper.py - 修改 _preprocess_openpose 函数
-
 def _preprocess_openpose(detector, image, output_size):
     """
     OpenPose 预处理 - 支持多种模式
@@ -299,11 +298,6 @@ def _preprocess_openpose(detector, image, output_size):
         # ===== 模式1: pil 输出（原图 + 骨架叠加）- 推荐 =====
         print("   📌 OpenPose 模式: PIL (原图+骨架)")
         result = detector(image, output_type="pil")
-
-        debug_path = f"debug_skeleton_{datetime.now().strftime('%H%M%S')}.png"
-        Image.fromarray(skeleton).save(debug_path)
-        print(f"   📸 骨架图已保存: {debug_path}")
-                
         return result
         
     elif mode == "skeleton":
@@ -347,6 +341,9 @@ def _preprocess_openpose(detector, image, output_size):
         except Exception as e:
             print(f"   ⚠️ 骨架提取失败: {e}，回退到 pil 模式")
             return detector(image, output_type="pil")
+    
+    # 默认返回 pil 模式
+    return detector(image, output_type="pil")
             
 def get_controlnet_pipeline(model_path, controlnet_type="openpose", controlnet_model_path=None, device="cpu"):
     """
@@ -447,9 +444,9 @@ def process_with_controlnet(selected_images, prompt, negative, steps, cfg, stren
     # ===== ✅ ControlNet 强度映射（按类型区分） =====
     CONTROLNET_STRENGTH_MAP = {
         # 姿态/骨架类（高强度锁定动作）
-        "openpose": 0.85,      # 从 0.95 改回 0.85
+        "openpose": 0.85,
         "openpose_full": 0.85,
-        "dwpose": 0.90,        # 从 0.98 改回 0.90
+        "dwpose": 0.90,
         
         # 边缘/轮廓类（中高强度，给模型一些自由）
         "canny": 0.70,
@@ -466,9 +463,9 @@ def process_with_controlnet(selected_images, prompt, negative, steps, cfg, stren
         "reference": 0.55,
         
         # 其他
-        "mlsd": 0.80,      # 直线检测（建筑）
-        "seg": 0.85,       # 语义分割
-        "tile": 0.90,      # 图块（保留细节）
+        "mlsd": 0.80,
+        "seg": 0.85,
+        "tile": 0.90,
     }
     
     generated_images = []
@@ -531,7 +528,7 @@ def process_with_controlnet(selected_images, prompt, negative, steps, cfg, stren
         try:
             result = pipe(
                 prompt=prompt,
-                negative_prompt=negative + ", multiple people, two people, group, crowd, couple",  # ← 强制负面,
+                negative_prompt=negative + ", multiple people, two people, group, crowd, couple",
                 image=init_image,
                 control_image=control_image,
                 strength=strength,
@@ -665,13 +662,18 @@ def process_with_multi_controlnet(
 ):
     """
     使用多层 ControlNet 处理图生图
+    
+    参数:
+        controlnet_types: ControlNet 类型列表
+        conditioning_scales: 每层的控制强度列表（0-1）
     """
     if controlnet_types is None:
         controlnet_types = ["openpose", "canny", "depth"]
     
+    # 自动生成 conditioning_scales
     if conditioning_scales is None:
         if len(controlnet_types) == 1:
-            conditioning_scales = [0.8]
+            conditioning_scales = [0.6]
         elif len(controlnet_types) == 2:
             conditioning_scales = [0.6, 0.5]
         elif len(controlnet_types) == 3:
@@ -756,39 +758,27 @@ def process_with_multi_controlnet(
         try:
             negative_full = negative + ", multiple people, two people, group, crowd, couple"
             
-            # ✅ 修复：始终使用列表格式
+            # ✅ 修复：统一使用列表格式（兼容多层 ControlNet）
             num_controls = len(control_images)
             
-            # ✅ 关键修复：对于单层，control_image 传入 control_images[0] 而不是列表
-            # 但对于多层，需要传入列表，同时 image 也要是列表
-            if num_controls == 1:
-                # 单层 ControlNet
-                result = pipe(
-                    prompt=prompt,
-                    negative_prompt=negative_full,
-                    image=init_image,  # 单张图片
-                    control_image=control_images[0],  # 单个控制图
-                    controlnet_conditioning_scale=conditioning_scales[0],
-                    strength=strength,
-                    num_inference_steps=steps,
-                    guidance_scale=cfg,
-                    generator=generator,
-                    num_images_per_prompt=1,
-                )
-            else:
-                # 多层 ControlNet
-                result = pipe(
-                    prompt=prompt,
-                    negative_prompt=negative_full,
-                    image=[init_image] * num_controls,  # ✅ 列表
-                    control_image=control_images,  # 列表
-                    controlnet_conditioning_scale=conditioning_scales,
-                    strength=strength,
-                    num_inference_steps=steps,
-                    guidance_scale=cfg,
-                    generator=generator,
-                    num_images_per_prompt=1,
-                )
+            # 打印调试信息
+            print(f"   🔧 调用多层 ControlNet: {num_controls} 层")
+            print(f"   📷 image 类型: {type([init_image] * num_controls)}")
+            print(f"   🖼️ control_image 类型: {type(control_images)}")
+            
+            # ✅ 始终使用列表格式
+            result = pipe(
+                prompt=prompt,
+                negative_prompt=negative_full,
+                image=[init_image] * num_controls,      # ✅ 始终是列表
+                control_image=control_images,            # ✅ 始终是列表
+                controlnet_conditioning_scale=conditioning_scales,
+                strength=strength,
+                num_inference_steps=steps,
+                guidance_scale=cfg,
+                generator=generator,
+                num_images_per_prompt=1,
+            )
             
             image = result.images[0]
             
@@ -953,8 +943,6 @@ _extract_pose = preprocess_image_for_controlnet  # 兼容旧名称
 # ✅ 添加 extract_pose 作为 preprocess_image_for_controlnet 的别名
 extract_pose = preprocess_image_for_controlnet
 
-
-# utils/controlnet_helper.py 末尾添加
 
 class ControlNetConfig:
     """全局 ControlNet 配置"""
