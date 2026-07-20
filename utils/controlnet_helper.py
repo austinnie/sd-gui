@@ -665,16 +665,11 @@ def process_with_multi_controlnet(
 ):
     """
     使用多层 ControlNet 处理图生图
-    
-    参数:
-        controlnet_types: ControlNet 类型列表，如 ["openpose", "canny", "depth"]
-        conditioning_scales: 每个 ControlNet 的权重，如 [0.6, 0.5, 0.4]
     """
     if controlnet_types is None:
         controlnet_types = ["openpose", "canny", "depth"]
     
     if conditioning_scales is None:
-        # 根据数量自动分配权重
         if len(controlnet_types) == 1:
             conditioning_scales = [0.8]
         elif len(controlnet_types) == 2:
@@ -694,14 +689,12 @@ def process_with_multi_controlnet(
     if not selected_images:
         return False, []
     
-    # 获取模型路径
     model_name = app.model_var.get()
     model_path = app._get_model_path(model_name)
     if not model_path:
         status_callback("❌ 找不到模型文件")
         return False, []
     
-    # 加载多层 ControlNet Pipeline
     status_callback(f"📦 加载多层 ControlNet ({len(controlnet_types)} 层)...")
     pipe, controlnets = get_multi_controlnet_pipeline(model_path, controlnet_types)
     if pipe is None:
@@ -715,17 +708,14 @@ def process_with_multi_controlnet(
         if hasattr(app, 'txt2img_tab') and app.txt2img_tab.cancel_generation:
             break
         
-        # 加载原图
         init_image = Image.open(image_path).convert('RGB')
         w, h = init_image.size
         
-        # 对齐尺寸
         new_w = ((w + 31) // 64) * 64
         new_h = ((h + 31) // 64) * 64
         if new_w != w or new_h != h:
             init_image = init_image.resize((new_w, new_h), Image.Resampling.LANCZOS)
         
-        # 限制最大尺寸
         max_size = 1024
         if max(new_w, new_h) > max_size:
             scale = max_size / max(new_w, new_h)
@@ -735,7 +725,6 @@ def process_with_multi_controlnet(
             new_h = ((new_h + 31) // 64) * 64
             init_image = init_image.resize((new_w, new_h), Image.Resampling.LANCZOS)
         
-        # ===== 生成多个控制图 =====
         status_callback(f"🔄 预处理图片 {img_idx+1}/{total}...")
         control_images = []
         
@@ -752,7 +741,6 @@ def process_with_multi_controlnet(
                 control_images.append(control_img)
                 print(f"      ✅ {ctype} 控制图已生成")
             else:
-                # 如果某个控制图生成失败，用原图替代
                 print(f"      ⚠️ {ctype} 控制图生成失败，使用原图")
                 control_images.append(init_image.copy())
         
@@ -760,33 +748,50 @@ def process_with_multi_controlnet(
             status_callback("⚠️ 所有控制图生成失败，跳过")
             continue
         
-        # ===== 生成 =====
         status_callback(f"🎨 生成中 {img_idx+1}/{total} (多层 ControlNet)...")
         
         current_seed = seed if seed != -1 else random.randint(1, 2**32 - 1)
         generator = torch.Generator("cpu").manual_seed(current_seed + img_idx)
         
         try:
-            # 构建负面提示词（包含多人过滤）
             negative_full = negative + ", multiple people, two people, group, crowd, couple"
             
-            result = pipe(
-                prompt=prompt,
-                negative_prompt=negative_full,
-                #image=[init_image] * len(control_images),  # ✅ 列表，数量与 control_images 匹配
-                image=init_image,
-                control_image=control_images,  # 传入多个控制图
-                controlnet_conditioning_scale=conditioning_scales,  # 每个对应的权重
-                strength=strength,
-                num_inference_steps=steps,
-                guidance_scale=cfg,
-                generator=generator,
-                num_images_per_prompt=1,
-            )
+            # ✅ 修复：始终使用列表格式
+            num_controls = len(control_images)
+            
+            # ✅ 关键修复：对于单层，control_image 传入 control_images[0] 而不是列表
+            # 但对于多层，需要传入列表，同时 image 也要是列表
+            if num_controls == 1:
+                # 单层 ControlNet
+                result = pipe(
+                    prompt=prompt,
+                    negative_prompt=negative_full,
+                    image=init_image,  # 单张图片
+                    control_image=control_images[0],  # 单个控制图
+                    controlnet_conditioning_scale=conditioning_scales[0],
+                    strength=strength,
+                    num_inference_steps=steps,
+                    guidance_scale=cfg,
+                    generator=generator,
+                    num_images_per_prompt=1,
+                )
+            else:
+                # 多层 ControlNet
+                result = pipe(
+                    prompt=prompt,
+                    negative_prompt=negative_full,
+                    image=[init_image] * num_controls,  # ✅ 列表
+                    control_image=control_images,  # 列表
+                    controlnet_conditioning_scale=conditioning_scales,
+                    strength=strength,
+                    num_inference_steps=steps,
+                    guidance_scale=cfg,
+                    generator=generator,
+                    num_images_per_prompt=1,
+                )
             
             image = result.images[0]
             
-            # 保存图片
             from config.app_config import app_config
             output_dir = app_config.paths.output_dir
             os.makedirs(output_dir, exist_ok=True)
@@ -797,10 +802,8 @@ def process_with_multi_controlnet(
             filepath = os.path.join(output_dir, filename)
             image.save(filepath)
             
-            # 添加到预览
             app.root.after(0, lambda fp=filepath, img=image: app.add_to_preview(fp, img))
             
-            # 后处理
             from utils.image_post_processor import post_process_image
             final_path = post_process_image(filepath, params, prompt=prompt, log_prefix="[Multi-ControlNet]")
             if final_path != filepath:
@@ -812,7 +815,6 @@ def process_with_multi_controlnet(
             generated_images.append(final_path)
             progress_callback((img_idx + 1) / total, f"✅ 完成 {img_idx+1}/{total}")
             
-            # 清理内存
             del result
             gc.collect()
             
@@ -822,13 +824,11 @@ def process_with_multi_controlnet(
             traceback.print_exc()
             continue
     
-    # 释放 Pipeline
     if pipe:
         del pipe
         gc.collect()
     
     return True, generated_images
-
 
 # ============================================================
 # 便捷函数：获取推荐的多层组合
