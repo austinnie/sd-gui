@@ -356,6 +356,70 @@ class PipelineTab(BaseTab):
         
         row += 1
 
+        # ============================================================
+        # ✅ 新增：ControlNet 参数覆盖
+        # ============================================================
+        controlnet_frame = ttk.LabelFrame(param_frame, text="🧠 ControlNet 控制", padding=3)
+        controlnet_frame.pack(fill=tk.X, pady=3)
+
+        # 第一行：启用开关
+        cn_row1 = ttk.Frame(controlnet_frame)
+        cn_row1.pack(fill=tk.X, pady=2)
+
+        self.use_controlnet_var = tk.BooleanVar(value=False)  # 默认关闭
+        ttk.Checkbutton(
+            cn_row1,
+            text="启用 ControlNet",
+            variable=self.use_controlnet_var
+        ).pack(side=tk.LEFT, padx=5)
+
+        # ControlNet 类型下拉（仅在启用时可用）
+        ttk.Label(cn_row1, text="类型:").pack(side=tk.LEFT, padx=15)
+
+        self.controlnet_type_var = tk.StringVar(value="canny")
+        cn_type_combo = ttk.Combobox(
+            cn_row1,
+            textvariable=self.controlnet_type_var,
+            values=[
+                "canny", "hed", "lineart", "scribble",
+                "openpose", "depth", "normal", "mlsd"
+            ],
+            width=10,
+            state="readonly"
+        )
+        cn_type_combo.pack(side=tk.LEFT, padx=5)
+        cn_type_combo.set("canny")
+
+        # 第二行：ControlNet 强度
+        cn_row2 = ttk.Frame(controlnet_frame)
+        cn_row2.pack(fill=tk.X, pady=2)
+
+        ttk.Label(cn_row2, text="ControlNet 强度:").pack(side=tk.LEFT, padx=5)
+        self.controlnet_strength_var = tk.DoubleVar(value=0.6)
+        cn_scale = ttk.Scale(
+            cn_row2,
+            from_=0.1, to=1.0,
+            variable=self.controlnet_strength_var,
+            orient=tk.HORIZONTAL,
+            length=120
+        )
+        cn_scale.pack(side=tk.LEFT, padx=5)
+        self.cn_strength_label = ttk.Label(cn_row2, text="0.60", width=5)
+        self.cn_strength_label.pack(side=tk.LEFT, padx=5)
+        self.controlnet_strength_var.trace('w', lambda *_: self.cn_strength_label.config(
+            text=f"{self.controlnet_strength_var.get():.2f}"
+        ))
+
+        # 提示
+        ttk.Label(
+            cn_row2,
+            text="💡 人像推荐 HED/Lineart，建筑推荐 Canny/MLSD",
+            foreground="gray",
+            font=("", 8)
+        ).pack(side=tk.LEFT, padx=15)
+
+        row += 1
+
         # ===== 批量处理模式 =====
         batch_frame = ttk.LabelFrame(frame, text="📁 批量处理模式", padding=5)
         batch_frame.grid(row=row, column=0, columnspan=3, sticky=(tk.W, tk.E), padx=5, pady=5)
@@ -549,7 +613,12 @@ class PipelineTab(BaseTab):
         except (ValueError, TypeError):
             override_scenes = 14
             self.scenes_var.set("14")
-        
+
+        # ===== ✅ 新增：获取 ControlNet 参数 =====
+        use_controlnet = self.use_controlnet_var.get() if hasattr(self, 'use_controlnet_var') else False
+        controlnet_type = self.controlnet_type_var.get() if hasattr(self, 'controlnet_type_var') else "canny"
+        controlnet_strength = self.controlnet_strength_var.get() if hasattr(self, 'controlnet_strength_var') else 0.6
+                
         # ===== 应用参数到每个 step =====
         for step in pipeline_config.get("steps", []):
             step_type = step.get("type", "")
@@ -566,6 +635,12 @@ class PipelineTab(BaseTab):
                 config["steps"] = override_steps
             if "cfg" in config:
                 config["cfg"] = override_cfg
+
+
+        # ✅ 新增：传递 ControlNet 参数（只有支持 ControlNet 的步骤会使用）
+        config["use_controlnet"] = use_controlnet
+        config["controlnet_type"] = controlnet_type
+        config["controlnet_strength"] = controlnet_strength                
         
         self.is_running = True
         self.cancel_flag = False

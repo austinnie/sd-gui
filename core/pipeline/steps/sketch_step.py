@@ -25,15 +25,57 @@ class SketchStep(PipelineStep):
             "controlnet_strength": 0.6,       # ✅ 新增：ControlNet 控制强度
         }
     
+    # core/pipeline/steps/sketch_step.py
+
     def get_config_schema(self):
+        """配置参数 Schema - 会在 UI 中显示"""
         return {
-            "strength": {"type": "float", "default": 0.25, "min": 0.15, "max": 0.45},
-            "cfg": {"type": "float", "default": 7.0, "min": 5, "max": 9},
-            "steps": {"type": "int", "default": 20, "min": 15, "max": 50},
-            "model_path": {"type": "str", "default": "../models/sd-v1-5/aiiiiii01_v10.safetensors"},
-            "use_controlnet": {"type": "bool", "default": True},
-            "controlnet_type": {"type": "str", "default": "canny", "choices": ["canny", "hed", "lineart", "scribble"]},
-            "controlnet_strength": {"type": "float", "default": 0.6, "min": 0.3, "max": 1.0},
+            "strength": {
+                "type": "float", 
+                "default": 0.25, 
+                "min": 0.15, 
+                "max": 0.45,
+                "label": "重绘强度"
+            },
+            "cfg": {
+                "type": "float", 
+                "default": 7.0, 
+                "min": 5, 
+                "max": 9,
+                "label": "CFG"
+            },
+            "steps": {
+                "type": "int", 
+                "default": 30, 
+                "min": 20, 
+                "max": 50,
+                "label": "步数"
+            },
+            "use_controlnet": {
+                "type": "bool", 
+                "default": True,
+                "label": "启用 ControlNet"
+            },
+            "controlnet_type": {
+                "type": "choice", 
+                "default": "canny",
+                "choices": [
+                    {"value": "canny", "label": "Canny (边缘检测)"},
+                    {"value": "hed", "label": "HED (软边缘, 推荐人像)"},
+                    {"value": "lineart", "label": "Lineart (线稿, 最像素描)"},
+                    {"value": "scribble", "label": "Scribble (涂鸦风格)"},
+                    {"value": "openpose", "label": "OpenPose (姿态锁定)"},
+                    {"value": "depth", "label": "Depth (深度图)"},
+                ],
+                "label": "ControlNet 类型"
+            },
+            "controlnet_strength": {
+                "type": "float", 
+                "default": 0.6, 
+                "min": 0.1, 
+                "max": 1.0,
+                "label": "ControlNet 强度"
+            }
         }
     
     def _generate_sketch_prompts(self) -> list:
