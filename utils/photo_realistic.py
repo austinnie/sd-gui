@@ -3,7 +3,7 @@
 让 AI 图片看起来像真实相机照片
 结合：图像处理 + EXIF 注入
 """
-
+import os
 import cv2
 import numpy as np
 from PIL import Image, ImageFilter, ImageEnhance

@@ -65,6 +65,14 @@ def post_process_image(
     """
     if not log_prefix:
         log_prefix = "[图片后处理]"
+
+    # ===== 添加这段安全检查 =====
+    # 如果传入的不是文件（比如是一个目录），则不进行任何处理，直接返回
+    import os
+    if not os.path.isfile(filepath):
+        print(f"{log_prefix} 跳过非文件路径: {filepath}")
+        return filepath
+    # ===== 安全检查结束 =====
     
     # 检查开关状态 - 兼容 PostProcessConfig 和 ParamsPanel
     if hasattr(params_panel, 'clear_metadata_var'):
