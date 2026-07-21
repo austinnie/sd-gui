@@ -1,5 +1,5 @@
 # core/pipeline/steps/family_sketch_step.py
-"""家庭素描风格 - 支持多人"""
+"""家庭素描风格 - 支持 ControlNet"""
 
 import os
 import torch
@@ -8,10 +8,11 @@ from datetime import datetime
 from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
 
 from ..step import PipelineStep, StepContext, StepResult, StepStatus
+from .controlnet_mixin import ControlNetMixin
 
 
-class FamilySketchStep(PipelineStep):
-    """家庭素描风格"""
+class FamilySketchStep(PipelineStep, ControlNetMixin):
+    """家庭素描风格 - 支持 ControlNet"""
     
     def __init__(self):
         super().__init__("family_sketch", "家庭素描风格")
@@ -19,7 +20,10 @@ class FamilySketchStep(PipelineStep):
             "strength": 0.35,
             "cfg": 7.0,
             "steps": 25,
-            "model_path": "../models/sd-v1-5/aiiiiii01_v10.safetensors"
+            "model_path": "../models/sd-v1-5/aiiiiii01_v10.safetensors",
+            "use_controlnet": False,
+            "controlnet_type": "lineart",
+            "controlnet_strength": 0.6,
         }
     
     def get_config_schema(self):
@@ -27,7 +31,11 @@ class FamilySketchStep(PipelineStep):
             "strength": {"type": "float", "default": 0.35, "min": 0.2, "max": 0.55},
             "cfg": {"type": "float", "default": 7.0, "min": 5, "max": 9},
             "steps": {"type": "int", "default": 25, "min": 15, "max": 40},
-            "model_path": {"type": "str", "default": "../models/sd-v1-5/aiiiiii01_v10.safetensors"}
+            "model_path": {"type": "str", "default": "../models/sd-v1-5/aiiiiii01_v10.safetensors"},
+            "use_controlnet": {"type": "bool", "default": False},
+            "controlnet_type": {"type": "str", "default": "lineart", 
+                               "choices": ["lineart", "canny", "hed", "scribble"]},
+            "controlnet_strength": {"type": "float", "default": 0.6, "min": 0.1, "max": 1.0},
         }
     
     def _generate_prompts(self) -> list:
@@ -51,7 +59,7 @@ class FamilySketchStep(PipelineStep):
         ]
     
     def execute(self, context: StepContext) -> StepResult:
-        """执行家庭素描风格转换"""
+        """执行家庭素描风格转换 - 支持 ControlNet"""
         config = self._config
         image_path = context.input_path
         
@@ -67,6 +75,21 @@ class FamilySketchStep(PipelineStep):
         try:
             pipe = context.global_config.get('pipe')
             model_path = context.global_config.get('model_path')
+            
+            init_image = Image.open(image_path).convert('RGB')
+            w, h = init_image.size
+            width = ((w + 31) // 64) * 64
+            height = ((h + 31) // 64) * 64
+            if w != width or h != height:
+                init_image = init_image.resize((width, height), Image.Resampling.LANCZOS)
+            
+            # ===== 设置 ControlNet =====
+            controlnet_pipe, control_image, use_controlnet = self._setup_controlnet(
+                config, model_path, image_path, init_image
+            )
+            
+            if controlnet_pipe is not None:
+                pipe = controlnet_pipe
             
             if pipe is None and model_path:
                 common_args = {
@@ -93,28 +116,29 @@ class FamilySketchStep(PipelineStep):
             steps = config.get("steps", 25)
             cfg = config.get("cfg", 7.0)
             
-            init_image = Image.open(image_path).convert('RGB')
-            w, h = init_image.size
-            width = ((w + 31) // 64) * 64
-            height = ((h + 31) // 64) * 64
-            if w != width or h != height:
-                init_image = init_image.resize((width, height), Image.Resampling.LANCZOS)
-            
             generator = torch.Generator("cpu").manual_seed(42)
             success_count = 0
             
             for idx, job in enumerate(prompts):
                 print(f"   [{idx+1}/{len(prompts)}] {job.get('name', 'unknown')}")
                 
-                result = pipe(
-                    prompt=job.get("prompt", ""),
-                    negative_prompt=job.get("negative", ""),
-                    image=init_image,
-                    strength=strength,
-                    num_inference_steps=steps,
-                    guidance_scale=cfg,
-                    generator=generator,
-                )
+                gen_kwargs = {
+                    "prompt": job.get("prompt", ""),
+                    "negative_prompt": job.get("negative", ""),
+                    "image": init_image,
+                    "strength": strength,
+                    "num_inference_steps": steps,
+                    "guidance_scale": cfg,
+                    "generator": generator,
+                }
+                
+                if control_image is not None and controlnet_pipe is not None:
+                    gen_kwargs["control_image"] = control_image
+                    gen_kwargs["controlnet_conditioning_scale"] = config.get("controlnet_strength", 0.6)
+                    if idx == 0:
+                        print(f"      🎛️ ControlNet 强度: {config.get('controlnet_strength', 0.6)}")
+                
+                result = pipe(**gen_kwargs)
                 
                 output_path = os.path.join(output_dir, f"{idx+1:02d}_{job.get('name', 'family_sketch')}.png")
                 result.images[0].save(output_path)
@@ -127,7 +151,8 @@ class FamilySketchStep(PipelineStep):
                 metadata={
                     "output_count": len(prompts),
                     "output_dir": output_dir,
-                    "success_count": success_count
+                    "success_count": success_count,
+                    "controlnet_used": control_image is not None,
                 }
             )
                     

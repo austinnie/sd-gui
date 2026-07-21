@@ -1,5 +1,5 @@
 # core/pipeline/steps/marble_step.py
-"""大理石转换步骤 - 直接使用内部配置"""
+"""大理石转换步骤 - 支持 ControlNet"""
 
 import os
 import json
@@ -9,10 +9,11 @@ from datetime import datetime
 from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
 
 from ..step import PipelineStep, StepContext, StepResult, StepStatus
+from .controlnet_mixin import ControlNetMixin
 
 
-class MarbleStep(PipelineStep):
-    """大理石雕像转换步骤"""
+class MarbleStep(PipelineStep, ControlNetMixin):
+    """大理石雕像转换步骤 - 支持 ControlNet"""
     
     def __init__(self):
         super().__init__("marble", "将人物转换为大理石雕像")
@@ -22,7 +23,10 @@ class MarbleStep(PipelineStep):
             "cfg": 7.0,
             "steps": 20,
             "scenes": 14,
-            "model_path": "../models/sd-v1-5/aiiiiii01_v10.safetensors"
+            "model_path": "../models/sd-v1-5/aiiiiii01_v10.safetensors",
+            "use_controlnet": False,
+            "controlnet_type": "canny",
+            "controlnet_strength": 0.6,
         }
     
     def get_config_schema(self):
@@ -32,7 +36,11 @@ class MarbleStep(PipelineStep):
             "cfg": {"type": "float", "default": 7.0, "min": 5, "max": 10},
             "steps": {"type": "int", "default": 20, "min": 10, "max": 40},
             "scenes": {"type": "int", "default": 14, "choices": [6, 12, 14]},
-            "model_path": {"type": "str", "default": "../models/sd-v1-5/aiiiiii01_v10.safetensors"}
+            "model_path": {"type": "str", "default": "../models/sd-v1-5/aiiiiii01_v10.safetensors"},
+            "use_controlnet": {"type": "bool", "default": False},
+            "controlnet_type": {"type": "str", "default": "canny", 
+                               "choices": ["canny", "hed", "lineart", "depth"]},
+            "controlnet_strength": {"type": "float", "default": 0.6, "min": 0.1, "max": 1.0},
         }
     
     def _generate_marble_jobs(self, scene_count: int) -> list:
@@ -96,9 +104,9 @@ class MarbleStep(PipelineStep):
         ]
         
         return all_scenes[:scene_count]
-    
+        
     def execute(self, context: StepContext) -> StepResult:
-        """执行大理石转换（使用上下文中的 pipe）"""
+        """执行大理石转换 - 支持 ControlNet"""
         config = self._config
         image_path = context.input_path
         
@@ -108,15 +116,27 @@ class MarbleStep(PipelineStep):
                 error=f"图片不存在: {image_path}"
             )
         
-        # 创建输出目录
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_dir = os.path.join(context.output_dir, "marble")
         os.makedirs(output_dir, exist_ok=True)
         
         try:
-            # ===== 从上下文获取 pipe =====
             pipe = context.global_config.get('pipe')
             model_path = context.global_config.get('model_path')
+            
+            init_image = Image.open(image_path).convert('RGB')
+            w, h = init_image.size
+            width = ((w + 31) // 64) * 64
+            height = ((h + 31) // 64) * 64
+            if w != width or h != height:
+                init_image = init_image.resize((width, height), Image.Resampling.LANCZOS)
+            
+            # ===== 设置 ControlNet =====
+            controlnet_pipe, control_image, use_controlnet = self._setup_controlnet(
+                config, model_path, image_path, init_image
+            )
+            
+            if controlnet_pipe is not None:
+                pipe = controlnet_pipe
             
             if pipe is None and model_path:
                 common_args = {
@@ -138,9 +158,6 @@ class MarbleStep(PipelineStep):
                     error="无法获取 Pipeline"
                 )
             
-            # ============================================================
-            # 生成 jobs
-            # ============================================================
             scene_count = config.get("scenes", 14)
             jobs = self._generate_marble_jobs(scene_count)
             
@@ -150,41 +167,36 @@ class MarbleStep(PipelineStep):
             
             print(f"\n🎨 执行大理石转换: {len(jobs)} 个场景")
             print(f"   步数: {steps_override}, CFG: {cfg_override}, 强度: {strength_override}")
-            print(f"   原图: {image_path}")
+            if control_image is not None:
+                print(f"   🧠 ControlNet: {config.get('controlnet_type', 'canny')} (强度: {config.get('controlnet_strength', 0.6)})")
             
+            generator = torch.Generator("cpu").manual_seed(42)
             success_count = 0
             
             for idx, job in enumerate(jobs):
                 print(f"   [{idx+1}/{len(jobs)}] {job.get('name', 'unknown')}")
                 
                 try:
-                    # 加载图片
-                    init_image = Image.open(image_path).convert('RGB')
-                    w, h = init_image.size
-                    print(f"   📐 原图尺寸: {w}x{h}")
+                    gen_kwargs = {
+                        "prompt": job.get("prompt", ""),
+                        "negative_prompt": job.get("negative", ""),
+                        "image": init_image,
+                        "strength": strength_override,
+                        "num_inference_steps": steps_override,
+                        "guidance_scale": cfg_override,
+                        "generator": generator,
+                    }
                     
-                    width = ((w + 31) // 64) * 64
-                    height = ((h + 31) // 64) * 64
-                    if w != width or h != height:
-                        init_image = init_image.resize((width, height), Image.Resampling.LANCZOS)
-                        print(f"   📐 调整后尺寸: {width}x{height}")
+                    if control_image is not None and controlnet_pipe is not None:
+                        gen_kwargs["control_image"] = control_image
+                        gen_kwargs["controlnet_conditioning_scale"] = config.get("controlnet_strength", 0.6)
+                        if idx == 0:
+                            print(f"      🎛️ ControlNet 强度: {config.get('controlnet_strength', 0.6)}")
                     
-                    generator = torch.Generator("cpu").manual_seed(42 + idx)
+                    result = pipe(**gen_kwargs)
                     
-                    result = pipe(
-                        prompt=job.get("prompt", ""),
-                        negative_prompt=job.get("negative", ""),
-                        image=init_image,
-                        strength=strength_override,
-                        num_inference_steps=steps_override,
-                        guidance_scale=cfg_override,
-                        generator=generator,
-                    )
-                    
-                    # 保存图片
                     output_path = os.path.join(output_dir, f"{idx+1:02d}_{job.get('name', 'marble')}.png")
                     result.images[0].save(output_path)
-                    
                     success_count += 1
                     print(f"      ✅ 已保存: {os.path.basename(output_path)}")
                     
@@ -194,14 +206,14 @@ class MarbleStep(PipelineStep):
                     traceback.print_exc()
                     continue
             
-            # 返回结果
             return StepResult(
                 status=StepStatus.SUCCESS if success_count > 0 else StepStatus.FAILED,
                 output_path=output_dir,
                 metadata={
                     "output_count": len(jobs),
                     "output_dir": output_dir,
-                    "success_count": success_count
+                    "success_count": success_count,
+                    "controlnet_used": control_image is not None,
                 }
             )
                     

@@ -1,5 +1,9 @@
 # core/pipeline/steps/__init__.py
+
 import torch  # ✅ 在这里导入一次
+
+from .controlnet_mixin import ControlNetMixin
+
 from .marble_step import MarbleStep
 from .qipao_step import QipaoStep
 from .couple_step import CoupleStep
@@ -40,6 +44,7 @@ from .group_photo_step import GroupPhotoStep
 from .couple_wedding_step import CoupleWeddingStep
 
 __all__ = [
+    'ControlNetMixin',  # ✅ 新增
     'MarbleStep',
     'QipaoStep',
     'CoupleStep',

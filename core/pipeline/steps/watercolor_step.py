@@ -1,5 +1,5 @@
 # core/pipeline/steps/watercolor_step.py
-"""水彩风格转换步骤"""
+"""水彩风格转换步骤 - 支持 ControlNet"""
 
 import os
 import torch
@@ -8,10 +8,11 @@ from datetime import datetime
 from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
 
 from ..step import PipelineStep, StepContext, StepResult, StepStatus
+from .controlnet_mixin import ControlNetMixin
 
 
-class WatercolorStep(PipelineStep):
-    """水彩风格转换步骤"""
+class WatercolorStep(PipelineStep, ControlNetMixin):
+    """水彩风格转换步骤 - 支持 ControlNet"""
     
     def __init__(self):
         super().__init__("watercolor", "转换为水彩画风格")
@@ -19,7 +20,10 @@ class WatercolorStep(PipelineStep):
             "strength": 0.40,
             "cfg": 8.0,
             "steps": 30,
-            "model_path": "../models/sd-v1-5/aiiiiii01_v10.safetensors"
+            "model_path": "../models/sd-v1-5/aiiiiii01_v10.safetensors",
+            "use_controlnet": False,
+            "controlnet_type": "hed",
+            "controlnet_strength": 0.6,
         }
     
     def get_config_schema(self):
@@ -27,7 +31,11 @@ class WatercolorStep(PipelineStep):
             "strength": {"type": "float", "default": 0.40, "min": 0.2, "max": 0.6},
             "cfg": {"type": "float", "default": 8.0, "min": 6, "max": 12},
             "steps": {"type": "int", "default": 30, "min": 20, "max": 50},
-            "model_path": {"type": "str", "default": "../models/sd-v1-5/aiiiiii01_v10.safetensors"}
+            "model_path": {"type": "str", "default": "../models/sd-v1-5/aiiiiii01_v10.safetensors"},
+            "use_controlnet": {"type": "bool", "default": False},
+            "controlnet_type": {"type": "str", "default": "hed", 
+                               "choices": ["canny", "hed", "lineart", "scribble"]},
+            "controlnet_strength": {"type": "float", "default": 0.6, "min": 0.1, "max": 1.0},
         }
     
     def _generate_watercolor_prompts(self) -> list:
@@ -51,7 +59,7 @@ class WatercolorStep(PipelineStep):
         ]
     
     def execute(self, context: StepContext) -> StepResult:
-        """执行水彩风格转换"""
+        """执行水彩风格转换 - 支持 ControlNet"""
         config = self._config
         image_path = context.input_path
         
@@ -67,6 +75,21 @@ class WatercolorStep(PipelineStep):
         try:
             pipe = context.global_config.get('pipe')
             model_path = context.global_config.get('model_path')
+            
+            init_image = Image.open(image_path).convert('RGB')
+            w, h = init_image.size
+            width = ((w + 31) // 64) * 64
+            height = ((h + 31) // 64) * 64
+            if w != width or h != height:
+                init_image = init_image.resize((width, height), Image.Resampling.LANCZOS)
+            
+            # ===== 设置 ControlNet =====
+            controlnet_pipe, control_image, use_controlnet = self._setup_controlnet(
+                config, model_path, image_path, init_image
+            )
+            
+            if controlnet_pipe is not None:
+                pipe = controlnet_pipe
             
             if pipe is None and model_path:
                 common_args = {
@@ -93,28 +116,29 @@ class WatercolorStep(PipelineStep):
             steps = config.get("steps", 30)
             cfg = config.get("cfg", 8.0)
             
-            init_image = Image.open(image_path).convert('RGB')
-            w, h = init_image.size
-            width = ((w + 31) // 64) * 64
-            height = ((h + 31) // 64) * 64
-            if w != width or h != height:
-                init_image = init_image.resize((width, height), Image.Resampling.LANCZOS)
-            
             generator = torch.Generator("cpu").manual_seed(42)
             success_count = 0
             
             for idx, job in enumerate(prompts):
                 print(f"   [{idx+1}/{len(prompts)}] {job.get('name', 'unknown')}")
                 
-                result = pipe(
-                    prompt=job.get("prompt", ""),
-                    negative_prompt=job.get("negative", ""),
-                    image=init_image,
-                    strength=strength,
-                    num_inference_steps=steps,
-                    guidance_scale=cfg,
-                    generator=generator,
-                )
+                gen_kwargs = {
+                    "prompt": job.get("prompt", ""),
+                    "negative_prompt": job.get("negative", ""),
+                    "image": init_image,
+                    "strength": strength,
+                    "num_inference_steps": steps,
+                    "guidance_scale": cfg,
+                    "generator": generator,
+                }
+                
+                if control_image is not None and controlnet_pipe is not None:
+                    gen_kwargs["control_image"] = control_image
+                    gen_kwargs["controlnet_conditioning_scale"] = config.get("controlnet_strength", 0.6)
+                    if idx == 0:
+                        print(f"      🎛️ ControlNet 强度: {config.get('controlnet_strength', 0.6)}")
+                
+                result = pipe(**gen_kwargs)
                 
                 output_path = os.path.join(output_dir, f"{idx+1:02d}_{job.get('name', 'watercolor')}.png")
                 result.images[0].save(output_path)
@@ -127,7 +151,8 @@ class WatercolorStep(PipelineStep):
                 metadata={
                     "output_count": len(prompts),
                     "output_dir": output_dir,
-                    "success_count": success_count
+                    "success_count": success_count,
+                    "controlnet_used": control_image is not None,
                 }
             )
                     

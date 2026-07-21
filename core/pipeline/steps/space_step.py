@@ -1,5 +1,5 @@
 # core/pipeline/steps/space_step.py
-"""太空场景转换步骤"""
+"""太空场景转换步骤 - 支持 ControlNet"""
 
 import os
 import torch
@@ -8,10 +8,11 @@ from datetime import datetime
 from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
 
 from ..step import PipelineStep, StepContext, StepResult, StepStatus
+from .controlnet_mixin import ControlNetMixin
 
 
-class SpaceStep(PipelineStep):
-    """太空场景转换步骤"""
+class SpaceStep(PipelineStep, ControlNetMixin):
+    """太空场景转换步骤 - 支持 ControlNet"""
     
     def __init__(self):
         super().__init__("space", "将人物放到太空背景")
@@ -19,7 +20,10 @@ class SpaceStep(PipelineStep):
             "strength": 0.50,
             "cfg": 8.0,
             "steps": 35,
-            "model_path": "../models/sd-v1-5/aiiiiii01_v10.safetensors"
+            "model_path": "../models/sd-v1-5/aiiiiii01_v10.safetensors",
+            "use_controlnet": False,
+            "controlnet_type": "canny",
+            "controlnet_strength": 0.5,
         }
     
     def get_config_schema(self):
@@ -27,7 +31,11 @@ class SpaceStep(PipelineStep):
             "strength": {"type": "float", "default": 0.50, "min": 0.3, "max": 0.7},
             "cfg": {"type": "float", "default": 8.0, "min": 6, "max": 12},
             "steps": {"type": "int", "default": 35, "min": 25, "max": 60},
-            "model_path": {"type": "str", "default": "../models/sd-v1-5/aiiiiii01_v10.safetensors"}
+            "model_path": {"type": "str", "default": "../models/sd-v1-5/aiiiiii01_v10.safetensors"},
+            "use_controlnet": {"type": "bool", "default": False},
+            "controlnet_type": {"type": "str", "default": "canny", 
+                               "choices": ["canny", "hed", "lineart", "depth"]},
+            "controlnet_strength": {"type": "float", "default": 0.5, "min": 0.1, "max": 1.0},
         }
     
     def _generate_space_prompts(self) -> list:
@@ -56,7 +64,7 @@ class SpaceStep(PipelineStep):
         ]
     
     def execute(self, context: StepContext) -> StepResult:
-        """执行太空场景转换"""
+        """执行太空场景转换 - 支持 ControlNet"""
         config = self._config
         image_path = context.input_path
         
@@ -72,6 +80,21 @@ class SpaceStep(PipelineStep):
         try:
             pipe = context.global_config.get('pipe')
             model_path = context.global_config.get('model_path')
+            
+            init_image = Image.open(image_path).convert('RGB')
+            w, h = init_image.size
+            width = ((w + 31) // 64) * 64
+            height = ((h + 31) // 64) * 64
+            if w != width or h != height:
+                init_image = init_image.resize((width, height), Image.Resampling.LANCZOS)
+            
+            # ===== 设置 ControlNet =====
+            controlnet_pipe, control_image, use_controlnet = self._setup_controlnet(
+                config, model_path, image_path, init_image
+            )
+            
+            if controlnet_pipe is not None:
+                pipe = controlnet_pipe
             
             if pipe is None and model_path:
                 common_args = {
@@ -98,28 +121,29 @@ class SpaceStep(PipelineStep):
             steps = config.get("steps", 35)
             cfg = config.get("cfg", 8.0)
             
-            init_image = Image.open(image_path).convert('RGB')
-            w, h = init_image.size
-            width = ((w + 31) // 64) * 64
-            height = ((h + 31) // 64) * 64
-            if w != width or h != height:
-                init_image = init_image.resize((width, height), Image.Resampling.LANCZOS)
-            
             generator = torch.Generator("cpu").manual_seed(42)
             success_count = 0
             
             for idx, job in enumerate(prompts):
                 print(f"   [{idx+1}/{len(prompts)}] {job.get('name', 'unknown')}")
                 
-                result = pipe(
-                    prompt=job.get("prompt", ""),
-                    negative_prompt=job.get("negative", ""),
-                    image=init_image,
-                    strength=strength,
-                    num_inference_steps=steps,
-                    guidance_scale=cfg,
-                    generator=generator,
-                )
+                gen_kwargs = {
+                    "prompt": job.get("prompt", ""),
+                    "negative_prompt": job.get("negative", ""),
+                    "image": init_image,
+                    "strength": strength,
+                    "num_inference_steps": steps,
+                    "guidance_scale": cfg,
+                    "generator": generator,
+                }
+                
+                if control_image is not None and controlnet_pipe is not None:
+                    gen_kwargs["control_image"] = control_image
+                    gen_kwargs["controlnet_conditioning_scale"] = config.get("controlnet_strength", 0.5)
+                    if idx == 0:
+                        print(f"      🎛️ ControlNet 强度: {config.get('controlnet_strength', 0.5)}")
+                
+                result = pipe(**gen_kwargs)
                 
                 output_path = os.path.join(output_dir, f"{idx+1:02d}_{job.get('name', 'space')}.png")
                 result.images[0].save(output_path)
@@ -132,7 +156,8 @@ class SpaceStep(PipelineStep):
                 metadata={
                     "output_count": len(prompts),
                     "output_dir": output_dir,
-                    "success_count": success_count
+                    "success_count": success_count,
+                    "controlnet_used": control_image is not None,
                 }
             )
                     

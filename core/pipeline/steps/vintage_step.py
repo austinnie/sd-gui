@@ -1,5 +1,5 @@
 # core/pipeline/steps/vintage_step.py
-"""复古照片风格转换步骤"""
+"""复古照片风格转换步骤 - 支持 ControlNet"""
 
 import os
 import torch
@@ -8,10 +8,11 @@ from datetime import datetime
 from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
 
 from ..step import PipelineStep, StepContext, StepResult, StepStatus
+from .controlnet_mixin import ControlNetMixin
 
 
-class VintageStep(PipelineStep):
-    """复古照片风格转换步骤"""
+class VintageStep(PipelineStep, ControlNetMixin):
+    """复古照片风格转换步骤 - 支持 ControlNet"""
     
     def __init__(self):
         super().__init__("vintage", "转换为复古照片风格")
@@ -19,7 +20,10 @@ class VintageStep(PipelineStep):
             "strength": 0.35,
             "cfg": 7.0,
             "steps": 25,
-            "model_path": "../models/sd-v1-5/aiiiiii01_v10.safetensors"
+            "model_path": "../models/sd-v1-5/aiiiiii01_v10.safetensors",
+            "use_controlnet": False,
+            "controlnet_type": "hed",
+            "controlnet_strength": 0.5,
         }
     
     def get_config_schema(self):
@@ -27,7 +31,11 @@ class VintageStep(PipelineStep):
             "strength": {"type": "float", "default": 0.35, "min": 0.2, "max": 0.55},
             "cfg": {"type": "float", "default": 7.0, "min": 5, "max": 9},
             "steps": {"type": "int", "default": 25, "min": 15, "max": 40},
-            "model_path": {"type": "str", "default": "../models/sd-v1-5/aiiiiii01_v10.safetensors"}
+            "model_path": {"type": "str", "default": "../models/sd-v1-5/aiiiiii01_v10.safetensors"},
+            "use_controlnet": {"type": "bool", "default": False},
+            "controlnet_type": {"type": "str", "default": "hed", 
+                               "choices": ["hed", "canny", "lineart"]},
+            "controlnet_strength": {"type": "float", "default": 0.5, "min": 0.1, "max": 1.0},
         }
     
     def _generate_vintage_prompts(self) -> list:
@@ -56,7 +64,7 @@ class VintageStep(PipelineStep):
         ]
     
     def execute(self, context: StepContext) -> StepResult:
-        """执行复古照片风格转换"""
+        """执行复古照片风格转换 - 支持 ControlNet"""
         config = self._config
         image_path = context.input_path
         
@@ -72,6 +80,21 @@ class VintageStep(PipelineStep):
         try:
             pipe = context.global_config.get('pipe')
             model_path = context.global_config.get('model_path')
+            
+            init_image = Image.open(image_path).convert('RGB')
+            w, h = init_image.size
+            width = ((w + 31) // 64) * 64
+            height = ((h + 31) // 64) * 64
+            if w != width or h != height:
+                init_image = init_image.resize((width, height), Image.Resampling.LANCZOS)
+            
+            # ===== 设置 ControlNet =====
+            controlnet_pipe, control_image, use_controlnet = self._setup_controlnet(
+                config, model_path, image_path, init_image
+            )
+            
+            if controlnet_pipe is not None:
+                pipe = controlnet_pipe
             
             if pipe is None and model_path:
                 common_args = {
@@ -98,28 +121,29 @@ class VintageStep(PipelineStep):
             steps = config.get("steps", 25)
             cfg = config.get("cfg", 7.0)
             
-            init_image = Image.open(image_path).convert('RGB')
-            w, h = init_image.size
-            width = ((w + 31) // 64) * 64
-            height = ((h + 31) // 64) * 64
-            if w != width or h != height:
-                init_image = init_image.resize((width, height), Image.Resampling.LANCZOS)
-            
             generator = torch.Generator("cpu").manual_seed(42)
             success_count = 0
             
             for idx, job in enumerate(prompts):
                 print(f"   [{idx+1}/{len(prompts)}] {job.get('name', 'unknown')}")
                 
-                result = pipe(
-                    prompt=job.get("prompt", ""),
-                    negative_prompt=job.get("negative", ""),
-                    image=init_image,
-                    strength=strength,
-                    num_inference_steps=steps,
-                    guidance_scale=cfg,
-                    generator=generator,
-                )
+                gen_kwargs = {
+                    "prompt": job.get("prompt", ""),
+                    "negative_prompt": job.get("negative", ""),
+                    "image": init_image,
+                    "strength": strength,
+                    "num_inference_steps": steps,
+                    "guidance_scale": cfg,
+                    "generator": generator,
+                }
+                
+                if control_image is not None and controlnet_pipe is not None:
+                    gen_kwargs["control_image"] = control_image
+                    gen_kwargs["controlnet_conditioning_scale"] = config.get("controlnet_strength", 0.5)
+                    if idx == 0:
+                        print(f"      🎛️ ControlNet 强度: {config.get('controlnet_strength', 0.5)}")
+                
+                result = pipe(**gen_kwargs)
                 
                 output_path = os.path.join(output_dir, f"{idx+1:02d}_{job.get('name', 'vintage')}.png")
                 result.images[0].save(output_path)
@@ -132,7 +156,8 @@ class VintageStep(PipelineStep):
                 metadata={
                     "output_count": len(prompts),
                     "output_dir": output_dir,
-                    "success_count": success_count
+                    "success_count": success_count,
+                    "controlnet_used": control_image is not None,
                 }
             )
                     
