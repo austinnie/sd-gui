@@ -361,7 +361,7 @@ class AnimeXxxStep(PipelineStep, ControlNetMixin):
                     error="无法获取 Pipeline"
                 )
             
-            prompts = self._generate_anime_prompts()
+            # ===== 场景数限制 =====
             strength = config.get("strength", 0.45)
             steps = config.get("steps", 30)
             cfg = config.get("cfg", 7.0)

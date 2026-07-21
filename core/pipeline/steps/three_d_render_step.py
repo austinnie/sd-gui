@@ -111,7 +111,7 @@ class ThreeDRenderStep(PipelineStep, ControlNetMixin):
                     error="无法获取 Pipeline"
                 )
             
-            prompts = self._generate_3d_render_prompts()
+            # ===== 场景数限制 =====
             strength = config.get("strength", 0.50)
             steps = config.get("steps", 35)
             cfg = config.get("cfg", 8.5)

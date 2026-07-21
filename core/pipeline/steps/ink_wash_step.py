@@ -116,7 +116,7 @@ class InkWashStep(PipelineStep, ControlNetMixin):
                     error="无法获取 Pipeline"
                 )
             
-            prompts = self._generate_ink_wash_prompts()
+            # ===== 场景数限制 =====
             strength = config.get("strength", 0.45)
             steps = config.get("steps", 30)
             cfg = config.get("cfg", 7.5)

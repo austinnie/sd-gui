@@ -22,7 +22,7 @@ class WatercolorStep(PipelineStep, ControlNetMixin):
             "steps": 30,
             "model_path": "../models/sd-v1-5/aiiiiii01_v10.safetensors",
             "use_controlnet": False,
-            "controlnet_type": "hed",
+            "controlnet_type": "canny",
             "controlnet_strength": 0.6,
         }
     
@@ -33,7 +33,7 @@ class WatercolorStep(PipelineStep, ControlNetMixin):
             "steps": {"type": "int", "default": 30, "min": 20, "max": 50},
             "model_path": {"type": "str", "default": "../models/sd-v1-5/aiiiiii01_v10.safetensors"},
             "use_controlnet": {"type": "bool", "default": False},
-            "controlnet_type": {"type": "str", "default": "hed", 
+            "controlnet_type": {"type": "str", "default": "canny", 
                                "choices": ["canny", "hed", "lineart", "scribble"]},
             "controlnet_strength": {"type": "float", "default": 0.6, "min": 0.1, "max": 1.0},
         }
@@ -111,7 +111,15 @@ class WatercolorStep(PipelineStep, ControlNetMixin):
                     error="无法获取 Pipeline"
                 )
             
-            prompts = self._generate_watercolor_prompts()
+            # ===== 场景数限制 =====
+            max_scenes = self._get_scene_limit(config)
+            all_prompts = self._generate_watercolor_prompts()
+            if max_scenes is not None and max_scenes > 0:
+                prompts = self._limit_prompts(all_prompts, max_scenes)
+                print(f"   📊 场景限制: 只生成前 {len(prompts)}/{len(all_prompts)} 个场景")
+            else:
+                prompts = all_prompts
+            
             strength = config.get("strength", 0.40)
             steps = config.get("steps", 30)
             cfg = config.get("cfg", 8.0)

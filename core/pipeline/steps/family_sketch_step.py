@@ -111,7 +111,7 @@ class FamilySketchStep(PipelineStep, ControlNetMixin):
                     error="无法获取 Pipeline"
                 )
             
-            prompts = self._generate_prompts()
+            # ===== 场景数限制 =====
             strength = config.get("strength", 0.35)
             steps = config.get("steps", 25)
             cfg = config.get("cfg", 7.0)

@@ -116,7 +116,7 @@ class SpaceStep(PipelineStep, ControlNetMixin):
                     error="无法获取 Pipeline"
                 )
             
-            prompts = self._generate_space_prompts()
+            # ===== 场景数限制 =====
             strength = config.get("strength", 0.50)
             steps = config.get("steps", 35)
             cfg = config.get("cfg", 8.0)

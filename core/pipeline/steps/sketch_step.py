@@ -8,9 +8,10 @@ from datetime import datetime
 from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
 
 from ..step import PipelineStep, StepContext, StepResult, StepStatus
+from .controlnet_mixin import ControlNetMixin  # ✅ 添加这行
 
 
-class SketchStep(PipelineStep):
+class SketchStep(PipelineStep, ControlNetMixin):  # ✅ 继承 ControlNetMixin
     """素描风格转换步骤 - 支持 ControlNet"""
     
     def __init__(self):
@@ -20,13 +21,11 @@ class SketchStep(PipelineStep):
             "cfg": 7.0,
             "steps": 25,
             "model_path": "../models/sd-v1-5/aiiiiii01_v10.safetensors",
-            "use_controlnet": True,           # ✅ 新增：ControlNet 开关
-            "controlnet_type": "canny",       # ✅ 新增：ControlNet 类型
-            "controlnet_strength": 0.6,       # ✅ 新增：ControlNet 控制强度
+            "use_controlnet": True,
+            "controlnet_type": "canny",
+            "controlnet_strength": 0.6,
         }
     
-    # core/pipeline/steps/sketch_step.py
-
     def get_config_schema(self):
         """配置参数 Schema - 会在 UI 中显示"""
         return {
@@ -139,14 +138,12 @@ class SketchStep(PipelineStep):
             info = get_controlnet_info(controlnet_type)
             print(f"   📦 加载 ControlNet: {info['name']}")
             
-            # 加载 ControlNet 模型
             controlnet = ControlNetModel.from_pretrained(
                 info["model_id"],
                 torch_dtype=torch.float32,
                 low_cpu_mem_usage=True
             )
             
-            # 加载主模型 + ControlNet
             pipe = StableDiffusionControlNetPipeline.from_single_file(
                 model_path,
                 controlnet=controlnet,
@@ -262,10 +259,13 @@ class SketchStep(PipelineStep):
                     print("   ⚠️ 控制图生成失败，使用普通模式")
             
             # ===== 获取参数 =====
-            prompts = self._generate_sketch_prompts()
             strength = config.get("strength", 0.25)
             steps = config.get("steps", 30)
             cfg = config.get("cfg", 7.0)
+            
+            # ===== ✅ 场景数限制 =====
+            max_scenes = self._get_scene_limit(config)
+            prompts = self._limit_prompts(self._generate_sketch_prompts(), max_scenes)
             
             generator = torch.Generator("cpu").manual_seed(42)
             success_count = 0
@@ -274,7 +274,6 @@ class SketchStep(PipelineStep):
             for idx, job in enumerate(prompts):
                 print(f"   [{idx+1}/{len(prompts)}] {job.get('name', 'unknown')}")
                 
-                # 构建生成参数
                 gen_kwargs = {
                     "prompt": job.get("prompt", ""),
                     "negative_prompt": job.get("negative", ""),
@@ -285,7 +284,6 @@ class SketchStep(PipelineStep):
                     "generator": generator,
                 }
                 
-                # ===== 如果是 ControlNet 模式，添加控制图参数 =====
                 if control_image is not None and controlnet_pipe is not None:
                     gen_kwargs["control_image"] = control_image
                     gen_kwargs["controlnet_conditioning_scale"] = controlnet_strength

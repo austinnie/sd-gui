@@ -337,24 +337,69 @@ class PipelineTab(BaseTab):
         self.cfg_var = tk.DoubleVar(value=7.0)
         ttk.Spinbox(steps_row, from_=5.0, to=12.0, textvariable=self.cfg_var, width=5, increment=0.5).pack(side=tk.LEFT, padx=5)
 
-        # 场景数（只有 marble 有效）
-        scenes_row = ttk.Frame(param_frame)
-        scenes_row.pack(fill=tk.X, pady=2)
-        
-        self.scenes_label = ttk.Label(scenes_row, text="场景数:", foreground="black")
-        self.scenes_label.pack(side=tk.LEFT, padx=5)
-        
-        self.scenes_var = tk.StringVar(value="14")
-        self.scenes_combobox = ttk.Combobox(
-            scenes_row,
-            textvariable=self.scenes_var,
-            values=["6", "12", "14"],
-            width=5,
+        # ============================================================
+        # ✅ 场景数信息显示（只读，显示当前步骤的场景数）
+        # ============================================================
+        scenes_info_row = ttk.Frame(param_frame)
+        scenes_info_row.pack(fill=tk.X, pady=2)
+
+        ttk.Label(scenes_info_row, text="📊 场景数:").pack(side=tk.LEFT, padx=5)
+
+        self.scenes_info_var = tk.StringVar(value="检测中...")
+        self.scenes_info_label = ttk.Label(
+            scenes_info_row,
+            textvariable=self.scenes_info_var,
+            foreground="blue"
+        )
+        self.scenes_info_label.pack(side=tk.LEFT, padx=5)
+
+        # 刷新场景数按钮
+        ttk.Button(
+            scenes_info_row,
+            text="🔄",
+            width=2,
+            command=self._update_scenes_info
+        ).pack(side=tk.LEFT, padx=2)
+
+        # 场景数提示
+        ttk.Label(
+            scenes_info_row,
+            text="💡 显示当前流水线所有步骤的场景总数",
+            foreground="gray",
+            font=("", 8)
+        ).pack(side=tk.LEFT, padx=10)
+
+        row += 1
+
+        # ============================================================
+        # ✅ 场景数限制（用户可控制，对所有步骤生效）
+        # ============================================================
+        scenes_limit_row = ttk.Frame(param_frame)
+        scenes_limit_row.pack(fill=tk.X, pady=2)
+
+        ttk.Label(scenes_limit_row, text="🎯 场景数限制:").pack(side=tk.LEFT, padx=5)
+
+        self.scenes_limit_var = tk.StringVar(value="全部")
+        self.scenes_limit_combo = ttk.Combobox(
+            scenes_limit_row,
+            textvariable=self.scenes_limit_var,
+            values=["全部", "1", "2", "3", "4", "5", "6", "7", "8", "10", "12", "14", "16", "20"],
+            width=8,
             state="readonly"
         )
-        self.scenes_combobox.pack(side=tk.LEFT, padx=5)
-        
+        self.scenes_limit_combo.pack(side=tk.LEFT, padx=5)
+        self.scenes_limit_combo.set("全部")
+
+        # 限制提示
+        ttk.Label(
+            scenes_limit_row,
+            text="💡 选择数字限制场景数量，留空=全部",
+            foreground="gray",
+            font=("", 8)
+        ).pack(side=tk.LEFT, padx=10)
+
         row += 1
+
 
         # ============================================================
         # ✅ 新增：ControlNet 参数覆盖
@@ -496,27 +541,9 @@ class PipelineTab(BaseTab):
         ).grid(row=row, column=0, columnspan=3, sticky=tk.W, padx=5, pady=5)
     
     def _update_scenes_state(self):
-        """更新场景数控件的状态（只有 marble 支持）"""
-        if not hasattr(self, 'pipelines_config'):
-            return
+        """更新场景数控件的状态（已弃用，保留空方法以防报错）"""
+        pass  # 不再需要，因为使用统一的场景数限制
         
-        name = self.pipeline_var.get()
-        pipelines = self.pipelines_config.get("pipelines", {})
-        pipeline = pipelines.get(name, {})
-        steps = pipeline.get("steps", [])
-        
-        has_marble = any(step.get("type") == "marble" for step in steps)
-        
-        if hasattr(self, 'scenes_combobox') and self.scenes_combobox:
-            if has_marble:
-                self.scenes_combobox.config(state="readonly")
-                self.scenes_label.config(foreground="black")
-                if self.scenes_var.get() == "N/A" or self.scenes_var.get() == "":
-                    self.scenes_var.set("14")
-            else:
-                self.scenes_combobox.config(state="disabled")
-                self.scenes_label.config(foreground="gray")
-                self.scenes_var.set("N/A")
     
     def _update_info(self):
         """更新流水线信息"""
@@ -528,17 +555,138 @@ class PipelineTab(BaseTab):
         info += f"📝 {pipeline.get('description', '无描述')}\n"
         steps = pipeline.get("steps", [])
         info += f"📊 共 {len(steps)} 步\n"
+
+        # ============================================================
+        # ✅ 新增：统计场景数
+        # ============================================================
+        scene_stats = []  # 存储每个步骤的场景统计
+        total_scenes = 0
+    
         for i, step in enumerate(steps, 1):
             step_type = step.get("type", "unknown")
             config = step.get("config", {})
+
+            # 获取该步骤的场景数
+            scene_count = self._get_step_scene_count(step_type, config)
+            
+            if scene_count is not None:
+                scene_stats.append(f"{step_type}: {scene_count} 个场景")
+                total_scenes += scene_count
+            
             config_str = ", ".join(f"{k}={v}" for k, v in config.items() if k != "model_path")
             info += f"   {i}. {step_type} ({config_str})\n"
+
+
+        # ===== 显示场景统计 =====
+        if scene_stats:
+            info += f"\n📊 场景统计:\n"
+            info += f"   共 {len(scene_stats)} 个步骤支持场景控制\n"
+            for stat in scene_stats:
+                info += f"   • {stat}\n"
+            info += f"   📝 总计: {total_scenes} 个场景\n"
+            info += f"   💡 在「参数覆盖」中设置「场景数」可限制生成数量\n"
         
         self.info_text.delete("1.0", tk.END)
         self.info_text.insert("1.0", info)
         
         self._update_scenes_state()
-    
+
+
+    def _get_step_scene_count(self, step_type: str, config: dict) -> int:
+        """
+        获取步骤的场景数量
+        
+        参数:
+            step_type: 步骤类型
+            config: 步骤配置
+        
+        返回:
+            场景数量，如果无法确定则返回 None
+        """
+        # 首先检查配置中是否指定了场景数
+        if "scenes" in config:
+            try:
+                return int(config["scenes"])
+            except:
+                pass
+        if "scene_count" in config:
+            try:
+                return int(config["scene_count"])
+            except:
+                pass
+        
+        # 根据步骤类型返回默认场景数
+        scene_counts = {
+            # 风格转换类
+            "sketch": 8,           # 素描风格 - 8个场景
+            "watercolor": 3,       # 水彩风格 - 3个场景
+            "ink_wash": 4,         # 国风水墨 - 4个场景
+            "oil_painting": 6,     # 油画风格 - 6个场景
+            "cyberpunk": 3,        # 赛博朋克 - 3个场景
+            "vaporwave": 3,        # 蒸汽波 - 3个场景
+            "three_d_render": 3,   # 3D渲染 - 3个场景
+            
+            # 场景/主题类
+            "beach": 4,            # 海滩场景 - 4个场景
+            "forest": 4,           # 森林场景 - 4个场景
+            "space": 4,            # 太空场景 - 4个场景
+            "castle": 4,           # 古堡场景 - 4个场景
+            "wedding": 4,          # 婚纱风格 - 4个场景
+            
+            # 服装/造型类
+            "lolita": 4,           # 洛丽塔 - 4个场景
+            "kimono": 4,           # 和服风格 - 4个场景
+            "evening_gown": 4,     # 晚礼服 - 4个场景
+            "vintage": 4,          # 复古照片 - 4个场景
+            "cinematic": 4,        # 电影质感 - 4个场景
+            "hanfu": 4,            # 汉服风格 - 4个场景
+            "qipao": 4,            # 旗袍风格 - 4个场景
+            
+            # 双人/多人场景
+            "couple": 4,           # 情侣场景 - 4个场景
+            "couple_watercolor": 3,    # 情侣水彩 - 3个场景
+            "couple_oil_painting": 3,  # 情侣油画 - 3个场景
+            "couple_wedding": 4,       # 婚纱照双人 - 4个场景
+            "family_sketch": 3,        # 家庭素描 - 3个场景
+            "friends_style": 3,        # 朋友聚会 - 3个场景
+            "group_photo": 3,          # 团队照片 - 3个场景
+            "yoga": 4,                 # 瑜伽姿势 - 4个场景
+            
+            # 特殊
+            "marble": 14,          # 大理石雕像 - 14个场景
+            "anime_xxx": 40,       # 动漫爱爱 - 40个场景
+            "remove_clothes": 28,  # 去掉衣服 - 28个场景
+        }
+        
+        return scene_counts.get(step_type)
+
+    # gui/tabs/pipeline_tab.py
+
+    def _update_scenes_info(self):
+        """更新场景数信息显示"""
+        name = self.pipeline_var.get()
+        pipelines = self.pipelines_config.get("pipelines", {})
+        pipeline = pipelines.get(name, {})
+        steps = pipeline.get("steps", [])
+        
+        total_scenes = 0
+        scene_details = []
+        
+        for step in steps:
+            step_type = step.get("type", "unknown")
+            config = step.get("config", {})
+            count = self._get_step_scene_count(step_type, config)
+            if count is not None:
+                total_scenes += count
+                scene_details.append(f"{step_type}: {count}")
+        
+        if scene_details:
+            self.scenes_info_var.set(f"共 {len(scene_details)} 个步骤, 总计 {total_scenes} 个场景")
+            # 可选：在日志中输出详细信息
+            print(f"📊 场景统计: {', '.join(scene_details)}")
+        else:
+            self.scenes_info_var.set("无场景数据")
+            
     def _reload_pipelines(self):
         """重新加载流水线"""
         self._load_pipelines()
@@ -607,12 +755,15 @@ class PipelineTab(BaseTab):
         override_steps = self.steps_var.get()
         override_cfg = self.cfg_var.get()
         
-        # 场景数安全获取
-        try:
-            override_scenes = int(self.scenes_var.get())
-        except (ValueError, TypeError):
-            override_scenes = 14
-            self.scenes_var.set("14")
+        # ===== ✅ 获取场景数限制（统一） =====
+        scenes_limit = self.scenes_limit_var.get()
+        if scenes_limit == "全部" or not scenes_limit:
+            override_scenes = None
+        else:
+            try:
+                override_scenes = int(scenes_limit)
+            except (ValueError, TypeError):
+                override_scenes = None
 
         # ===== ✅ 新增：获取 ControlNet 参数 =====
         use_controlnet = self.use_controlnet_var.get() if hasattr(self, 'use_controlnet_var') else False
@@ -624,10 +775,6 @@ class PipelineTab(BaseTab):
             step_type = step.get("type", "")
             config = step.get("config", {})
             
-            # 只有 marble 支持 scenes
-            if step_type == "marble" and "scenes" in config:
-                config["scenes"] = override_scenes
-            
             # 通用参数
             if "strength" in config:
                 config["strength"] = override_strength
@@ -635,12 +782,18 @@ class PipelineTab(BaseTab):
                 config["steps"] = override_steps
             if "cfg" in config:
                 config["cfg"] = override_cfg
+            
+            # ===== ✅ 场景数限制（统一应用到所有步骤） =====
+            if override_scenes is not None:
+                # 支持多个键名，让步骤自己决定用哪个
+                config["max_scenes"] = override_scenes
+                config["scene_limit"] = override_scenes
 
 
-        # ✅ 新增：传递 ControlNet 参数（只有支持 ControlNet 的步骤会使用）
-        config["use_controlnet"] = use_controlnet
-        config["controlnet_type"] = controlnet_type
-        config["controlnet_strength"] = controlnet_strength                
+            # ✅ 新增：传递 ControlNet 参数（只有支持 ControlNet 的步骤会使用）
+            config["use_controlnet"] = use_controlnet
+            config["controlnet_type"] = controlnet_type
+            config["controlnet_strength"] = controlnet_strength                
         
         self.is_running = True
         self.cancel_flag = False
@@ -1043,27 +1196,33 @@ class PipelineTab(BaseTab):
                 override_steps = self.steps_var.get()
                 override_cfg = self.cfg_var.get()
                 
-                # ✅ 场景数安全转换
-                try:
-                    override_scenes = int(self.scenes_var.get())
-                except (ValueError, TypeError):
-                    override_scenes = 14
-                    self.scenes_var.set("14")
+                # ===== ✅ 场景数限制（使用统一的场景数限制） =====
+                scenes_limit = self.scenes_limit_var.get()
+                if scenes_limit == "全部" or not scenes_limit:
+                    override_scenes = None
+                else:
+                    try:
+                        override_scenes = int(scenes_limit)
+                    except (ValueError, TypeError):
+                        override_scenes = None
                 
                 for step in pipeline_config.get("steps", []):
                     step_type = step.get("type", "")
                     config = step.get("config", {})
                     
-                    # 只有 marble 支持 scenes
-                    if step_type == "marble" and "scenes" in config:
-                        config["scenes"] = override_scenes
-                    
+                   
                     if "strength" in config:
                         config["strength"] = override_strength
                     if "steps" in config:
                         config["steps"] = override_steps
                     if "cfg" in config:
                         config["cfg"] = override_cfg
+
+
+                    # ===== ✅ 场景数限制（统一应用到所有步骤） =====
+                    if override_scenes is not None:
+                        config["max_scenes"] = override_scenes
+                        config["scene_limit"] = override_scenes
                 
                 # 加载图片
                 image = Image.open(image_path).convert('RGB')

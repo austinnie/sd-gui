@@ -1,21 +1,26 @@
 # core/pipeline/steps/controlnet_mixin.py
 """
-ControlNet 混入类 - 为流水线步骤添加 ControlNet 支持
+ControlNet 混入类 - 为流水线步骤添加 ControlNet 支持和场景数限制
 """
 
 import os
 import torch
 from PIL import Image
+from typing import Optional, List, Any
 from diffusers import ControlNetModel, StableDiffusionControlNetPipeline, EulerDiscreteScheduler
 from utils.controlnet_helper import get_controlnet_info, preprocess_image_for_controlnet
 
 
 class ControlNetMixin:
-    """ControlNet 混入类 - 提供 ControlNet 加载和预处理功能"""
+    """ControlNet 混入类 - 提供 ControlNet 加载、预处理和场景数限制功能"""
     
     def __init__(self):
         self._controlnet_pipe = None
         self._control_image = None
+    
+    # ============================================================
+    # ControlNet 相关方法
+    # ============================================================
     
     def _get_controlnet_pipeline(self, model_path: str, controlnet_type: str = "canny"):
         """获取 ControlNet Pipeline"""
@@ -93,7 +98,6 @@ class ControlNetMixin:
         if use_controlnet and model_path:
             pipe = self._get_controlnet_pipeline(model_path, controlnet_type)
             if pipe:
-                # 生成控制图
                 w, h = init_image.size
                 control_image = self._preprocess_for_controlnet(
                     image_path,
@@ -114,9 +118,61 @@ class ControlNetMixin:
     def _get_controlnet_gen_kwargs(self, config: dict, pipe, control_image):
         """获取 ControlNet 生成参数"""
         gen_kwargs = {}
-        
         if control_image is not None and pipe is not None:
             gen_kwargs["control_image"] = control_image
             gen_kwargs["controlnet_conditioning_scale"] = config.get("controlnet_strength", 0.6)
-        
         return gen_kwargs
+
+    # ============================================================
+    # ✅ 新增：场景数限制方法（所有步骤自动获得）
+    # ============================================================
+    
+    def _get_scene_limit(self, config: dict) -> Optional[int]:
+        """
+        从配置中获取场景数限制
+        
+        支持多个键名:
+            - max_scenes: 通用键名（由 pipeline_tab.py 传入）
+            - scene_limit: 通用键名
+            - scenes: 兼容旧配置（marble 等）
+        
+        参数:
+            config: 步骤配置字典
+        
+        返回:
+            场景数限制，None 表示不限制
+        """
+        for key in ["max_scenes", "scene_limit", "scenes"]:
+            if key in config:
+                try:
+                    value = int(config[key])
+                    if value > 0:
+                        return value
+                except (ValueError, TypeError):
+                    pass
+        return None
+    
+    def _limit_prompts(self, prompts: List[Any], max_scenes: Optional[int]) -> List[Any]:
+        """
+        根据场景数限制裁剪提示词列表
+        
+        参数:
+            prompts: 完整提示词列表
+            max_scenes: 最大场景数（None 表示不限制）
+        
+        返回:
+            裁剪后的提示词列表
+        """
+        if max_scenes is None or max_scenes <= 0:
+            return prompts
+        
+        if len(prompts) <= max_scenes:
+            return prompts
+        
+        limited = prompts[:max_scenes]
+        print(f"   📊 场景限制: 只生成前 {len(limited)}/{len(prompts)} 个场景")
+        return limited
+    
+    def _get_prompt_count(self, prompts: List[Any]) -> int:
+        """获取提示词数量（用于统计）"""
+        return len(prompts)

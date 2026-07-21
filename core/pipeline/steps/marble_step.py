@@ -159,7 +159,21 @@ class MarbleStep(PipelineStep, ControlNetMixin):
                 )
             
             scene_count = config.get("scenes", 14)
-            jobs = self._generate_marble_jobs(scene_count)
+            # ===== 场景数限制 =====
+
+            max_scenes = self._get_scene_limit(config)
+
+            all_jobs = self._generate_marble_jobs(14)
+
+            if max_scenes is not None and max_scenes > 0:
+
+                jobs = all_jobs[:max_scenes]
+
+                print(f"   📊 场景限制: 只生成前 {len(jobs)}/{len(all_jobs)} 个场景")
+
+            else:
+
+                jobs = all_jobs
             
             steps_override = config.get("steps", 20)
             cfg_override = config.get("cfg", 7.0)

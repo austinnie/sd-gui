@@ -251,7 +251,7 @@ class RemoveClothesStep(PipelineStep, ControlNetMixin):
                     error="无法获取 Pipeline"
                 )
             
-            prompts = self._generate_remove_clothes_prompts()
+            # ===== 场景数限制 =====
             strength = config.get("strength", 0.55)
             steps = config.get("steps", 35)
             cfg = config.get("cfg", 7.0)
