@@ -43,6 +43,9 @@ from .friends_style_step import FriendsStyleStep
 from .group_photo_step import GroupPhotoStep
 from .couple_wedding_step import CoupleWeddingStep
 
+# ✅ 新增：赛博古风
+from .cyber_hanfu_step import CyberHanfuStep  # <-- 新增这行
+
 __all__ = [
     'ControlNetMixin',  # ✅ 新增
     'MarbleStep',
@@ -62,5 +65,7 @@ __all__ = [
     'LolitaStep', 'KimonoStep', 'EveningGownStep', 'VintageStep', 'CinematicStep',  
     # ✅ 多人场景类
     'CoupleWatercolorStep', 'CoupleOilPaintingStep', 'FamilySketchStep',
-    'FriendsStyleStep', 'GroupPhotoStep', 'CoupleWeddingStep'    
+    'FriendsStyleStep', 'GroupPhotoStep', 'CoupleWeddingStep' ,
+    # ✅ 新增：赛博古风
+    'CyberHanfuStep',  # <-- 新增这行    
 ]

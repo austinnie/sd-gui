@@ -58,4 +58,6 @@ def register_all_steps():
     PipelineRegistry.register_step("family_sketch", FamilySketchStep)
     PipelineRegistry.register_step("friends_style", FriendsStyleStep)
     PipelineRegistry.register_step("group_photo", GroupPhotoStep)
-    PipelineRegistry.register_step("couple_wedding", CoupleWeddingStep)    
+    PipelineRegistry.register_step("couple_wedding", CoupleWeddingStep) 
+
+    PipelineRegistry.register_step("cyber_hanfu", CyberHanfuStep)  # <-- 新增这行    

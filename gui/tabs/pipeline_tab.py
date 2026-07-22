@@ -192,7 +192,24 @@ class PipelineTab(BaseTab):
         "去掉衣服_内衣": {
             "description": "内衣/情趣内衣 → 裸体",
             "steps": [{"type": "remove_clothes", "config": {"strength": 0.45, "steps": 30}}]
-        }
+        },
+        # ✅ 新增：赛博古风
+        "赛博古风_霓虹": {
+            "description": "汉服+赛博朋克融合 - 霓虹都市",
+            "steps": [{"type": "cyber_hanfu", "config": {"strength": 0.40, "steps": 30, "cfg": 7.5}}]
+        },
+        "赛博古风_侠女": {
+            "description": "汉服+赛博朋克融合 - 武侠风格",
+            "steps": [{"type": "cyber_hanfu", "config": {"strength": 0.45, "steps": 35, "cfg": 8.0}}]
+        },
+        "赛博古风_仙女": {
+            "description": "汉服+赛博朋克融合 - 仙女风格",
+            "steps": [{"type": "cyber_hanfu", "config": {"strength": 0.35, "steps": 30, "cfg": 7.0}}]
+        },
+        "赛博古风_双人": {
+            "description": "汉服+赛博朋克融合 - 双人场景",
+            "steps": [{"type": "cyber_hanfu", "config": {"strength": 0.40, "steps": 35, "cfg": 7.5}}]
+        },        
     }
     
     def __init__(self, parent, app):
