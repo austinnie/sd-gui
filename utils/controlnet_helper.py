@@ -251,11 +251,71 @@ def preprocess_image_for_controlnet(image_path, controlnet_type="openpose", outp
             detector = CannyDetector()
             result = detector(image, output_type="pil")
         elif preprocessor == "hed":
-            detector = HEDdetector.from_pretrained("lllyasviel/ControlNet")
-            result = detector(image, output_type="pil")
+            try:
+                from controlnet_aux import HEDdetector
+                import os
+                from pathlib import Path
+                
+                # 设置环境变量让 controlnet_aux 使用本地缓存
+                cache_dir = os.environ.get("HF_HOME", os.path.expanduser("~/.cache"))
+                local_model_path = Path(cache_dir) / "controlnet_aux" / "ControlNetHED.pth"
+                
+                if local_model_path.exists():
+                    print(f"   📁 使用本地 HED 模型: {local_model_path}")
+                    # 直接使用 HEDdetector，它会在缓存目录中查找
+                    # 但需要确保文件名正确
+                    detector = HEDdetector()
+                    # 或者尝试用 from_pretrained 指定本地路径
+                    # detector = HEDdetector.from_pretrained(str(local_model_path.parent))
+                else:
+                    print("   ⚠️ 本地 HED 模型不存在，尝试下载...")
+                    detector = HEDdetector.from_pretrained("lllyasviel/ControlNet")
+                
+                result = detector(image, output_type="pil")
+                
+            except Exception as e:
+                print(f"   ⚠️ HED 预处理失败: {e}")
+                # 备用方案：使用 Canny 替代
+                print("   🔄 使用 Canny 作为替代...")
+                from controlnet_aux import CannyDetector
+                detector = CannyDetector()
+                result = detector(image, output_type="pil")
         elif preprocessor == "lineart":
-            detector = LineartDetector.from_pretrained("lllyasviel/ControlNet")
-            result = detector(image, output_type="pil")
+            try:
+                from controlnet_aux import LineartDetector
+                import os
+                from pathlib import Path
+                
+                cache_dir = os.environ.get("HF_HOME", os.path.expanduser("~/.cache"))
+                local_model_path = Path(cache_dir) / "controlnet_aux" / "sk_model.pth"
+                
+                if local_model_path.exists():
+                    print(f"   📁 使用本地 Lineart 模型: {local_model_path}")
+                    # 尝试直接使用 LineartDetector
+                    try:
+                        # 有些版本支持直接传入模型路径
+                        detector = LineartDetector()
+                        result = detector(image, output_type="pil")
+                    except Exception as e2:
+                        print(f"   ⚠️ Lineart 加载失败: {e2}")
+                        print("   🔄 使用 Canny 作为替代...")
+                        from controlnet_aux import CannyDetector
+                        detector = CannyDetector()
+                        result = detector(image, output_type="pil")
+                else:
+                    print("   ⚠️ 本地 Lineart 模型不存在，尝试下载...")
+                    detector = LineartDetector.from_pretrained("lllyasviel/ControlNet")
+                    result = detector(image, output_type="pil")
+                
+                if result:
+                    result = result.resize(output_size, Image.Resampling.LANCZOS)
+                
+            except Exception as e:
+                print(f"   ⚠️ Lineart 预处理失败: {e}")
+                print("   🔄 使用 Canny 作为替代...")
+                from controlnet_aux import CannyDetector
+                detector = CannyDetector()
+                result = detector(image, output_type="pil")
         elif preprocessor == "scribble":
             detector = HEDdetector.from_pretrained("lllyasviel/ControlNet")
             result = detector(image, output_type="pil", scribble=True)
