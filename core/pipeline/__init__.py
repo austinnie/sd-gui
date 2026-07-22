@@ -16,7 +16,8 @@ from .steps import (
     SpaceStep, CastleStep, WeddingStep, LolitaStep, KimonoStep,
     EveningGownStep, VintageStep, CinematicStep,
     CoupleWatercolorStep, CoupleOilPaintingStep, FamilySketchStep,
-    FriendsStyleStep, GroupPhotoStep, CoupleWeddingStep    
+    FriendsStyleStep, GroupPhotoStep, CoupleWeddingStep ,
+    CyberHanfuStep,  # ✅ 添加这行！       
 )
 
 # 注册所有步骤
