@@ -117,6 +117,14 @@ class HanfuStep(PipelineStep, ControlNetMixin):
                 )
             
             # ===== 场景数限制 =====
+            max_scenes = self._get_scene_limit(config)
+            all_prompts = self._generate_hanfu_prompts()
+            if max_scenes is not None and max_scenes > 0:
+                prompts = self._limit_prompts(all_prompts, max_scenes)
+                print(f"   📊 场景限制: 只生成前 {len(prompts)}/{len(all_prompts)} 个场景")
+            else:
+                prompts = all_prompts
+    
             strength = config.get("strength", 0.40)
             steps = config.get("steps", 28)
             cfg = config.get("cfg", 7.5)

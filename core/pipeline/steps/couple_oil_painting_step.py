@@ -38,7 +38,7 @@ class CoupleOilPaintingStep(PipelineStep, ControlNetMixin):
             "controlnet_strength": {"type": "float", "default": 0.5, "min": 0.1, "max": 1.0},
         }
     
-    def _generate_prompts(self) -> list:
+    def _generate_oil_prompts(self) -> list:
         """生成情侣油画风格提示词"""
         return [
             {
@@ -112,6 +112,14 @@ class CoupleOilPaintingStep(PipelineStep, ControlNetMixin):
                 )
             
             # ===== 场景数限制 =====
+            max_scenes = self._get_scene_limit(config)
+            all_prompts = self._generate_oil_prompts()
+            if max_scenes is not None and max_scenes > 0:
+                prompts = self._limit_prompts(all_prompts, max_scenes)
+                print(f"   📊 场景限制: 只生成前 {len(prompts)}/{len(all_prompts)} 个场景")
+            else:
+                prompts = all_prompts
+                
             strength = config.get("strength", 0.35)
             steps = config.get("steps", 35)
             cfg = config.get("cfg", 8.0)

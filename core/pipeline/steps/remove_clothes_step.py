@@ -38,10 +38,10 @@ class RemoveClothesStep(PipelineStep, ControlNetMixin):
             "controlnet_strength": {"type": "float", "default": 0.7, "min": 0.3, "max": 1.0},
         }
     
-    # 去掉衣服 - 常见场景提示词（按服装类型分组）
-    # ============================================================
-    remove_clothes_prompts = [
-        # ===== 比基尼/泳装 → 裸体 (强度: 0.45-0.55) =====
+
+    def _generate_remove_clothes_prompts(self) -> list:
+        """生成素描风格提示词 - 扩展版 8种场景"""
+        return [    
         {
             "name": "比基尼→裸体_海滩",
             "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful woman, nude, naked, bare skin, standing on tropical beach, ocean waves, golden sunset, full body, perfect body, natural beauty, sun-kissed skin, artistic nude, high quality, detailed face",
@@ -252,6 +252,14 @@ class RemoveClothesStep(PipelineStep, ControlNetMixin):
                 )
             
             # ===== 场景数限制 =====
+            max_scenes = self._get_scene_limit(config)
+            all_prompts = self._generate_remove_clothes_prompts()
+            if max_scenes is not None and max_scenes > 0:
+                prompts = self._limit_prompts(all_prompts, max_scenes)
+                print(f"   📊 场景限制: 只生成前 {len(prompts)}/{len(all_prompts)} 个场景")
+            else:
+                prompts = all_prompts
+    
             strength = config.get("strength", 0.55)
             steps = config.get("steps", 35)
             cfg = config.get("cfg", 7.0)

@@ -752,9 +752,10 @@ class PipelineTab(BaseTab):
         
         # ===== 获取覆盖参数 =====
         override_strength = self.strength_var.get()
-        override_steps = self.steps_var.get()
-        override_cfg = self.cfg_var.get()
-        
+        override_steps = self.steps_var.get() # ✅ 获取步数
+        override_cfg = self.cfg_var.get()     # ✅ 获取 CFG
+
+            
         # ===== ✅ 获取场景数限制（统一） =====
         scenes_limit = self.scenes_limit_var.get()
         if scenes_limit == "全部" or not scenes_limit:
@@ -780,8 +781,10 @@ class PipelineTab(BaseTab):
                 config["strength"] = override_strength
             if "steps" in config:
                 config["steps"] = override_steps
+                print(f"   🔍 设置 {step_type} steps = {override_steps}")  # ✅ 添加这行
             if "cfg" in config:
                 config["cfg"] = override_cfg
+                print(f"   🔍 设置 {step_type} cfg = {override_cfg}")      # ✅ 添加这行
             
             # ===== ✅ 场景数限制（统一应用到所有步骤） =====
             if override_scenes is not None:

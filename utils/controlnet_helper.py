@@ -415,6 +415,8 @@ def get_controlnet_pipeline(model_path, controlnet_type="openpose", controlnet_m
         controlnet_model_path: 自定义 ControlNet 路径
         device: 设备
     """
+    import torch  # ✅ 添加
+    import os     # ✅ 确保也有
     try:
         info = get_controlnet_info(controlnet_type)
         model_id = info["model_id"]

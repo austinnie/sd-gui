@@ -66,6 +66,7 @@ class InkWashStep(PipelineStep, ControlNetMixin):
     def execute(self, context: StepContext) -> StepResult:
         """执行国风水墨风格转换 - 支持 ControlNet"""
         config = self._config
+        print(f"   🔍 调试: steps={config.get('steps', '默认')}, cfg={config.get('cfg', '默认')}, strength={config.get('strength', '默认')}")
         image_path = context.input_path
         
         if not os.path.exists(image_path):
@@ -76,6 +77,7 @@ class InkWashStep(PipelineStep, ControlNetMixin):
         
         output_dir = os.path.join(context.output_dir, "ink_wash")
         os.makedirs(output_dir, exist_ok=True)
+        print(f"   📁 输出目录: {output_dir}")
         
         try:
             pipe = context.global_config.get('pipe')
@@ -117,8 +119,16 @@ class InkWashStep(PipelineStep, ControlNetMixin):
                 )
             
             # ===== 场景数限制 =====
+            max_scenes = self._get_scene_limit(config)
+            all_prompts = self._generate_ink_wash_prompts()
+            if max_scenes is not None and max_scenes > 0:
+                prompts = self._limit_prompts(all_prompts, max_scenes)
+                print(f"   📊 场景限制: 只生成前 {len(prompts)}/{len(all_prompts)} 个场景")
+            else:
+                prompts = all_prompts
+            
             strength = config.get("strength", 0.45)
-            steps = config.get("steps", 30)
+            steps = config.get("steps", 25)
             cfg = config.get("cfg", 7.5)
             
             generator = torch.Generator("cpu").manual_seed(42)
@@ -146,6 +156,9 @@ class InkWashStep(PipelineStep, ControlNetMixin):
                 result = pipe(**gen_kwargs)
                 
                 output_path = os.path.join(output_dir, f"{idx+1:02d}_{job.get('name', 'ink_wash')}.png")
+                # ✅ 确保目录存在（安全保护）
+                os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        
                 result.images[0].save(output_path)
                 success_count += 1
                 print(f"      ✅ 已保存: {os.path.basename(output_path)}")
@@ -168,3 +181,4 @@ class InkWashStep(PipelineStep, ControlNetMixin):
                 status=StepStatus.FAILED,
                 error=str(e)
             )
+        

@@ -159,6 +159,7 @@ class MarbleStep(PipelineStep, ControlNetMixin):
                 )
             
             scene_count = config.get("scenes", 14)
+            
             # ===== 场景数限制 =====
 
             max_scenes = self._get_scene_limit(config)

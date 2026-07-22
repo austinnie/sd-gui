@@ -259,13 +259,19 @@ class SketchStep(PipelineStep, ControlNetMixin):  # ✅ 继承 ControlNetMixin
                     print("   ⚠️ 控制图生成失败，使用普通模式")
             
             # ===== 获取参数 =====
+
+            # ===== ✅ 场景数限制 =====
+            max_scenes = self._get_scene_limit(config)
+            all_prompts = self._generate_sketch_prompts()
+            if max_scenes is not None and max_scenes > 0:
+                prompts = self._limit_prompts(all_prompts, max_scenes)
+                print(f"   📊 场景限制: 只生成前 {len(prompts)}/{len(all_prompts)} 个场景")
+            else:
+                prompts = all_prompts
+    
             strength = config.get("strength", 0.25)
             steps = config.get("steps", 30)
             cfg = config.get("cfg", 7.0)
-            
-            # ===== ✅ 场景数限制 =====
-            max_scenes = self._get_scene_limit(config)
-            prompts = self._limit_prompts(self._generate_sketch_prompts(), max_scenes)
             
             generator = torch.Generator("cpu").manual_seed(42)
             success_count = 0
