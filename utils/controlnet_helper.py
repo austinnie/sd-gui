@@ -18,6 +18,16 @@ import numpy as np
 # ControlNet 类型配置
 # ============================================================
 
+# ============================================================
+# ✅ ControlNet 全局配置
+# ============================================================
+CONTROLNET_CONFIG = {
+    "max_size": 512,        # 最大尺寸（CPU 模式推荐 512）
+    #"default_strength": 0.6,
+    #"enable_cache": True,   # 启用 Pipeline 缓存
+    #"device": "cpu",        # 设备
+}
+
 CONTROLNET_TYPES = {
     # 姿态/骨架类
     "openpose": {
@@ -548,7 +558,7 @@ def process_with_controlnet(selected_images, prompt, negative, steps, cfg, stren
             init_image = init_image.resize((new_w, new_h), Image.Resampling.LANCZOS)
         
         # 限制最大尺寸
-        max_size = 1024
+        max_size = CONTROLNET_CONFIG["max_size"]
         if max(new_w, new_h) > max_size:
             scale = max_size / max(new_w, new_h)
             new_w = int(new_w * scale)
@@ -780,7 +790,7 @@ def process_with_multi_controlnet(
         if new_w != w or new_h != h:
             init_image = init_image.resize((new_w, new_h), Image.Resampling.LANCZOS)
         
-        max_size = 1024
+        max_size = CONTROLNET_CONFIG["max_size"]
         if max(new_w, new_h) > max_size:
             scale = max_size / max(new_w, new_h)
             new_w = int(new_w * scale)

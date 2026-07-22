@@ -371,7 +371,7 @@ class AnimeXxxStep(PipelineStep, ControlNetMixin):
                 prompts = all_prompts
     
             strength = config.get("strength", 0.45)
-            steps = config.get("steps", 30)
+            steps = config.get("steps", 20)
             cfg = config.get("cfg", 7.0)
             
             generator = torch.Generator("cpu").manual_seed(42)
