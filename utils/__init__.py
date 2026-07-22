@@ -3,7 +3,7 @@
 """
 工具模块
 """
-
+from .module_discovery import ModuleDiscovery
 from .watermark_remover import WatermarkRemover, remove_watermark_from_file
 from .imagemeta_cleaner import (
     clean_png_metadata,
@@ -64,7 +64,8 @@ from .controlnet_helper import (
 )
 
 __all__ = [
-    # watermark_remover
+    'ModuleDiscovery',
+    
     'WatermarkRemover',
     'remove_watermark_from_file',
     
