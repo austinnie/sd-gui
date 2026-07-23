@@ -140,9 +140,8 @@ class YogaStep(PipelineStep, ControlNetMixin):
                 "name": "瑜伽_双人瑜伽",
                 "prompt": "masterpiece, best quality, photorealistic, 8k, two women doing acroyoga, partner yoga, one person standing supporting the other, trust and balance, full body, studio setting",
                 "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, watermark, text"
-            }
-          
-        ]
+            },          
+            ]
     
     def execute(self, context: StepContext) -> StepResult:
         """执行瑜伽转换 - 支持 ControlNet"""

@@ -17,7 +17,8 @@ from .steps import (
     EveningGownStep, VintageStep, CinematicStep,
     CoupleWatercolorStep, CoupleOilPaintingStep, FamilySketchStep,
     FriendsStyleStep, GroupPhotoStep, CoupleWeddingStep ,
-    CyberHanfuStep,  # ✅ 添加这行！       
+    CyberHanfuStep,  # ✅ 添加这行！ 
+    MarbleYogaStep,
 )
 
 # 注册所有步骤
@@ -62,3 +63,5 @@ def register_all_steps():
     PipelineRegistry.register_step("couple_wedding", CoupleWeddingStep) 
 
     PipelineRegistry.register_step("cyber_hanfu", CyberHanfuStep)  # <-- 新增这行    
+    
+    PipelineRegistry.register_step("marble_yoga", MarbleYogaStep)

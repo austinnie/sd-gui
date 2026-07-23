@@ -133,6 +133,25 @@ class PipelineTab(BaseTab):
             "description": "快速版 - 只生成6种场景",
             "steps": [{"type": "marble", "config": {"scenes": 6}}]
         },
+        # ✅ 新增的两个大理石瑜伽配置
+        "大理石瑜伽雕像": {
+            "description": "将人物转换为大理石雕像瑜伽姿势 (16种经典体式)",
+            "steps": [{"type": "marble_yoga", "config": {}}]
+        },
+        "大理石瑜伽雕像_快速": {
+            "description": "快速版 - 只生成前6种瑜伽姿势",
+            "steps": [{"type": "marble_yoga", "config": {"scenes": 6}}]
+        },   
+        # ✅ 【普通瑜伽】全量版 (20 个场景)
+        "瑜伽姿势": {
+            "description": "转换为瑜伽姿势 (20种经典体式)",
+            "steps": [{"type": "yoga", "config": {}}]
+        },
+        # ✅ 【普通瑜伽】快速版 (只生成前 4 个基础场景)
+        "瑜伽姿势_快速": {
+            "description": "快速版 - 只生成前4种基础瑜伽姿势",
+            "steps": [{"type": "yoga", "config": {"scenes": 4}}]
+        },       
         "旗袍风格": {
             "description": "将人物转换为传统旗袍风格",
             "steps": [{"type": "qipao", "config": {}}]
@@ -144,10 +163,6 @@ class PipelineTab(BaseTab):
         "浪漫接吻": {
             "description": "生成浪漫接吻场景",
             "steps": [{"type": "couple", "config": {}}]
-        },
-        "瑜伽姿势": {
-            "description": "转换为瑜伽姿势",
-            "steps": [{"type": "yoga", "config": {}}]
         },
         "油画风格": {
             "description": "转换为油画风格",
@@ -667,7 +682,8 @@ class PipelineTab(BaseTab):
             "family_sketch": 3,        # 家庭素描 - 3个场景
             "friends_style": 3,        # 朋友聚会 - 3个场景
             "group_photo": 3,          # 团队照片 - 3个场景
-            "yoga": 4,                 # 瑜伽姿势 - 4个场景
+            "yoga": 20,                 # 瑜伽姿势 - 4个场景
+            "marble_yoga": 16,
             
             # 特殊
             "marble": 14,          # 大理石雕像 - 14个场景
