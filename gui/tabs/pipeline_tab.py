@@ -151,7 +151,15 @@ class PipelineTab(BaseTab):
         "瑜伽姿势_快速": {
             "description": "快速版 - 只生成前4种基础瑜伽姿势",
             "steps": [{"type": "yoga", "config": {"scenes": 4}}]
-        },       
+        },  
+        "青铜雕像": {
+            "description": "将人物转换为青铜雕像风格（12种场景）",
+            "steps": [{"type": "bronze_statue", "config": {}}]
+        },
+        "青铜雕像_快速": {
+            "description": "快速版 - 只生成6种场景",
+            "steps": [{"type": "bronze_statue", "config": {"scenes": 6}}]
+        },
         "旗袍风格": {
             "description": "将人物转换为传统旗袍风格",
             "steps": [{"type": "qipao", "config": {}}]
@@ -684,6 +692,7 @@ class PipelineTab(BaseTab):
             "group_photo": 3,          # 团队照片 - 3个场景
             "yoga": 20,                 # 瑜伽姿势 - 4个场景
             "marble_yoga": 16,
+            "bronze_statue": 12,        # 青铜雕像 - 12个场景
             
             # 特殊
             "marble": 14,          # 大理石雕像 - 14个场景

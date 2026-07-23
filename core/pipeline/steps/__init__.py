@@ -46,6 +46,7 @@ from .couple_wedding_step import CoupleWeddingStep
 # ✅ 新增：赛博古风
 from .cyber_hanfu_step import CyberHanfuStep  # <-- 新增这行
 from .marble_yoga_step import MarbleYogaStep  
+from .bronze_statue_step import BronzeStatueStep
 
 __all__ = [
     'ControlNetMixin',  # ✅ 新增
@@ -69,5 +70,6 @@ __all__ = [
     'FriendsStyleStep', 'GroupPhotoStep', 'CoupleWeddingStep' ,
     # ✅ 新增：赛博古风
     'CyberHanfuStep',  # <-- 新增这行
-    'MarbleYogaStep',      
+    'MarbleYogaStep',  
+    'BronzeStatueStep',    
 ]
