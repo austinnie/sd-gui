@@ -20,6 +20,8 @@ import torch
 from .base_tab import BaseTab
 from gui.components.memory_monitor import force_memory_cleanup, get_memory_usage
 from datetime import datetime
+from pathlib import Path
+
 def log(msg):
     print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
 
@@ -356,10 +358,10 @@ class Img2ImgTab(BaseTab):
         param_row1.pack(fill=tk.X, pady=2)
 
         ttk.Label(param_row1, text="重绘强度:").pack(side=tk.LEFT, padx=5)
-        scale = ttk.Scale(param_row1, from_=0.2, to=0.9, variable=self.strength_var, 
+        scale = ttk.Scale(param_row1, from_=0.05, to=0.99, variable=self.strength_var, 
                           orient=tk.HORIZONTAL, length=120)
         scale.pack(side=tk.LEFT, padx=5)
-        self.strength_label = ttk.Label(param_row1, text="0.20", width=5)
+        self.strength_label = ttk.Label(param_row1, text="0.05", width=5)
         self.strength_label.pack(side=tk.LEFT, padx=5)
         self.strength_var.trace('w', lambda *_: self.strength_label.config(
             text=f"{self.strength_var.get():.2f}"))
@@ -430,14 +432,12 @@ class Img2ImgTab(BaseTab):
         
         if mode == "single":
             self.single_path_frame.pack(fill=tk.X)
-            self.image_select_frame.config(text="📷 单张图片")
         elif mode == "multiple":
             self.multiple_path_frame.pack(fill=tk.X)
-            self.image_select_frame.config(text="📚 多张图片")
         elif mode == "directory":
             self.directory_path_frame.pack(fill=tk.X)
-            self.image_select_frame.config(text="📁 图片目录")
         
+        # 调用更新计数（这行保留）
         self._update_image_count()
 
     def _select_single_image(self):
@@ -567,13 +567,14 @@ class Img2ImgTab(BaseTab):
         target_height = params["height"]
         
 
-        # ✅ 自动调整强度
-        if self.selected_images:
-            auto_strength = self._auto_adjust_strength(self.selected_images[0])
-            self.strength_var.set(auto_strength)
-            self.update_status(f"🔄 自动调整强度为: {auto_strength:.2f}")
+        ## ✅ 自动调整强度
+        #if self.selected_images:
+        #    auto_strength = self._auto_adjust_strength(self.selected_images[0])
+        #    self.strength_var.set(auto_strength)
+        #    self.update_status(f"🔄 自动调整强度为: {auto_strength:.2f}")
         
         strength = self.strength_var.get()
+        print(f"🔍 [调试] UI滑块读取的强度: {strength}") 
         
         num_images_per = self.per_image_var.get()
         
@@ -880,6 +881,7 @@ class Img2ImgTab(BaseTab):
             # ===== 2. 如果启用了局部重绘，切换为 Inpaint 管道 =====
             use_inpaint = self.use_inpaint_var.get()
             mask_image = self.mask_image
+            mask_tensor = None  # 👈 加上这一行，防止 unbound error
             
             if use_inpaint and mask_image is not None:
                 try:
@@ -888,32 +890,32 @@ class Img2ImgTab(BaseTab):
                     # 注意：如果内存足够，建议预先加载并缓存
                     if not hasattr(self, '_inpaint_pipe'):
                         print("📦 首次加载 Inpaint 模型（额外内存占用）...")
+
+                        # 👇 👇 👇 新增这 3 行，让程序先把缺失的文件下到 cache 里 👇 👇 👇
+                        from diffusers import StableDiffusionInpaintPipeline
+                        print("🔄 尝试从 Hugging Face 下载 Inpaint 模型到缓存...")
+                        # 这行代码可能会卡几十秒，但它是用来把文件抓取到 E:\hf_cache 里的
+                        StableDiffusionInpaintPipeline.from_pretrained(
+                            "runwayml/stable-diffusion-inpainting", 
+                            torch_dtype=torch.float32
+                        )
+                        print("✅ Inpaint 模型下载/缓存完成！")
+                        # 👆 👆 👆 新增结束 👆 👆 👆
+                    
                         model_path = self.app.model_manager._sd_model_name
-                        if model_path is None:
-                            # 如果无法获取模型路径，尝试用当前管道的配置
-                            self._inpaint_pipe = StableDiffusionInpaintPipeline(
-                                vae=pipe.vae,
-                                text_encoder=pipe.text_encoder,
-                                tokenizer=pipe.tokenizer,
-                                unet=pipe.unet,
-                                scheduler=pipe.scheduler,
-                                safety_checker=None,
-                                feature_extractor=None,
-                                requires_safety_checker=False
-                            )
-                        else:
-                            self._inpaint_pipe = StableDiffusionInpaintPipeline.from_single_file(
-                                model_path,
-                                torch_dtype=torch.float32,
-                                safety_checker=None,
-                                requires_safety_checker=False,
-                                low_cpu_mem_usage=False  # 关闭元张量模式
-                            )
-                        self._inpaint_pipe.to("cpu")
-                        self._inpaint_pipe.enable_attention_slicing()
-                        self._inpaint_pipe.vae.enable_slicing()
-                        self._inpaint_pipe.vae.enable_tiling()
-                        print("✅ Inpaint 模型加载完成")
+                        # 让 pipe 直接继承当前的管道配置，这样就不会报 None 错误了！
+                        print("🔄 正在从缓存拼接 Inpaint 模型...")
+                        self._inpaint_pipe = StableDiffusionInpaintPipeline(
+                            vae=pipe.vae,
+                            text_encoder=pipe.text_encoder,
+                            tokenizer=pipe.tokenizer,
+                            unet=pipe.unet,
+                            scheduler=pipe.scheduler,
+                            safety_checker=None,
+                            feature_extractor=None,
+                            requires_safety_checker=False
+                        )
+                        print("✅ Inpaint 模型从现有管道拼接成功！")
                     
                     # 切换到 Inpaint 管道
                     pipe = self._inpaint_pipe
@@ -945,7 +947,7 @@ class Img2ImgTab(BaseTab):
             
             steps = max(gen_cfg.steps["min"], min(gen_cfg.steps["max"], steps))
             cfg = max(gen_cfg.cfg["min"], min(gen_cfg.cfg["max"], cfg))
-            strength = max(0.2, min(0.5, strength))
+            strength = max(0.05, min(0.99, strength))  # 改成这一行
             num_images_per = max(1, min(num_images_per, 4))
             
             # ===== 图生图尺寸强制安全范围 =====
@@ -1023,8 +1025,7 @@ class Img2ImgTab(BaseTab):
                         if original_h > original_w * 1.3:
                             strength = min(strength, 0.3)
                             print(f"   📐 竖图检测，强度自动调整为: {strength:.2f}")
-                        else:
-                            print(f"   📐 保持原强度: {strength:.2f}")
+
                         
                 except Exception as e:
                     print(f"   ⚠️ 人脸检测失败: {e}")
@@ -1032,8 +1033,7 @@ class Img2ImgTab(BaseTab):
                     if original_h > original_w * 1.3:
                         strength = min(strength, 0.3)
                         print(f"   📐 竖图检测，强度自动调整为: {strength:.2f}")
-                    else:
-                        print(f"   📐 保持原强度: {strength:.2f}")
+
 
                 # ===== 生成变体 =====
                 for i in range(num_images_per):
