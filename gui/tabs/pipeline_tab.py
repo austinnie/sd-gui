@@ -818,27 +818,27 @@ class PipelineTab(BaseTab):
             step_type = step.get("type", "")
             config = step.get("config", {})
             
-            # 通用参数
-            if "strength" in config:
-                config["strength"] = override_strength
-            if "steps" in config:
-                config["steps"] = override_steps
-                print(f"   🔍 设置 {step_type} steps = {override_steps}")  # ✅ 添加这行
-            if "cfg" in config:
-                config["cfg"] = override_cfg
-                print(f"   🔍 设置 {step_type} cfg = {override_cfg}")      # ✅ 添加这行
+            # 【修复后】：不需要 if 判断，直接强制覆盖！
+            config["strength"] = override_strength
+            config["steps"] = override_steps
+            config["cfg"] = override_cfg
             
-            # ===== ✅ 场景数限制（统一应用到所有步骤） =====
+            print(f"   🔍 设置 {step_type} strength = {override_strength}")
+            print(f"   🔍 设置 {step_type} steps = {override_steps}")
+            print(f"   🔍 设置 {step_type} cfg = {override_cfg}")
+
+            # ===== ✅ 场景数限制（统一） =====
             if override_scenes is not None:
-                # 支持多个键名，让步骤自己决定用哪个
+                # 统一写入，兼容所有步骤可能读取的键名
                 config["max_scenes"] = override_scenes
                 config["scene_limit"] = override_scenes
+                config["scenes"] = override_scenes
+                print(f"   🔍 设置 {step_type} scenes = {override_scenes}")
 
-
-            # ✅ 新增：传递 ControlNet 参数（只有支持 ControlNet 的步骤会使用）
+            # ✅ ControlNet 参数
             config["use_controlnet"] = use_controlnet
             config["controlnet_type"] = controlnet_type
-            config["controlnet_strength"] = controlnet_strength                
+            config["controlnet_strength"] = controlnet_strength              
         
         self.is_running = True
         self.cancel_flag = False
