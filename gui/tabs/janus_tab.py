@@ -47,7 +47,25 @@ class JanusTab(BaseTab):
         self.max_tokens_var = tk.IntVar(value=512)
     
     def setup_ui(self):
-        frame = self.frame
+        # 创建滚动容器
+        canvas = tk.Canvas(self.frame, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(self.frame, orient=tk.VERTICAL, command=canvas.yview)
+        self.scrollable_frame = ttk.Frame(canvas)
+        
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=self.scrollable_frame, anchor=tk.NW)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # 之后所有控件创建在 self.scrollable_frame 上
+        frame = self.scrollable_frame  # 替换原来的 self.frame
+    
         row = 0
         
         title = ttk.Label(frame, text="🤖 Janus-Pro 多功能", font=("", 12, "bold"))
