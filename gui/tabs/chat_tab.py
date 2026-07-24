@@ -10,10 +10,18 @@ from tkinter import ttk, filedialog, messagebox
 import threading
 import os
 import re
-import time
+import tempfile
+import random
 from datetime import datetime
 from PIL import Image, ImageTk
 import torch
+import gc
+
+from .base_tab import BaseTab
+from gui.chat.intent_analyzer import IntentAnalyzer, IntentResult
+from gui.chat.llm_client import LLMClient
+from gui.chat.prompt_builder import PromptBuilder
+from gui.chat.context_manager import ContextManager
 
 # ===== Hugging Face 缓存配置 =====
 CACHE_ROOT = r"E:\hf_cache\.cache"
@@ -30,13 +38,9 @@ for env_var in ['HF_HOME', 'HF_HUB_CACHE', 'U2NET_HOME', 'DEEPFACE_HOME']:
         os.makedirs(path, exist_ok=True)
         print(f"   ✅ {env_var} = {path}")
 
-from .base_tab import BaseTab
-from gui.components.memory_monitor import force_memory_cleanup
-import tempfile
-
 
 class ChatTab(BaseTab):
-    """智能会话标签页"""
+    """智能会话标签页 - 精简版"""
 
     # ===== 默认加载的 LoRA 列表 =====
     DEFAULT_LORAS = [
@@ -48,84 +52,73 @@ class ChatTab(BaseTab):
 
     def __init__(self, parent, app):
         super().__init__(parent, app)
-        self.params = app.params_panel
+
+        # ===== 初始化模块 =====
+        self.intent_analyzer = IntentAnalyzer()
+        self.llm_client = LLMClient()
+        self.prompt_builder = PromptBuilder()
+        self.context_manager = ContextManager()
+
+        # ===== 初始化变量（必须先调用） =====
         self._init_vars()
+
+        # ===== 设置 UI =====
         self.setup_ui()
 
-        # ✅ 延迟加载 LoRA（等待模型就绪）
-        self.app.root.after(2000, self._auto_load_default_lora)
-
-        # ✅ 延迟检测 LLM
-        self.app.root.after(3000, self._check_ollama)
-
-        self._append_message("assistant", "👋 你好！我是智能生图助手\n\n我可以帮你：\n• 📝 文生图 - 输入描述生成图片\n• 🖼️ 图生图 - 上传图片并修改\n• 💬 自由对话 - 回答你的问题\n\n试试输入：\"生成一张美女在沙滩上的图片\"")
-
-        # 绑定快捷键
-        self.input_text.bind("<Control-Return>", self._on_send)
-        self.input_text.bind("<Return>", self._on_send_shift_check)
+        # ===== 检查 LLM =====
+        self.app.root.after(3000, self._check_llm_status)
 
     def _init_vars(self):
-        """初始化变量"""
+        """初始化所有变量 - 必须在 setup_ui 之前调用"""
+        # ===== 状态变量 =====
         self.is_generating = False
         self.cancel_generation = False
+        self._is_loading_model = False
+        self._pending_intent = None
+        self._unsafe_content_detected = False
 
-        self.uploaded_image_paths = []
+        # ===== 图片相关 =====
         self.uploaded_images = []
+        self.uploaded_image_paths = []
         self.uploaded_image = None
         self.uploaded_image_path = None
 
-        self.messages = []
-        self.chat_context = {}
-        self._is_loading_model = False
+        # ===== 参数变量 =====
         self.chat_steps_var = tk.IntVar(value=20)
         self.chat_cfg_var = tk.DoubleVar(value=7.5)
-        self._last_negative = None
-        self._pending_intent = None
+        self.safe_mode_var = tk.BooleanVar(value=True)
+        self.llm_enabled_var = tk.BooleanVar(value=True)      # ✅ 无下划线
+        self.quality_mode_var = tk.StringVar(value="快速")
 
-        # 上下文记忆
-        self.last_generated_image = None
-        self.last_prompt = None
-        self.last_intent_type = None
-        self.conversation_history = []
-        self.user_preferences = {
-            "style": None,
-            "scene": None,
-            "gender": None,
-            "quality": "high",
-        }
-
-        # 本地 LLM 配置
-        self.llm_enabled = tk.BooleanVar(value=True)
-        self.llm_model = tk.StringVar(value="qwen2.5:1.5b")
-        self.llm_available = False
-        self.llm_installing = False
-        self.llm_model_size = "1GB"
-
-        # ===== LoRA 相关变量 =====
-        self.lora_enabled = tk.BooleanVar(value=True)
+        # ===== LoRA 相关 =====
         self.lora_var = tk.StringVar(value="")
         self.lora_paths = {}
-        self.current_lora_path = None
+        self.lora_enabled_var = tk.BooleanVar(value=True)     # ✅ 无下划线
         self.lora_loaded = False
-        
-        # ===== ControlNet 相关变量 =====
+        self.current_lora_path = None
+
+        # ===== ControlNet 相关 =====
         self.use_controlnet_var = tk.BooleanVar(value=False)
         self.controlnet_type_var = tk.StringVar(value="openpose (OpenPose (姿态))")
         self.controlnet_available = False
-        self.controlnet_pipe = None        
+        self.controlnet_pipe = None
 
-        # 缓存
+        # ===== 缓存 =====
         self._enhanced_prompt_cache = {}
+        self._last_negative = None
+        self._image_refs = []
 
-        # 负面提示词模板（新增动物专用）
-        self._negative_templates = {
-            "default": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, watermark, text, extra limbs, bad proportions, bad hands, missing fingers, extra fingers",
-            "portrait": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, watermark, text, extra limbs, bad proportions, bad hands, bad face, distorted face",
-            "landscape": "worst quality, low quality, ugly, deformed, blurry, watermark, text, bad composition, cluttered",
-            "nude": "clothes, fabric, dress, shirt, pants, underwear, bra, panties, bikini, swimsuit, covering, censorship, mosaic",
-            # ✅ 新增动物专用
-            "animal": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, extra legs, missing limbs, deformed body, watermark, text, human, person, man, woman, people, clothes, clothing, accessories, jewelry, hat, glasses",
-        }        
+        # ===== LLM 状态 =====
+        self.llm_available = False
+        self.llm_installing = False
+        self.llm_model = tk.StringVar(value="qwen2.5:1.5b")
+        self.llm_model_size = "1GB"
+
+        # ===== 其他 =====
+        self.messages = []
+        self.chat_context = {}
+        self._negative_templates = self.prompt_builder.NEGATIVE_TEMPLATES
+
 
     # ==================== LoRA 管理 ====================
 
@@ -151,7 +144,6 @@ class ChatTab(BaseTab):
         lora_files.sort(key=lambda x: 0 if x.startswith('⭐') else 1)
         return lora_files
 
-
     def _load_lora_to_pipe(self, lora_path: str, lora_name: str):
         """加载 LoRA - 通过重新加载主模型"""
         if not self.app.model_manager.is_sd_loaded:
@@ -168,7 +160,6 @@ class ChatTab(BaseTab):
                 self._append_message("system", "❌ 找不到模型文件")
                 return False
             
-            # ✅ 重新加载模型带上 LoRA
             success = self.app.model_manager.load_sd(
                 model_path, model_name, None,
                 lora_path=lora_path,
@@ -189,19 +180,15 @@ class ChatTab(BaseTab):
         except Exception as e:
             self._append_message("system", f"❌ LoRA 加载失败: {str(e)}")
             return False
-        
+
     def _unload_lora(self):
         """卸载 LoRA"""
         if not self.lora_loaded:
             self._append_message("system", "ℹ️ 没有已加载的 LoRA")
             return
 
-        pipe = self.app.model_manager._sd_pipe
-        if pipe is None:
-            return
-
         try:
-            pipe.unload_lora_weights()
+            self.app.model_manager.unload_lora_from_pipe()
             self.lora_loaded = False
             self.current_lora_path = None
             self._append_message("system", "🗑️ LoRA 已卸载")
@@ -211,22 +198,18 @@ class ChatTab(BaseTab):
 
     def _auto_load_default_lora(self):
         """自动加载默认 LoRA"""
-        # 检查模型是否已加载
         if not self.app.model_manager.is_sd_loaded:
             self._append_message("system", "⏳ 等待模型加载后自动加载 LoRA...")
-            # 延迟重试
             self.app.root.after(3000, self._auto_load_default_lora)
             return
 
-        if not self.lora_enabled.get():
+        if not self.lora_enabled_var.get():
             return
 
-        # 获取 LoRA 列表
         lora_files = self._scan_lora_files()
         if not lora_files:
             return
 
-        # 优先加载默认 LoRA（第一个）
         default_lora = lora_files[0]
         lora_path = self.lora_paths.get(default_lora)
 
@@ -255,7 +238,7 @@ class ChatTab(BaseTab):
 
     def _toggle_lora(self):
         """切换 LoRA 启用/禁用"""
-        if self.lora_enabled.get():
+        if self.lora_enabled_var.get():
             self._auto_load_default_lora()
         else:
             self._unload_lora()
@@ -268,10 +251,25 @@ class ChatTab(BaseTab):
         else:
             self.lora_status_label.config(text="🔴 未加载", foreground="red")
 
+    def _refresh_lora_list(self):
+        """刷新 LoRA 列表"""
+        lora_files = self._scan_lora_files()
+        self.lora_combo['values'] = lora_files
+        if lora_files and not self.lora_var.get():
+            self.lora_var.set(lora_files[0])
+        self._append_message("system", f"🔄 LoRA 列表已刷新 ({len(lora_files)} 个)")
+
+
+
     # ==================== UI 设置 ====================
 
     def setup_ui(self):
         """设置 UI"""
+        # ✅ 防御性检查：确保所有变量已初始化
+        if not hasattr(self, 'llm_enabled') or not hasattr(self, 'lora_var'):
+            print("⚠️ ChatTab: 变量未初始化，重新执行 _init_vars()")
+            self._init_vars()
+        
         frame = self.frame
 
         # ===== 主容器 =====
@@ -282,280 +280,12 @@ class ChatTab(BaseTab):
         toolbar = ttk.Frame(main_frame)
         toolbar.pack(fill=tk.X, pady=2)
 
-        # ===== LoRA 控制区域 =====
-        lora_frame = ttk.Frame(toolbar)
-        lora_frame.pack(side=tk.LEFT, padx=5)
-
-        ttk.Label(lora_frame, text="🔗 LoRA:").pack(side=tk.LEFT, padx=2)
-
-        # LoRA 下拉选择
-        lora_files = self._scan_lora_files()
-        self.lora_combo = ttk.Combobox(
-            lora_frame,
-            textvariable=self.lora_var,
-            values=lora_files,
-            width=25,
-            state="readonly"
-        )
-        self.lora_combo.pack(side=tk.LEFT, padx=2)
-        self.lora_combo.bind('<<ComboboxSelected>>', self._on_lora_selected)
-
-        # 启用开关
-        self.lora_check = ttk.Checkbutton(
-            lora_frame,
-            text="启用",
-            variable=self.lora_enabled,
-            command=self._toggle_lora
-        )
-        self.lora_check.pack(side=tk.LEFT, padx=5)
-
-        # 状态标签
-        self.lora_status_label = ttk.Label(
-            lora_frame,
-            text="🔴 未加载",
-            foreground="red",
-            font=("", 8)
-        )
-        self.lora_status_label.pack(side=tk.LEFT, padx=5)
-
-        # 刷新按钮
-        ttk.Button(
-            lora_frame,
-            text="🔄",
-            width=2,
-            command=self._refresh_lora_list
-        ).pack(side=tk.LEFT, padx=2)
-
-        # 分隔线
-        ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=5)
-
-        # ===== ✅ 新增 ControlNet 控制区域 =====
-        controlnet_frame = ttk.Frame(toolbar)
-        controlnet_frame.pack(side=tk.LEFT, padx=5)
-
-        ttk.Checkbutton(
-            controlnet_frame,
-            text="🧠 ControlNet",
-            variable=self.use_controlnet_var,
-            command=self._on_controlnet_toggle
-        ).pack(side=tk.LEFT, padx=2)
-
-        # ControlNet 类型下拉
-        from utils.controlnet_helper import get_controlnet_display_names
-        self.controlnet_combo = ttk.Combobox(
-            controlnet_frame,
-            textvariable=self.controlnet_type_var,
-            values=get_controlnet_display_names(),
-            width=20,
-            state="readonly"
-        )
-        self.controlnet_combo.pack(side=tk.LEFT, padx=2)
-        self.controlnet_combo.bind('<<ComboboxSelected>>', self._on_controlnet_type_changed)
-
-        # ControlNet 状态提示
-        self.controlnet_status_label = ttk.Label(
-            controlnet_frame,
-            text="",
-            foreground="gray",
-            font=("", 8)
-        )
-        self.controlnet_status_label.pack(side=tk.LEFT, padx=2)
-
-        # 分隔线
-        ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=5)
-        
-        # ===== 原有工具栏控件 =====
-        self.clear_images_btn = ttk.Button(
-            toolbar,
-            text="🗑️ 清除图片",
-            command=self._clear_upload,
-            width=10
-        )
-        self.clear_images_btn.pack(side=tk.LEFT, padx=2)
-
-        self.image_status = ttk.Label(toolbar, text="", foreground="green")
-        self.image_status.pack(side=tk.LEFT, padx=10)
-
-        # 安全模式切换
-        ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=5)
-
-        self.safe_mode_var = tk.BooleanVar(value=True)
-
-        self.safe_mode_btn = tk.Button(
-            toolbar,
-            text="🛡️ 安全模式",
-            command=self._toggle_safe_mode,
-            relief="sunken" if self.safe_mode_var.get() else "raised",
-            bg="#e8f5e9" if self.safe_mode_var.get() else "#f5f5f5",
-            font=("微软雅黑", 8),
-            width=10,
-            height=1
-        )
-        self.safe_mode_btn.pack(side=tk.LEFT, padx=5)
-
-        self.safe_mode_label = ttk.Label(
-            toolbar,
-            text="🟢 已启用",
-            foreground="green",
-            font=("", 8)
-        )
-        self.safe_mode_label.pack(side=tk.LEFT, padx=2)
-
-        ttk.Button(toolbar, text="🔧 测试 LLM", command=self.debug_test_llm, width=10).pack(side=tk.LEFT, padx=2)
-        ttk.Button(toolbar, text="🗑️ 清除对话", command=self._clear_chat, width=12).pack(side=tk.LEFT, padx=2)
-
-        # ControlNet 缓存状态
-        if hasattr(self, '_check_controlnet_cached') and self._check_controlnet_cached():
-            size = self._get_controlnet_size()
-            cache_status = f"🦴 ControlNet 已缓存 ({size})"
-            ttk.Label(toolbar, text=cache_status, foreground="green").pack(side=tk.LEFT, padx=10)
-        else:
-            ttk.Label(toolbar, text="🦴 ControlNet 未缓存", foreground="orange").pack(side=tk.LEFT, padx=10)
-
-        self.upload_btn = ttk.Button(toolbar, text="📎 上传图片", command=self._upload_image, width=12)
-        self.upload_btn.pack(side=tk.LEFT, padx=2)
-
-        self.image_status = ttk.Label(toolbar, text="", foreground="green")
-        self.image_status.pack(side=tk.LEFT, padx=10)
-
-        self.preview_label = ttk.Label(toolbar)
-        self.preview_label.pack(side=tk.LEFT, padx=5)
+        self._build_toolbar(toolbar)
 
         # ===== 参数控制栏 =====
         param_bar = ttk.Frame(main_frame)
         param_bar.pack(fill=tk.X, pady=2)
-
-        ttk.Label(param_bar, text="步数:").pack(side=tk.LEFT, padx=5)
-
-        self.steps_spinbox = ttk.Spinbox(
-            param_bar,
-            from_=4,
-            to=50,
-            textvariable=self.chat_steps_var,
-            width=5,
-            increment=1
-        )
-        self.steps_spinbox.pack(side=tk.LEFT, padx=2)
-
-        for steps in [8, 12, 20, 30]:
-            btn = ttk.Button(
-                param_bar,
-                text=str(steps),
-                width=3,
-                command=lambda s=steps: self.chat_steps_var.set(s)
-            )
-            btn.pack(side=tk.LEFT, padx=1)
-
-        ttk.Label(param_bar, text="CFG:").pack(side=tk.LEFT, padx=15)
-
-        self.cfg_spinbox = ttk.Spinbox(
-            param_bar,
-            from_=1.0,
-            to=20.0,
-            textvariable=self.chat_cfg_var,
-            width=5,
-            increment=0.5
-        )
-        self.cfg_spinbox.pack(side=tk.LEFT, padx=2)
-
-        for cfg in [5, 7, 7.5, 9]:
-            btn = ttk.Button(
-                param_bar,
-                text=str(cfg),
-                width=3,
-                command=lambda c=cfg: self.chat_cfg_var.set(c)
-            )
-            btn.pack(side=tk.LEFT, padx=1)
-
-        ttk.Label(param_bar, text="💡 步数越高质量越好", foreground="gray", font=("", 8)).pack(side=tk.LEFT, padx=15)
-
-        # ===== 速度/质量模式切换 =====
-        ttk.Separator(param_bar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=10)
-
-        self.quality_mode_var = tk.StringVar(value="快速")
-
-        mode_frame = ttk.Frame(param_bar)
-        mode_frame.pack(side=tk.LEFT, padx=5)
-
-        ttk.Label(mode_frame, text="模式:", font=("", 9)).pack(side=tk.LEFT)
-
-        self.fast_btn = tk.Button(
-            mode_frame,
-            text="⚡ 快速",
-            command=lambda: self._set_quality_mode("快速"),
-            relief="sunken" if self.quality_mode_var.get() == "快速" else "raised",
-            bg="#e8f5e9" if self.quality_mode_var.get() == "快速" else "#f5f5f5",
-            font=("微软雅黑", 8),
-            width=6,
-            height=1
-        )
-        self.fast_btn.pack(side=tk.LEFT, padx=2)
-
-        self.balance_btn = tk.Button(
-            mode_frame,
-            text="⚖️ 平衡",
-            command=lambda: self._set_quality_mode("平衡"),
-            relief="sunken" if self.quality_mode_var.get() == "平衡" else "raised",
-            bg="#e3f2fd" if self.quality_mode_var.get() == "平衡" else "#f5f5f5",
-            font=("微软雅黑", 8),
-            width=6,
-            height=1
-        )
-        self.balance_btn.pack(side=tk.LEFT, padx=2)
-
-        self.quality_btn = tk.Button(
-            mode_frame,
-            text="🌟 高质量",
-            command=lambda: self._set_quality_mode("高质量"),
-            relief="sunken" if self.quality_mode_var.get() == "高质量" else "raised",
-            bg="#fff3e0" if self.quality_mode_var.get() == "高质量" else "#f5f5f5",
-            font=("微软雅黑", 8),
-            width=6,
-            height=1
-        )
-        self.quality_btn.pack(side=tk.LEFT, padx=2)
-
-        self.ultra_btn = tk.Button(
-            mode_frame,
-            text="🌟 超高质量",
-            command=lambda: self._set_quality_mode("超高质量"),
-            relief="sunken" if self.quality_mode_var.get() == "超高质量" else "raised",
-            bg="#fce4ec" if self.quality_mode_var.get() == "超高质量" else "#f5f5f5",
-            font=("微软雅黑", 8),
-            width=6,
-            height=1
-        )
-        self.ultra_btn.pack(side=tk.LEFT, padx=2)
-
-        self.mode_hint = ttk.Label(param_bar, text="⚡ 快速模式", foreground="green", font=("", 8))
-        self.mode_hint.pack(side=tk.LEFT, padx=10)
-
-        # LLM 开关
-        ttk.Separator(param_bar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=10)
-
-        self.llm_check = ttk.Checkbutton(
-            param_bar,
-            text="🧠 LLM增强",
-            variable=self.llm_enabled,
-            command=self._on_llm_toggle
-        )
-        self.llm_check.pack(side=tk.LEFT, padx=5)
-
-        self.llm_install_btn = ttk.Button(
-            param_bar,
-            text="📦 安装 LLM",
-            command=self._manual_install_llm,
-            width=10
-        )
-        self.llm_install_btn.pack(side=tk.LEFT, padx=5)
-
-        self.llm_status = ttk.Label(
-            param_bar,
-            text="●",
-            foreground="gray",
-            font=("", 10)
-        )
-        self.llm_status.pack(side=tk.LEFT, padx=2)
+        self._build_param_bar(param_bar)
 
         # ===== 对话区域 =====
         chat_container = ttk.Frame(main_frame)
@@ -630,6 +360,216 @@ class ChatTab(BaseTab):
         self.progress_bar = ttk.Progressbar(status_frame, length=200, mode='determinate')
         self.progress_bar.pack(side=tk.RIGHT, padx=5)
 
+        # 绑定快捷键
+        self.input_text.bind("<Control-Return>", self._on_send)
+        self.input_text.bind("<Return>", self._on_send_shift_check)
+
+    def _build_toolbar(self, toolbar):
+        """构建工具栏"""
+        # ===== LoRA 控制 =====
+        lora_frame = ttk.Frame(toolbar)
+        lora_frame.pack(side=tk.LEFT, padx=5)
+
+        ttk.Label(lora_frame, text="🔗 LoRA:").pack(side=tk.LEFT, padx=2)
+
+        lora_files = self._scan_lora_files()
+        self.lora_combo = ttk.Combobox(
+            lora_frame,
+            textvariable=self.lora_var,      # ✅ 已在 _init_vars 中定义
+            values=lora_files,
+            width=25,
+            state="readonly"
+        )
+        self.lora_combo.pack(side=tk.LEFT, padx=2)
+        self.lora_combo.bind('<<ComboboxSelected>>', self._on_lora_selected)
+
+        self.lora_check = ttk.Checkbutton(
+            lora_frame,
+            text="启用",
+            variable=self.lora_enabled_var,      # ✅ 已在 _init_vars 中定义
+            command=self._toggle_lora
+        )
+        self.lora_check.pack(side=tk.LEFT, padx=5)
+
+        self.lora_status_label = ttk.Label(
+            lora_frame,
+            text="🔴 未加载",
+            foreground="red",
+            font=("", 8)
+        )
+        self.lora_status_label.pack(side=tk.LEFT, padx=5)
+
+        ttk.Button(lora_frame, text="🔄", width=2, command=self._refresh_lora_list).pack(side=tk.LEFT, padx=2)
+
+        # 分隔线
+        ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=5)
+
+        # ===== ControlNet 控制 =====
+        controlnet_frame = ttk.Frame(toolbar)
+        controlnet_frame.pack(side=tk.LEFT, padx=5)
+
+        ttk.Checkbutton(
+            controlnet_frame,
+            text="🧠 ControlNet",
+            variable=self.use_controlnet_var,   # ✅ 已在 _init_vars 中定义
+            command=self._on_controlnet_toggle
+        ).pack(side=tk.LEFT, padx=2)
+
+        from utils.controlnet_helper import get_controlnet_display_names
+        self.controlnet_combo = ttk.Combobox(
+            controlnet_frame,
+            textvariable=self.controlnet_type_var,  # ✅ 已在 _init_vars 中定义
+            values=get_controlnet_display_names(),
+            width=20,
+            state="readonly"
+        )
+        self.controlnet_combo.pack(side=tk.LEFT, padx=2)
+        self.controlnet_combo.bind('<<ComboboxSelected>>', self._on_controlnet_type_changed)
+
+        self.controlnet_status_label = ttk.Label(
+            controlnet_frame,
+            text="",
+            foreground="gray",
+            font=("", 8)
+        )
+        self.controlnet_status_label.pack(side=tk.LEFT, padx=2)
+
+        # 分隔线
+        ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=5)
+
+        # ===== 其他工具 =====
+        ttk.Button(toolbar, text="🗑️ 清除图片", command=self._clear_upload, width=10).pack(side=tk.LEFT, padx=2)
+
+        self.image_status = ttk.Label(toolbar, text="", foreground="green")
+        self.image_status.pack(side=tk.LEFT, padx=10)
+
+        # 安全模式
+        ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=5)
+
+        self.safe_mode_btn = tk.Button(
+            toolbar,
+            text="🛡️ 安全模式",
+            command=self._toggle_safe_mode,
+            relief="sunken",
+            bg="#e8f5e9",
+            font=("微软雅黑", 8),
+            width=10,
+            height=1
+        )
+        self.safe_mode_btn.pack(side=tk.LEFT, padx=5)
+
+        self.safe_mode_label = ttk.Label(
+            toolbar,
+            text="🟢 已启用",
+            foreground="green",
+            font=("", 8)
+        )
+        self.safe_mode_label.pack(side=tk.LEFT, padx=2)
+
+        ttk.Button(toolbar, text="🔧 测试 LLM", command=self._debug_test_llm, width=10).pack(side=tk.LEFT, padx=2)
+        ttk.Button(toolbar, text="🗑️ 清除对话", command=self._clear_chat, width=12).pack(side=tk.LEFT, padx=2)
+
+        # ControlNet 缓存状态
+        if self._check_controlnet_cached():
+            size = self._get_controlnet_size()
+            ttk.Label(toolbar, text=f"🦴 ControlNet 已缓存 ({size})", foreground="green").pack(side=tk.LEFT, padx=10)
+        else:
+            ttk.Label(toolbar, text="🦴 ControlNet 未缓存", foreground="orange").pack(side=tk.LEFT, padx=10)
+
+        self.upload_btn = ttk.Button(toolbar, text="📎 上传图片", command=self._upload_image, width=12)
+        self.upload_btn.pack(side=tk.LEFT, padx=2)
+
+        self.preview_label = ttk.Label(toolbar)
+        self.preview_label.pack(side=tk.LEFT, padx=5)
+
+    def _build_param_bar(self, param_bar):
+        """构建参数栏"""
+        # 步数
+        ttk.Label(param_bar, text="步数:").pack(side=tk.LEFT, padx=5)
+
+        self.steps_spinbox = ttk.Spinbox(
+            param_bar,
+            from_=4,
+            to=50,
+            textvariable=self.chat_steps_var,   # ✅ 已在 _init_vars 中定义
+            width=5,
+            increment=1
+        )
+        self.steps_spinbox.pack(side=tk.LEFT, padx=2)
+
+        for steps in [8, 12, 20, 30]:
+            ttk.Button(param_bar, text=str(steps), width=3,
+                      command=lambda s=steps: self.chat_steps_var.set(s)).pack(side=tk.LEFT, padx=1)
+
+        # CFG
+        ttk.Label(param_bar, text="CFG:").pack(side=tk.LEFT, padx=15)
+
+        self.cfg_spinbox = ttk.Spinbox(
+            param_bar,
+            from_=1.0,
+            to=20.0,
+            textvariable=self.chat_cfg_var,     # ✅ 已在 _init_vars 中定义
+            width=5,
+            increment=0.5
+        )
+        self.cfg_spinbox.pack(side=tk.LEFT, padx=2)
+
+        for cfg in [5, 7, 7.5, 9]:
+            ttk.Button(param_bar, text=str(cfg), width=3,
+                      command=lambda c=cfg: self.chat_cfg_var.set(c)).pack(side=tk.LEFT, padx=1)
+
+        ttk.Label(param_bar, text="💡 步数越高质量越好", foreground="gray", font=("", 8)).pack(side=tk.LEFT, padx=15)
+
+        # 模式
+        ttk.Separator(param_bar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=10)
+
+        mode_frame = ttk.Frame(param_bar)
+        mode_frame.pack(side=tk.LEFT, padx=5)
+
+        ttk.Label(mode_frame, text="模式:", font=("", 9)).pack(side=tk.LEFT)
+
+        for mode, label, bg in [
+            ("快速", "⚡ 快速", "#e8f5e9"),
+            ("平衡", "⚖️ 平衡", "#e3f2fd"),
+            ("高质量", "🌟 高质量", "#fff3e0"),
+            ("超高质量", "🌟 超高质量", "#fce4ec")
+        ]:
+            btn = tk.Button(
+                mode_frame,
+                text=label,
+                command=lambda m=mode: self._set_quality_mode(m),
+                relief="sunken" if self.quality_mode_var.get() == mode else "raised",
+                bg=bg if self.quality_mode_var.get() == mode else "#f5f5f5",
+                font=("微软雅黑", 8),
+                width=6,
+                height=1
+            )
+            setattr(self, f"_{mode}_btn", btn)
+
+        self.mode_hint = ttk.Label(param_bar, text="⚡ 快速模式", foreground="green", font=("", 8))
+        self.mode_hint.pack(side=tk.LEFT, padx=10)
+
+        # LLM
+        ttk.Separator(param_bar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=10)
+
+        self.llm_check = ttk.Checkbutton(
+            param_bar,
+            text="🧠 LLM增强",
+            variable=self.llm_enabled_var,          # ✅ 已在 _init_vars 中定义
+            command=self._on_llm_toggle
+        )
+        self.llm_check.pack(side=tk.LEFT, padx=5)
+
+        self.llm_install_btn = ttk.Button(
+            param_bar,
+            text="📦 安装 LLM",
+            command=self._manual_install_llm,
+            width=10
+        )
+        self.llm_install_btn.pack(side=tk.LEFT, padx=5)
+
+        self.llm_status = ttk.Label(param_bar, text="●", foreground="gray", font=("", 10))
+        self.llm_status.pack(side=tk.LEFT, padx=2)
 
     def _on_controlnet_toggle(self):
         """ControlNet 开关切换"""
@@ -1305,7 +1245,7 @@ class ChatTab(BaseTab):
         
         return self._merge_llm_prompt_with_features(prompt, preserve_parts)
     
-    def debug_test_llm(self):
+    def _debug_test_llm(self):
         import requests
 
         self._append_message("system", "🔍 开始测试 LLM...")
@@ -1351,7 +1291,7 @@ class ChatTab(BaseTab):
 
 
     def _llm_enhance_prompt(self, text: str, is_img2img: bool = False) -> dict:
-        if not self.llm_available or not self.llm_enabled.get():
+        if not self.llm_available or not self.llm_enabled_var.get():
             return None
 
         cache_key = f"{text}_{is_img2img}"
@@ -2420,7 +2360,7 @@ class ChatTab(BaseTab):
             threading.Thread(target=self._install_ollama, daemon=True).start()
 
     def _on_llm_toggle(self):
-        if self.llm_enabled.get():
+        if self.llm_enabled_var.get():
             if self.llm_installing:
                 self._append_message("system", "⏳ 正在安装中，请稍候...")
                 return
@@ -2437,7 +2377,7 @@ class ChatTab(BaseTab):
                     ):
                         self._install_ollama()
                     else:
-                        self.llm_enabled.set(False)
+                        self.llm_enabled_var.set(False)
                         self.llm_status.config(text="●", foreground="gray")
                     return
 
@@ -2557,6 +2497,16 @@ class ChatTab(BaseTab):
         self.send_btn.config(state=tk.NORMAL)
         self.status_var.set("⏹️ 已取消")
 
+    # ========== 辅助方法 ==========
+    def _check_llm_status(self):
+        """检查LLM状态"""
+        if self.llm_client.is_running():
+            if self.llm_client.is_available():
+                self._append_message("system", f"✅ LLM 已就绪 (模型: {self.llm_client.model})")
+                return
+        
+        self._append_message("system", "⚠️ LLM 未就绪，将使用基础模式")
+        
     def _append_message(self, role: str, content: str):
         self.chat_text.config(state=tk.NORMAL)
 
@@ -2629,42 +2579,100 @@ class ChatTab(BaseTab):
     # ==================== 消息处理 ====================
 
     def _process_message(self, user_input: str):
+        """处理用户消息 - 核心逻辑"""
         self.is_generating = True
         self.cancel_generation = False
-        self.send_btn.config(state=tk.DISABLED)
-        self.cancel_btn.config(state=tk.NORMAL)
-
+        
         try:
-            intent = self._analyze_intent(user_input)
-
-            self._append_message("system", f"🔍 分析意图: {intent['type']}")
-
-            mode = self.quality_mode_var.get() if hasattr(self, 'quality_mode_var') else "平衡"
-            is_ultra = mode == "超高质量"
-
-            if intent["type"] == "text_to_image" and is_ultra:
-                self._handle_large_scale_generation(intent)
-            elif intent["type"] == "couple_generation":
-                self._handle_couple_generation(intent)
-            elif intent["type"] == "text_to_image":
+            # 1. 分析意图
+            intent = self.intent_analyzer.analyze(
+                user_input, 
+                has_image=bool(self.uploaded_images),
+                has_multiple_images=len(self.uploaded_images) >= 2
+            )
+            
+            self._append_message("system", f"🔍 分析意图: {intent.type}")
+            
+            # 2. 如果有LLM且需要，增强提示词
+            if self.llm_enabled_var.get() and self.llm_client.is_available():
+                intent = self._enhance_with_llm(intent)
+            
+            # 3. 根据意图执行
+            if intent.type == "text_to_image":
                 self._handle_text_to_image(intent)
-            elif intent["type"] == "image_to_image":
+            elif intent.type == "image_to_image":
                 self._handle_image_to_image(intent)
-            elif intent["type"] == "chat":
-                self._handle_chat(intent)
+            elif intent.type == "couple_generation":
+                self._handle_couple_generation(intent)
             else:
-                self._append_message("assistant", "❌ 抱歉，我没理解你的意思。请试试：\n• \"生成一张...\"\n• \"把这张图改成...\"\n• 直接和我聊天")
-
+                self._handle_chat(intent)
+            
+            # 4. 更新上下文
+            self.context_manager.update(vars(intent))
+            
         except Exception as e:
             self._append_message("assistant", f"❌ 处理失败: {str(e)}")
             import traceback
             traceback.print_exc()
         finally:
             self.is_generating = False
-            self.send_btn.config(state=tk.NORMAL)
-            self.cancel_btn.config(state=tk.DISABLED)
-            self.progress_bar.config(value=0)
 
+
+    # ========== 核心处理函数 ==========
+    def _build_llm_prompt(self, intent) -> str:
+        """构建 LLM 提示词"""
+        text = intent.original_text
+        is_img2img = intent.type == "image_to_image"
+        
+        # 获取上下文
+        context = self.context_manager.get_summary() if self.context_manager.has_context() else ""
+        context_info = f"\n【对话上下文】\n{context}\n" if context else ""
+        
+        if is_img2img:
+            return f"""你是一个专业的 Stable Diffusion 提示词专家。用户想要修改图片：{text}
+
+    {context_info}
+    【图生图特殊规则】
+    - 必须包含 "same person, same face, same pose" 保持人物一致性
+    - 只修改用户明确要求的部分
+    - 不要添加用户未提及的风格词
+    - 使用英文，用逗号分隔
+
+    正面提示词：
+    负面提示词："""
+        else:
+            return f"""你是一个专业的 Stable Diffusion 提示词专家。根据用户描述生成提示词：{text}
+
+    {context_info}
+    【重要规则】
+    1. 提示词使用英文，用逗号分隔
+    2. 包含：主体描述、场景、光线、风格
+    3. 添加高质量修饰词：masterpiece, best quality, photorealistic, 8k, highly detailed
+    4. 根据主题选择合适标签：1girl, 1boy, couple 等
+    5. 不要重复相同内容
+
+    正面提示词：
+    负面提示词："""
+
+    def _enhance_with_llm(self, intent):
+        """使用 LLM 增强提示词"""
+        self._append_message("system", "🧠 正在智能分析需求...")
+        
+        prompt = self._build_llm_prompt(intent)
+        response = self.llm_client.generate(prompt, timeout=60, max_tokens=300, stream=True)
+        
+        if response:
+            parsed = self.prompt_builder.parse_llm_response(response)
+            if parsed.get("prompt"):
+                intent.prompt = parsed["prompt"]
+                intent.llm_enhanced = True
+                intent.negative = parsed.get("negative", "")
+                self._append_message("system", "🧠 LLM 增强完成")
+        else:
+            self._append_message("system", "⚠️ LLM 增强失败，使用基础提示词")
+        
+        return intent
+    
     # ==================== ControlNet 相关 ====================
 
     def _setup_controlnet(self):
@@ -2890,7 +2898,7 @@ class ChatTab(BaseTab):
 
             smart_prompt = f"{gender1} and {gender2}, {action}, couple, romantic, masterpiece, best quality, photorealistic"
 
-            use_llm = self.llm_enabled.get() and self.llm_available
+            use_llm = self.llm_enabled_var.get() and self.llm_available
             if use_llm:
                 llm_result = self._llm_enhance_prompt(text, is_img2img=True)
                 if llm_result and llm_result.get('prompt'):
@@ -2921,7 +2929,7 @@ class ChatTab(BaseTab):
         continuation_keywords = ['再来', '继续', '换一个', '换一张', '再生成', 'another', 'continue']
         is_continuation = any(k in text_lower for k in continuation_keywords)
 
-        use_llm = self.llm_enabled.get() and self.llm_available
+        use_llm = self.llm_enabled_var.get() and self.llm_available
         is_img2img = intent_type == "image_to_image"
 
         llm_result = None
@@ -4042,7 +4050,10 @@ class ChatTab(BaseTab):
             print(f"⚠️ 超分辨率失败: {e}")
             return image_path
 
-    def _handle_text_to_image(self, intent: dict):
+    # gui/tabs/chat_tab.py - _handle_text_to_image 方法
+
+    def _handle_text_to_image(self, intent):
+        """处理文生图"""
         if self._is_loading_model:
             self._append_message("assistant", "⏳ 模型正在加载中，请稍候...")
             return
@@ -4054,36 +4065,37 @@ class ChatTab(BaseTab):
                 return
             self._append_message("assistant", "⏳ 模型加载中，请稍候再试...")
             return
-            
+
         # ===== 获取提示词 =====
-        if intent.get("llm_generated", False):
-            prompt = intent["prompt"]
-            negative = intent.get("negative", self._negative_templates["default"])
+        # ✅ 修复：使用属性访问，而不是 .get()
+        if intent.llm_enhanced:  # 直接访问属性
+            prompt = intent.prompt
+            negative = intent.negative or self._negative_templates["default"]
             
-            # ✅ 清理提示词
+            # 清理提示词
             prompt = self._clean_prompt_for_sd(prompt)
             print(f"\n📝 [清理后的提示词]")
             print(f"   {prompt}")
         else:
-            prompt = intent.get("prompt", "")
-            negative = intent.get("negative", self._negative_templates["default"])
+            prompt = intent.prompt or ""
+            negative = intent.negative or self._negative_templates["default"]
             
             # 如果是延续性，添加上下文增强
-            if intent.get("is_continuation", False) and self.last_prompt:
+            if intent.is_continuation and self.context_manager.last_prompt:
                 prompt = self._enhance_with_context(prompt)
         
-        # ✅ 最终清理
+        # 最终清理
         prompt = self._clean_prompt_for_sd(prompt)
 
-        original_text = intent.get("original_text", "")
+        original_text = intent.original_text
 
         print("\n" + "=" * 60)
         print("📊 [文生图调试]")
         print(f"   用户输入: {original_text}")
         print(f"   提示词: {prompt}")
-        if intent.get("llm_enhanced"):
+        if intent.llm_enhanced:
             print(f"   🧠 已启用 LLM 增强")
-        if intent.get("is_continuation", False):
+        if intent.is_continuation:
             print(f"   🔄 延续模式")
         print("=" * 60 + "\n")
 
@@ -4091,7 +4103,7 @@ class ChatTab(BaseTab):
 
         self._append_message("system", f"⚙️ 参数: 步数={params['steps']}, CFG={params['cfg']}, 尺寸={params['width']}x{params['height']}")
 
-        if intent.get("llm_enhanced"):
+        if intent.llm_enhanced:
             self._append_message("system", f"🧠 已使用 LLM 增强提示词")
 
         self._append_message("assistant", f"🎨 正在生成图片...\n\n📝 提示词:\n{prompt[:200]}{'...' if len(prompt) > 200 else ''}")
@@ -4099,25 +4111,22 @@ class ChatTab(BaseTab):
         self._update_status(f"🎨 生成中... (尺寸: {params['width']}x{params['height']})", 0.1)
 
         try:
-            # ... 原有的生成代码保持不变 ...
             from utils.pipeline_pool import pipeline_pool
             from datetime import datetime
             import random
+            from config.app_config import app_config
 
             model_name = self.app.model_var.get()
             model_path = self.app._get_model_path(model_name)
 
-            # 获取 LoRA
             lora_path = self.current_lora_path if self.lora_loaded else None
-            lora_weight = 1.0
 
             task_id = f"chat_{datetime.now().strftime('%H%M%S')}"
-
-            pipe, is_new = pipeline_pool.get_pipeline(
+            pipe, _ = pipeline_pool.get_pipeline(
                 model_path=model_path,
                 model_name=model_name,
                 lora_path=lora_path,
-                lora_weight=lora_weight,
+                lora_weight=1.0,
                 task_id=task_id
             )
 
@@ -4131,11 +4140,11 @@ class ChatTab(BaseTab):
             self._update_status(f"🎨 生成中... 步骤: {params['steps']}", 0.3)
 
             # 检测是否是动物主题，使用对应的负面提示词
-            keywords = intent.get("keywords", {})
+            keywords = intent.keywords or {}
             is_animal = keywords.get("is_animal", False)
             
             if is_animal:
-                negative = self._negative_templates["animal"]
+                negative = self._negative_templates.get("animal", self._negative_templates["default"])
             elif not negative:
                 negative = getattr(self, '_last_negative', self._negative_templates["default"])
 
@@ -4147,25 +4156,24 @@ class ChatTab(BaseTab):
                 height=params["height"],
                 width=params["width"],
                 generator=generator,
-                num_images_per_prompt=1  # ✅ 改为1张，避免过多
+                num_images_per_prompt=1
             )
 
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             prompt_preview = "".join(c for c in prompt[:30] if c.isalnum() or c in " _-") or "image"
             filename = f"{timestamp}_chat_{prompt_preview}.png"
 
-            from config.app_config import app_config
             output_dir = app_config.paths.output_dir
             os.makedirs(output_dir, exist_ok=True)
             filepath = os.path.join(output_dir, filename)
             result.images[0].save(filepath)
 
-            # ===== 图片后处理 =====
+            # 图片后处理
             try:
                 from utils.image_post_processor import post_process_image
                 final_path = post_process_image(
                     filepath,
-                    self.params,
+                    self.app.params_panel,
                     prompt=prompt,
                     log_prefix="[会话生图]"
                 )
@@ -4183,8 +4191,8 @@ class ChatTab(BaseTab):
             self._append_image_result(filepath)
             self._append_message("assistant", f"✅ 图片已生成！\n📁 {os.path.basename(filepath)}\n\n💡 提示: 继续发送描述可以生成更多图片")
 
-            # ===== 【新增】保存上下文 =====
-            self._update_context(intent, {"image_path": filepath, "prompt": prompt})
+            # 保存上下文
+            self.context_manager.update(vars(intent), {"image_path": filepath, "prompt": prompt})
             self._save_to_context({
                 "last_prompt": prompt,
                 "last_negative": negative,
@@ -4874,7 +4882,7 @@ class ChatTab(BaseTab):
         if reply:
             self._append_message("assistant", reply)
         else:
-            if self.llm_enabled.get() and self.llm_available:
+            if self.llm_enabled_var.get() and self.llm_available:
                 self._append_message("system", "🧠 正在思考...")
                 llm_reply = self._call_ollama(
                     f"用户说：{text}\n请简短友好地回复（一句话，不要超过20字）：",
@@ -4932,7 +4940,7 @@ class ChatTab(BaseTab):
             self.progress_bar.config(value=0)
 
             # ✅ 模型加载完成后自动加载 LoRA
-            if self.lora_enabled.get():
+            if self.lora_enabled_var.get():
                 lora_files = self._scan_lora_files()
                 if lora_files:
                     default_lora = lora_files[0]

@@ -2334,6 +2334,12 @@ class SDApp:
             "gui.tabs.lora_manager_tab",  # ✅ 新增
             "gui.tabs.chat_tab",  # ✅ 新增
             
+            # ===== ✅ 新增：GUI Chat 模块 =====
+            "gui.chat",
+            "gui.chat.intent_analyzer",
+            "gui.chat.llm_client",
+            "gui.chat.prompt_builder",
+            "gui.chat.context_manager",            
             
             # ===== GUI 管理 =====
             "gui.scene_manager", 
