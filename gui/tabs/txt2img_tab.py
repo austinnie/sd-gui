@@ -688,6 +688,7 @@ class Txt2ImgTab(BaseTab):
             lora_path = self.app.lora_paths.get(lora_display)
             lora_weight = self.app.lora_weight_var.get() if hasattr(self.app, 'lora_weight_var') else 1.0
         
+        # ✅ 获取 pipeline
         pipe, is_new = pipeline_pool.get_pipeline(
             model_path=model_path,
             model_name=model_name,
@@ -695,6 +696,11 @@ class Txt2ImgTab(BaseTab):
             lora_weight=lora_weight,
             task_id=task_id
         )
+        
+        # ✅ 检查 pipe
+        if pipe is None:
+            self.app.root.after(0, lambda: self._on_generation_error("无法获取 Pipeline"))
+            return        
 
         # ✅ 定义进度回调（带 source）
         def progress_cb(value, msg):
@@ -708,11 +714,13 @@ class Txt2ImgTab(BaseTab):
                 current_seed = seed if seed != -1 else random.randint(1, 2**32 - 1)
                 current_seed = current_seed + i
                 
+                # ✅ 把 pipe 传给 _generate_single_image
                 self._generate_single_image(
                     prompt, negative,
                     steps=steps, cfg=cfg, seed=current_seed,
                     height=height, width=width,
-                    index=i+1, total=num_images
+                    index=i+1, total=num_images,
+                    pipe=pipe  # ✅ 新增参数
                 )
             
             self.app.root.after(0, self._on_generation_complete)
@@ -725,10 +733,22 @@ class Txt2ImgTab(BaseTab):
                 pipeline_pool.release_pipeline(model_path, lora_path, task_id)
         
     def _generate_single_image(self, prompt, negative, steps=None, cfg=None, seed=None,
-                                height=None, width=None, index=1, total=1, callback=None):
+                                height=None, width=None, index=1, total=1, callback=None, pipe=None):
         """生成单张图片 - 核心生成逻辑"""
         
         log(f"开始生成第 {index}/{total} 张")
+
+        
+        ## ===== 安全检查 =====
+        #if self.app.pipeline is None:
+        #    self.app.root.after(0, lambda: self._on_generation_error("请先加载模型"))
+        #    return
+
+        # ===== 安全检查2 =====
+        if pipe is None:
+            self.app.root.after(0, lambda: self._on_generation_error("未传入 Pipeline，请通过 PipelinePool 获取"))
+            return
+        
         
         # 使用默认值
         if steps is None:
@@ -741,12 +761,7 @@ class Txt2ImgTab(BaseTab):
             height = self.params.height_var.get()
         if width is None or width <= 0:
             width = self.params.width_var.get()
-        
-        # ===== 安全检查 =====
-        if self.app.pipeline is None:
-            self.app.root.after(0, lambda: self._on_generation_error("请先加载模型"))
-            return
-        
+
         # ===== 尺寸安全处理 =====
         width = max(1, width)
         height = max(1, height)
@@ -803,9 +818,7 @@ class Txt2ImgTab(BaseTab):
                 selected_type = self.app.img2img_tab.controlnet_type_var.get()
                 controlnet_type = selected_type.split(" ")[0] if " " in selected_type else "openpose"
         
-        # ===== 先获取 pipe =====
-        pipe = self.app.pipeline
-        
+       
         # ===== 如果启用 ControlNet，创建 ControlNet Pipeline =====
         if use_controlnet:
             try:
@@ -873,7 +886,9 @@ class Txt2ImgTab(BaseTab):
 
         try:
             # 强制模型在 CPU
-            self.app.pipeline = pipe.to("cpu")
+            #self.app.pipeline = pipe.to("cpu")
+            # ✅ 替换为：
+            pipe.to("cpu")            
             generator = torch.Generator("cpu").manual_seed(seed)
             
             cancel_flag = lambda: self.cancel_generation
@@ -1373,32 +1388,67 @@ class Txt2ImgTab(BaseTab):
     
     def _run_batch(self):
         """运行批量生成"""
-        for idx, prompt in enumerate(self.batch_prompts):
-            if not self.batch_running or self.cancel_generation:
-                self.update_status("⏹️ 批量生成已停止")
-                break
-            
-            negative = self.batch_negs[idx] if idx < len(self.batch_negs) else self.default_negative
-            self.batch_current = idx + 1
-            
-            self.update_status(f"🔄 正在生成: 第 {self.batch_current}/{self.batch_total} 组")
-            
-            seed = self.params.seed_var.get()
-            if seed == -1:
-                seed = random.randint(1, 2**32 - 1)
-            seed = seed + idx
-            
-            self._generate_single_image(
-                prompt, negative,
-                seed=seed,
-                index=idx+1,
-                total=self.batch_total
-            )
-            
-            time.sleep(0.5)
+        # ✅ 首先获取 pipeline
+        from utils.pipeline_pool import pipeline_pool
         
-        self.batch_running = False
-        self.update_status(f"✅ 批量生成完成！共生成 {self.batch_current} 张")
+        model_name = self.app.model_var.get()
+        model_path = self.app._get_model_path(model_name)
+        
+        # 获取 LoRA 信息
+        lora_display = self.app.lora_var.get() if hasattr(self.app, 'lora_var') else ""
+        lora_path = None
+        lora_weight = 1.0
+        if lora_display and hasattr(self.app, 'lora_paths'):
+            lora_path = self.app.lora_paths.get(lora_display)
+            lora_weight = self.app.lora_weight_var.get() if hasattr(self.app, 'lora_weight_var') else 1.0
+        
+        task_id = f"batch_{datetime.now().strftime('%H%M%S')}"
+        pipe, is_new = pipeline_pool.get_pipeline(
+            model_path=model_path,
+            model_name=model_name,
+            lora_path=lora_path,
+            lora_weight=lora_weight,
+            task_id=task_id
+        )
+        
+        if pipe is None:
+            self.update_status("❌ 无法获取 Pipeline")
+            self.batch_running = False
+            return
+        
+        try:
+            for idx, prompt in enumerate(self.batch_prompts):
+                if not self.batch_running or self.cancel_generation:
+                    self.update_status("⏹️ 批量生成已停止")
+                    break
+                
+                negative = self.batch_negs[idx] if idx < len(self.batch_negs) else self.default_negative
+                self.batch_current = idx + 1
+                
+                self.update_status(f"🔄 正在生成: 第 {self.batch_current}/{self.batch_total} 组")
+                
+                seed = self.params.seed_var.get()
+                if seed == -1:
+                    seed = random.randint(1, 2**32 - 1)
+                seed = seed + idx
+                
+                # ✅ 调用 _generate_single_image_with_pipe，传入 pipe
+                self._generate_single_image_with_pipe(
+                    pipe=pipe,
+                    prompt=prompt,
+                    negative=negative,
+                    seed=seed,
+                    index=idx+1,
+                    total=self.batch_total
+                )
+                
+                time.sleep(0.5)
+            
+            self.batch_running = False
+            self.update_status(f"✅ 批量生成完成！共生成 {self.batch_current} 张")
+        finally:
+            # ✅ 释放 pipeline
+            pipeline_pool.release_pipeline(model_path, lora_path, task_id)
     
     def _get_batch_negs_from_panel(self):
         """从全局批量面板获取负面词"""
