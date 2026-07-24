@@ -18,6 +18,7 @@ from diffusers import (
     EulerDiscreteScheduler,
 )
 import psutil  # 顶部添加导入
+from config.app_config import app_config
 
 class PipelinePool:
     """Pipeline 池 - 管理多个 pipeline 实例，每个任务独立"""
@@ -36,7 +37,7 @@ class PipelinePool:
         self._initialized = True
         self._pipelines: OrderedDict = OrderedDict()
         self._lock = threading.Lock()
-        self._max_instances = 3  # 最多 3 个实例（文生图 + 图生图 + 备用）
+        self._max_instances = getattr(app_config, 'max_pipeline_instances', 3)
         self._total_created = 0
     
     def get_pipeline(self, model_path: str, model_name: str,

@@ -45,6 +45,7 @@
             "cpu_safe_max_height": 1024			
 		},
         "max_images": 4,
+		"max_pipeline_instances": 5,
         "positive_prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Asian woman, Chinese, wearing elegant qipao dress, full body shot, traditional garden background, natural lighting",
         "negative_prompt": "worst quality, low quality, deformed, blurry, bad anatomy, bad hands, watermark, text",
         "img2img_prompt": "masterpiece, best quality, realistic, 8k, same person, transformed",
