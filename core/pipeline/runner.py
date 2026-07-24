@@ -1,0 +1,186 @@
+# core/pipeline/runner.py
+"""流水线运行器 - 从 pipeline_tab.py 移出"""
+
+import os
+from datetime import datetime
+from PIL import Image
+from typing import Optional, Callable
+
+from core.pipeline import PipelineRegistry, StepContext
+from utils.pipeline_pool import pipeline_pool
+from utils.image_post_processor import post_process_image
+
+
+class PipelineRunner:
+    """流水线运行器"""
+    
+    def __init__(self, tab):
+        self.tab = tab
+        self.app = tab.app
+    
+    def run(self, image_path: str, pipeline_config: dict, output_dir: str,
+            progress_callback: Optional[Callable] = None,
+            cancel_flag: Optional[Callable] = None,
+            task_id: str = None) -> dict:
+        """
+        运行流水线
+        
+        参数:
+            image_path: 输入图片路径
+            pipeline_config: 流水线配置
+            output_dir: 输出目录
+            progress_callback: 进度回调 (current, total, msg)
+            cancel_flag: 取消标志
+            task_id: 任务ID
+        
+        返回:
+            运行结果
+        """
+        if task_id is None:
+            task_id = f"pipeline_{datetime.now().strftime('%H%M%S')}"
+        
+        # 获取模型和 LoRA
+        model_name = self.app.model_var.get()
+        model_path = self.app._get_model_path(model_name)
+        
+        lora_path = None
+        lora_weight = 1.0
+        if hasattr(self.app, 'lora_var') and hasattr(self.app, 'lora_paths'):
+            lora_display = self.app.lora_var.get()
+            if lora_display:
+                lora_path = self.app.lora_paths.get(lora_display)
+                lora_weight = self.app.lora_weight_var.get() if hasattr(self.app, 'lora_weight_var') else 1.0
+        
+        # 获取 pipeline
+        pipe, is_new = pipeline_pool.get_pipeline(
+            model_path=model_path,
+            model_name=os.path.basename(model_path),
+            lora_path=lora_path,
+            lora_weight=lora_weight,
+            task_id=task_id
+        )
+        
+        if pipe is None:
+            return {"success": False, "error": "无法获取 Pipeline"}
+        
+        try:
+            # 检查是否启用 ControlNet
+            use_controlnet = False
+            controlnet_pipe = None
+            controlnet_type = "openpose"
+            
+            if hasattr(self.app, 'img2img_tab') and hasattr(self.app.img2img_tab, 'use_controlnet_var'):
+                use_controlnet = self.app.img2img_tab.use_controlnet_var.get()
+                if use_controlnet and hasattr(self.app.img2img_tab, 'controlnet_type_var'):
+                    selected_type = self.app.img2img_tab.controlnet_type_var.get()
+                    controlnet_type = selected_type.split(" ")[0] if " " in selected_type else "openpose"
+            
+            # 加载 ControlNet
+            if use_controlnet:
+                controlnet_pipe = self._setup_controlnet(pipe, controlnet_type)
+                if controlnet_pipe:
+                    print(f"🧠 ControlNet 已加载: {controlnet_type}")
+                    pipe = controlnet_pipe
+            
+            # 创建流水线
+            pipeline = PipelineRegistry.create_pipeline_from_config(pipeline_config)
+            
+            def on_progress(current, total, msg):
+                if progress_callback:
+                    progress_callback(current, total, msg)
+                if cancel_flag and cancel_flag():
+                    raise Exception("用户取消")
+            
+            pipeline.set_progress_callback(on_progress)
+            
+            # 加载图片
+            image = Image.open(image_path).convert('RGB')
+            
+            # 创建上下文
+            context = StepContext(
+                input_image=image,
+                input_path=image_path,
+                output_dir=output_dir,
+                global_config={
+                    "model_path": model_path,
+                    "pipe": pipe,
+                    "lora_path": lora_path,
+                    "lora_weight": lora_weight,
+                    "use_controlnet": use_controlnet,
+                    "controlnet_pipe": controlnet_pipe,
+                    "controlnet_type": controlnet_type,
+                }
+            )
+            
+            # 运行流水线
+            results = pipeline.run(context)
+            
+            # 后处理
+            self._post_process_results(results)
+            
+            return {
+                "success": True,
+                "results": results,
+                "output_dir": output_dir
+            }
+            
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+        finally:
+            pipeline_pool.release_pipeline(model_path, lora_path, task_id)
+    
+    def _setup_controlnet(self, pipe, controlnet_type: str):
+        """设置 ControlNet"""
+        try:
+            from diffusers import ControlNetModel, StableDiffusionControlNetPipeline
+            from utils.controlnet_helper import get_controlnet_info
+            
+            info = get_controlnet_info(controlnet_type)
+            print(f"📦 加载 ControlNet: {info['name']}")
+            
+            controlnet = ControlNetModel.from_pretrained(
+                info["model_id"],
+                torch_dtype=torch.float32,
+                low_cpu_mem_usage=True
+            )
+            
+            controlnet_pipe = StableDiffusionControlNetPipeline(
+                vae=pipe.vae,
+                text_encoder=pipe.text_encoder,
+                tokenizer=pipe.tokenizer,
+                unet=pipe.unet,
+                controlnet=controlnet,
+                scheduler=pipe.scheduler,
+                safety_checker=None,
+                requires_safety_checker=False,
+            )
+            controlnet_pipe.to("cpu")
+            controlnet_pipe.enable_vae_slicing()
+            controlnet_pipe.enable_attention_slicing()
+            
+            return controlnet_pipe
+            
+        except Exception as e:
+            print(f"⚠️ ControlNet 加载失败: {e}")
+            return None
+    
+    def _post_process_results(self, results: dict):
+        """对结果进行后处理"""
+        from utils.image_post_processor import post_process_image
+        
+        for name, result in results.items():
+            if result.success and result.output_path and os.path.exists(result.output_path):
+                try:
+                    final_path = post_process_image(
+                        result.output_path,
+                        self.app.params_panel,
+                        log_prefix=f"[流水线-{name}]"
+                    )
+                    if final_path != result.output_path:
+                        try:
+                            os.remove(result.output_path)
+                        except:
+                            pass
+                        result.output_path = final_path
+                except Exception as e:
+                    print(f"⚠️ {name}: 后期处理失败 - {e}")
