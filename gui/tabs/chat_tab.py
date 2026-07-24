@@ -1756,11 +1756,10 @@ class ChatTab(BaseTab):
         result = ', '.join(final_parts)
         
         # 简单估算 token 数（英文约 4 字符/token）
-        if len(result) > 300:  # 约 75 tokens
-            # 截断到 280 字符，保持完整的词
-            result = result[:280]
+        if len(result) > 380:  # 增加到 380
+            result = result[:350]
             last_comma = result.rfind(',')
-            if last_comma > 200:
+            if last_comma > 280:
                 result = result[:last_comma]
         
         return result
@@ -2619,8 +2618,56 @@ class ChatTab(BaseTab):
 
 
     # ========== 核心处理函数 ==========
-    def _build_llm_prompt(self, intent) -> str:
+    # gui/tabs/chat_tab.py
+
+    # chat_tab.py - _build_llm_prompt (当前版本)
+    def _build_llm_prompt_simple(self, intent) -> str:
         """构建 LLM 提示词"""
+        text = intent.original_text
+        is_img2img = intent.type == "image_to_image"
+        
+        if is_img2img:
+            return f"""SD提示词专家。用户修改图片：{text}
+
+    主题：人物
+    规则：保留原图特征(same person, same face, same pose)，只改用户要求的部分。英文，逗号分隔。
+
+    正面提示词：
+    负面提示词："""
+        else:
+            return f"""SD提示词专家。根据描述生成提示词：{text}
+
+    主题：人物
+    规则：包含主体、场景、光线。英文，逗号分隔。不要重复。
+
+    正面提示词：
+    负面提示词："""
+
+    # chat_tab.py - _build_llm_prompt
+    def _build_llm_prompt_normal(self, intent) -> str:
+        """构建 LLM 提示词"""
+        text = intent.original_text
+        
+        # ✅ 增强提示词模板，让 LLM 生成更详细的提示词
+        return f"""你是一个专业的 Stable Diffusion 提示词专家。根据用户描述生成详细的英文提示词：{text}
+
+    【重要规则】
+    1. 提示词使用英文，用逗号分隔
+    2. 包含：主体描述（1girl/1boy）、服装、场景、光线、风格、构图
+    3. 添加高质量修饰词：masterpiece, best quality, photorealistic, 8k, highly detailed
+    4. 生成 80-150 个词的详细描述
+    5. 使用具体、生动的描述词
+
+    【输出格式 - 严格遵守】
+    正面提示词：[用英文写出一段详细的提示词，用逗号分隔，至少80个词]
+    负面提示词：[用英文写出一段负面提示词，用逗号分隔]
+
+    请直接输出，不要添加额外解释。"""
+
+
+    # chat_tab.py - _build_llm_prompt_detailed (备用版本)
+    def _build_llm_prompt_detailed(self, intent) -> str:
+        """构建 LLM 提示词 - 详细版，生成更丰富的描述"""
         text = intent.original_text
         is_img2img = intent.type == "image_to_image"
         
@@ -2638,19 +2685,56 @@ class ChatTab(BaseTab):
     - 不要添加用户未提及的风格词
     - 使用英文，用逗号分隔
 
-    正面提示词：
-    负面提示词："""
+    【输出格式 - 严格遵守】
+    正面提示词：[用英文写出一段完整的提示词，用逗号分隔]
+    负面提示词：[用英文写出一段完整的负面提示词，用逗号分隔]
+
+    请直接输出，不要添加额外解释。"""
         else:
-            return f"""你是一个专业的 Stable Diffusion 提示词专家。根据用户描述生成提示词：{text}
+            return f"""你是一个专业的 Stable Diffusion 提示词专家。根据用户描述生成详细的英文提示词：{text}
 
     {context_info}
     【重要规则】
     1. 提示词使用英文，用逗号分隔
-    2. 包含：主体描述、场景、光线、风格
+    2. 包含：主体描述（1girl/1boy）、服装、场景、光线、风格、构图
     3. 添加高质量修饰词：masterpiece, best quality, photorealistic, 8k, highly detailed
-    4. 根据主题选择合适标签：1girl, 1boy, couple 等
-    5. 不要重复相同内容
+    4. 生成 80-150 个词的详细描述
+    5. 使用具体、生动的描述词
 
+    【输出格式 - 严格遵守】
+    正面提示词：[用英文写出一段详细的提示词，用逗号分隔，至少80个词]
+    负面提示词：[用英文写出一段负面提示词，用逗号分隔]
+
+    请直接输出，不要添加额外解释。"""
+
+    # chat_tab.py - _build_llm_prompt_example (备用版本)
+    def _build_llm_prompt_example(self, intent) -> str:
+        """构建 LLM 提示词 - 带示例版"""
+        text = intent.original_text
+        is_img2img = intent.type == "image_to_image"
+        
+        if is_img2img:
+            return f"""SD提示词专家。用户修改图片：{text}
+
+    规则：保留原图特征，只改用户要求的部分。英文，逗号分隔。
+
+    示例输出：
+    正面提示词：same person, same face, same pose, 1girl, wearing red dress, soft lighting, detailed face
+    负面提示词：worst quality, low quality, deformed, blurry
+
+    请按此格式输出：
+    正面提示词：
+    负面提示词："""
+        else:
+            return f"""SD提示词专家。根据描述生成提示词：{text}
+
+    规则：包含主体、场景、光线、风格。英文，逗号分隔。
+
+    示例输出：
+    正面提示词：masterpiece, best quality, photorealistic, 8k, 1girl, traditional Asian dress, standing on grassy hillside, sunset, warm golden light, highly detailed
+    负面提示词：worst quality, low quality, ugly, deformed, blurry, bad anatomy
+
+    请按此格式输出：
     正面提示词：
     负面提示词："""
 
@@ -2658,20 +2742,100 @@ class ChatTab(BaseTab):
         """使用 LLM 增强提示词"""
         self._append_message("system", "🧠 正在智能分析需求...")
         
-        prompt = self._build_llm_prompt(intent)
+        prompt = self._build_llm_prompt_detailed(intent)
         response = self.llm_client.generate(prompt, timeout=60, max_tokens=300, stream=True)
         
         if response:
-            parsed = self.prompt_builder.parse_llm_response(response)
-            if parsed.get("prompt"):
+            # ✅ 尝试多种解析方式
+            parsed = None
+            
+            # 方法1: 使用 PromptBuilder
+            if hasattr(self.prompt_builder, 'parse_llm_response'):
+                parsed = self.prompt_builder.parse_llm_response(response)
+            
+            # 方法2: 使用 chat_tab 自己的解析方法
+            if not parsed or not parsed.get("prompt"):
+                if hasattr(self, '_parse_llm_response_stream'):
+                    parsed = self._parse_llm_response_stream(response)
+                elif hasattr(self, '_parse_llm_response'):
+                    parsed = self._parse_llm_response(response)
+                elif hasattr(self, '_parse_llm_response_simple'):
+                    parsed = self._parse_llm_response_simple(response)
+            
+            # 方法3: 如果都失败，使用简单解析
+            if not parsed or not parsed.get("prompt"):
+                parsed = self._simple_parse_response(response)
+            
+            if parsed and parsed.get("prompt"):
                 intent.prompt = parsed["prompt"]
                 intent.llm_enhanced = True
                 intent.negative = parsed.get("negative", "")
                 self._append_message("system", "🧠 LLM 增强完成")
-        else:
-            self._append_message("system", "⚠️ LLM 增强失败，使用基础提示词")
+                print(f"   ✅ 增强后提示词: {intent.prompt[:100]}...")
+            else:
+                self._append_message("system", "⚠️ LLM 解析失败，使用原始提示词")
+                print(f"   ❌ 解析失败")
         
         return intent
+
+    def _simple_parse_response(self, response: str) -> dict:
+        """简单解析响应 - 增强版"""
+        import re
+        result = {"prompt": "", "negative": ""}
+        
+        if not response:
+            return result
+        
+        print(f"   📝 简单解析原始响应: {response[:200]}...")
+        
+        # 方法1: 尝试提取 "正面提示词" 后的内容
+        match = re.search(r'正面提示词[：:]\s*(.+?)(?=负面提示词|$)', response, re.DOTALL)
+        if match:
+            result["prompt"] = match.group(1).strip()
+            print(f"   ✅ 提取到正面提示词: {result['prompt'][:100]}...")
+        
+        # 方法2: 尝试提取 "负面提示词" 后的内容
+        match = re.search(r'负面提示词[：:]\s*(.+?)$', response, re.DOTALL)
+        if match:
+            result["negative"] = match.group(1).strip()
+            print(f"   ✅ 提取到负面提示词: {result['negative'][:100]}...")
+        
+        # 方法3: 如果没提取到，使用整个响应（但清理掉标记）
+        if not result["prompt"]:
+            clean = re.sub(r'(正面|正面提示词|Positive prompt)[：:]\s*', '', response, flags=re.IGNORECASE)
+            clean = re.sub(r'(负面|负面提示词|Negative prompt)[：:]\s*', '', clean, flags=re.IGNORECASE)
+            clean = clean.strip()
+            
+            if clean:
+                # 检查是否包含 "负面" 标记，尝试分割
+                if '负面' in clean or 'Negative' in clean:
+                    parts = re.split(r'负面|Negative', clean, flags=re.IGNORECASE)
+                    result["prompt"] = parts[0].strip()
+                    if len(parts) > 1:
+                        result["negative"] = parts[1].strip()
+                else:
+                    result["prompt"] = clean
+                print(f"   ✅ 从整段提取: {result['prompt'][:100]}...")
+        
+        # 方法4: 如果 prompt 还是空的，从原始文本中提取英文逗号分隔的词
+        if not result["prompt"]:
+            # 移除中文
+            clean = re.sub(r'[\u4e00-\u9fff]+', '', response)
+            # 提取看起来像提示词的部分（英文逗号分隔）
+            parts = [p.strip() for p in clean.split(',') if p.strip() and len(p) > 2]
+            if parts:
+                result["prompt"] = ", ".join(parts[:10])  # 最多取10个
+                print(f"   ✅ 从英文部分提取: {result['prompt'][:100]}...")
+        
+        # 如果还是没有，使用默认提示词
+        if not result["prompt"]:
+            result["prompt"] = "masterpiece, best quality, photorealistic, 8k, a beautiful image"
+        
+        # 确保有质量词
+        if result["prompt"]:
+            result["prompt"] = self._clean_prompt_for_sd(result["prompt"])
+        
+        return result
     
     # ==================== ControlNet 相关 ====================
 
@@ -4160,7 +4324,10 @@ class ChatTab(BaseTab):
             )
 
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            prompt_preview = "".join(c for c in prompt[:30] if c.isalnum() or c in " _-") or "image"
+            words = prompt.split()[:5]  # 取前5个词
+            prompt_preview = "_".join(words).replace(",", "").replace(".", "")[:40]
+            if not prompt_preview:
+                prompt_preview = "image"
             filename = f"{timestamp}_chat_{prompt_preview}.png"
 
             output_dir = app_config.paths.output_dir
