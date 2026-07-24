@@ -1,8 +1,6 @@
+# gui/tabs/__init__.py
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
-GUI 标签页模块
-"""
 
 from .base_tab import BaseTab
 from .txt2img_tab import Txt2ImgTab
@@ -13,8 +11,9 @@ from .scene_tab import SceneTab
 from .janus_tab import JanusTab
 from .grid_test_tab import GridTestTab
 from .pipeline_tab import PipelineTab
-from .lora_manager_tab import LoraManagerTab  # ✅ 新增
-from .chat_tab import ChatTab  # ✅ 新增
+from .lora_manager_tab import LoraManagerTab
+from .chat_tab import ChatTab
+
 __all__ = [
     'BaseTab',
     'Txt2ImgTab',
@@ -24,7 +23,7 @@ __all__ = [
     'SceneTab',
     'JanusTab',
     'GridTestTab',
-    'PipelineTab'
-    'LoraManagerTab',  # ✅ 新增
-    'ChatTab',  # ✅ 新增
+    'PipelineTab',
+    'LoraManagerTab',
+    'ChatTab',
 ]

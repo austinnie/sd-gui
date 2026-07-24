@@ -470,4 +470,6 @@ class ParamsPanel:
         
         # 4. 重新创建控件
         self.parent = parent
-        self.create_widgets(parent)     
+        self.create_widgets(parent)    
+        
+   
