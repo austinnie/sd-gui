@@ -49,7 +49,15 @@ class Reloader:
         "gui.tabs.janus_tab",
         "gui.tabs.grid_test_tab",
         "gui.tabs.pipeline_tab",
-        "gui.tabs.lora_manager_tab",
+
+        # ✅ 添加新条目
+        "gui.tabs.lora_manager",
+        "gui.tabs.lora_manager.tab",
+        "gui.tabs.lora_manager.ui",
+        "gui.tabs.lora_manager.test_runner",
+        "gui.tabs.lora_manager.analyzer",
+        "gui.tabs.lora_manager.utils",
+
         "gui.tabs.chat_tab",
         
         # GUI Chat 模块
@@ -338,15 +346,17 @@ class Reloader:
         """重建标签页"""
         from gui.tabs.txt2img_tab import Txt2ImgTab
         from gui.tabs.img2img_tab import Img2ImgTab
-        from gui.tabs.interrogate_tab import InterrogateTab
+        from gui.tabs.interrogate import InterrogateTab
         from gui.tabs.universal_tab import UniversalTab
         from gui.tabs.scene_tab import SceneTab
         from gui.tabs.janus_tab import JanusTab
         from gui.tabs.grid_test_tab import GridTestTab
         from gui.tabs.pipeline_tab import PipelineTab
-        from gui.tabs.lora_manager_tab import LoraManagerTab
         from gui.tabs.chat_tab import ChatTab
         
+        from gui.tabs.lora_manager import LoraManagerTab
+       
+                
         for tab in self.app.notebook.tabs():
             try:
                 self.app.notebook.forget(tab)

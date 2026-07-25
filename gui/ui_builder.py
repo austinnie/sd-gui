@@ -250,7 +250,7 @@ class UIBuilder:
         from gui.tabs.janus_tab import JanusTab
         from gui.tabs.grid_test_tab import GridTestTab
         from gui.tabs.pipeline_tab import PipelineTab
-        from gui.tabs.lora_manager_tab import LoraManagerTab
+        from gui.tabs.lora_manager import LoraManagerTab
         from gui.tabs.chat_tab import ChatTab
         
         self.app.txt2img_tab = Txt2ImgTab(notebook, self.app)

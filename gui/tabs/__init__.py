@@ -11,7 +11,7 @@ from .scene_tab import SceneTab
 from .janus_tab import JanusTab
 from .grid_test_tab import GridTestTab
 from .pipeline_tab import PipelineTab
-from .lora_manager_tab import LoraManagerTab
+from .lora_manager import LoraManagerTab
 from .chat_tab import ChatTab
 
 from .interrogate import InterrogateTab
