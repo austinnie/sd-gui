@@ -73,7 +73,7 @@ class GridRunner:
     
     def _load_janus_model(self):
         """加载 Janus-Pro 模型"""
-        from core.janus_loader import janus_loader
+        from core.janus import janus_loader
         
         if not janus_loader.is_loaded():
             print("📦 加载 Janus-Pro-1B 模型...")
@@ -264,7 +264,7 @@ class GridRunner:
     
     def _generate_janus_one(self, params, seed_offset=0):
         """Janus-Pro 生成"""
-        from core.janus_generator import janus_generator
+        from core.janus import janus_generate
         
         prompt = params.get('prompt', 'masterpiece, best quality, a beautiful woman')
         negative = params.get('negative', '')
@@ -272,7 +272,7 @@ class GridRunner:
         max_tokens = params.get('max_tokens', 2048)
         seed = params.get('seed', 42) + seed_offset
         
-        image, metadata = janus_generator.generate(
+        image, metadata = janus_generate.generate(
             prompt=prompt,
             negative_prompt=negative,
             temperature=temperature,

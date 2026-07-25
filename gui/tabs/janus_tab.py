@@ -12,11 +12,12 @@ from datetime import datetime
 from PIL import Image, ImageTk
 
 from .base_tab import BaseTab
-from core.janus_analyzer import janus_analyzer
-from core.janus_generator import janus_generator
+
+from core.janus import janus_loader, janus_understand, janus_generate, janus_chat
+
 from gui.components.memory_monitor import force_memory_cleanup
 from config.app_config import app_config
-from core.janus_chat import janus_chat
+
 
 class JanusTab(BaseTab):
     """Janus-Pro 多功能标签页"""
@@ -77,13 +78,13 @@ class JanusTab(BaseTab):
         self.status_label.config(text="⏹️ 已取消")
         self.cancel_btn.config(state=tk.DISABLED)
         
-        # ✅ 触发取消回调（中断模型执行）
+        # 触发取消回调（中断模型执行）
         self._trigger_cancel_callbacks()
         
-        # ✅ 如果有模型正在执行，尝试中断
-        import core.janus_analyzer
-        if hasattr(core.janus_analyzer, 'janus_analyzer'):
-            core.janus_analyzer.janus_analyzer._cancel = True
+        # ✅ 修改：使用新模块
+        import core.janus
+        if hasattr(core.janus, 'janus_understand'):
+            core.janus.janus_understand._cancel = True
             
     def setup_ui(self):
         # 创建滚动容器
@@ -595,7 +596,7 @@ class JanusTab(BaseTab):
                 if self.cancel_generation:
                     raise Exception("用户取消")       
                     
-            result = janus_analyzer.analyze(
+            result = janus_understand.analyze(
                 image_path=self._image_path,
                 question=self.question_text.get("1.0", tk.END).strip(),
                 temperature=self.temperature_var.get(),
@@ -656,7 +657,7 @@ class JanusTab(BaseTab):
                     raise Exception("用户取消")
                 self.app.root.after(0, lambda: self._update_progress(value, msg))
             
-            image, metadata = janus_generator.generate(
+            image, metadata = janus_generate.generate(
                 prompt=prompt,
                 negative_prompt=negative,
                 temperature=self.temperature_var.get(),
