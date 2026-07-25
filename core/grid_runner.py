@@ -15,11 +15,12 @@ from diffusers import (
     StableDiffusionPipeline,
     StableDiffusionXLPipeline,
     StableDiffusionInpaintPipeline,
-    EulerDiscreteScheduler  # ✅ 添加
-from utils.logger import get_logger, info, warning, error, debug
+    EulerDiscreteScheduler,
+)
+
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
-)
 
 class GridRunner:
     """网格测试运行器 - 支持 SD 和 Janus-Pro"""

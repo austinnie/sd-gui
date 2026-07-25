@@ -6,7 +6,7 @@ from tkinter import ttk, filedialog
 from PIL import Image, ImageTk
 from typing import TYPE_CHECKING
 
-from utils.logger import get_logger, info, warning, error, debug
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 if TYPE_CHECKING:

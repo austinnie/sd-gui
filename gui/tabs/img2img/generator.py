@@ -13,7 +13,7 @@ from .utils import log, safe_del, auto_shorten_prompt
 from .callbacks import Img2ImgStepCallback
 from .saver import ImageSaver
 
-from utils.logger import get_logger, info, warning, error, debug
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 MAX_PIXELS = 1024 * 1024

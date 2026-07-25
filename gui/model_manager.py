@@ -13,11 +13,13 @@ from typing import Optional, Callable
 from diffusers import (
     StableDiffusionPipeline,
     StableDiffusionXLPipeline,
+    StableDiffusionInpaintPipeline,
     EulerDiscreteScheduler,
-from utils.logger import get_logger, info, warning, error, debug
-
-logger = get_logger(__name__)
 )
+
+from utils.logger import get_logger
+logger = get_logger(__name__)
+
 
 from config.app_config import app_config
 from gui.components.memory_monitor import force_memory_cleanup

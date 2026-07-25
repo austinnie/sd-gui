@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 
 
-from utils.logger import get_logger, info, warning, error, debug
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 class ImageAnalyzer:

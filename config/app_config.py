@@ -11,9 +11,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 
-from utils.logger import get_logger, info, warning, error, debug
+#from utils.logger import get_logger
+#logger = get_logger(__name__)
 
-logger = get_logger(__name__)
+import logging
+logger = logging.getLogger(__name__)
+
 def resolve_path(path: str, base_dir: str = None) -> str:
     """
     将相对路径解析为绝对路径

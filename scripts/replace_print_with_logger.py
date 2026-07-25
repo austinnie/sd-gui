@@ -73,13 +73,13 @@ def add_logger_import(content: str, filepath: Path) -> str:
         elif import_section and not line.startswith((' ', '\t')) and line.strip():
             # 导入节结束
             if not added:
-                new_lines.insert(i, 'from utils.logger import get_logger, info, warning, error, debug')
+                new_lines.insert(i, 'from utils.logger import get_logger')
                 added = True
             import_section = False
     
     if not added:
         # 在文件顶部添加
-        new_lines.insert(0, 'from utils.logger import get_logger, info, warning, error, debug')
+        new_lines.insert(0, 'from utils.logger import get_logger')
         new_lines.insert(1, '')
     
     return '\n'.join(new_lines)

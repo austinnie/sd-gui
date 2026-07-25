@@ -11,7 +11,9 @@ from pathlib import Path
 from typing import Optional
 
 
-from utils.logger import get_logger, info, warning, error, debug
+#from utils.logger import get_logger
+
+
 # 日志颜色 (Windows 兼容)
 class Colors:
     RESET = '\033[0m'

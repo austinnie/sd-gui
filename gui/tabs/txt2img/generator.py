@@ -12,7 +12,7 @@ from .callbacks import Txt2ImgStepCallback
 from .saver import ImageSaver
 
 
-from utils.logger import get_logger, info, warning, error, debug
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 class ImageGenerator:

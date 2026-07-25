@@ -104,3 +104,4 @@ class RemoveClothesStep(BaseStyleStep):
                 "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful woman, nude, naked, bare skin, in flower garden, natural beauty, surrounded by flowers, full body, perfect body, soft lighting, artistic nude, high quality, detailed face",
                 "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, dress, sundress, floral dress, clothes, fabric, shirt, pants, underwear, bra, panties, covering, clothed, explicit, pornographic, vulgar"
             },
+            ]

@@ -13,7 +13,7 @@ from tkinter import messagebox
 from typing import List, Optional
 
 
-from utils.logger import get_logger, info, warning, error, debug
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 class Reloader:

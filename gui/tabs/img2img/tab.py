@@ -23,7 +23,7 @@ from .utils import log
 from gui.components.memory_monitor import force_memory_cleanup, get_memory_usage
 
 
-from utils.logger import get_logger, info, warning, error, debug
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 class Img2ImgTab(BaseTab):

@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Any
 from config.config_manager import config_manager
 
 
-from utils.logger import get_logger, info, warning, error, debug
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 class SceneManager:

@@ -18,7 +18,7 @@ from core.pipeline.scene_counter import get_total_scenes
 from gui.tabs.pipeline_ui import PipelineUI
 
 
-from utils.logger import get_logger, info, warning, error, debug
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 class PipelineTab(BaseTab):

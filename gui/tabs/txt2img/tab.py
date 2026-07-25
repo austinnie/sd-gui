@@ -23,7 +23,7 @@ from config.nsfw_config import nsfw_config
 from utils.pipeline_pool import pipeline_pool
 
 
-from utils.logger import get_logger, info, warning, error, debug
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 class Txt2ImgTab(BaseTab):

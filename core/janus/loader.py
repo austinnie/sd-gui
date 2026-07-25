@@ -11,7 +11,7 @@ from typing import Optional
 from config.app_config import app_config
 
 
-from utils.logger import get_logger, info, warning, error, debug
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 class JanusLoader:

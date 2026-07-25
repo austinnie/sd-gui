@@ -10,7 +10,7 @@ from diffusers import ControlNetModel, StableDiffusionControlNetPipeline, EulerD
 from .types import get_controlnet_info
 
 
-from utils.logger import get_logger, info, warning, error, debug
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 def get_controlnet_pipeline(

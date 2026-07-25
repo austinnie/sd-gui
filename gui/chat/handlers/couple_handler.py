@@ -10,7 +10,7 @@ from PIL import Image
 from .base_handler import BaseHandler
 
 
-from utils.logger import get_logger, info, warning, error, debug
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 class CoupleHandler(BaseHandler):

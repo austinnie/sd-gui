@@ -12,7 +12,7 @@ from typing import Optional, Dict, Literal
 from .exif_injector import inject_exif
 
 
-from utils.logger import get_logger, info, warning, error, debug
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 def add_realistic_features(

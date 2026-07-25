@@ -16,10 +16,11 @@ from diffusers import (
     StableDiffusionPipeline,
     StableDiffusionXLPipeline,
     EulerDiscreteScheduler,
-from utils.logger import get_logger, info, warning, error, debug
-
-logger = get_logger(__name__)
 )
+
+import logging
+logger = logging.getLogger(__name__)
+
 import psutil  # 顶部添加导入
 from config.app_config import app_config
 

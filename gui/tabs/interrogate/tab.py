@@ -16,11 +16,9 @@ from .backends import (
     BlipBackend,
     CombinedBackend,
     LLMBackend,  # ✅ 新增
-from utils.logger import get_logger, info, warning, error, debug
-
-logger = get_logger(__name__)
 )
-
+from utils.logger import get_logger
+logger = get_logger(__name__)
 
 class InterrogateTab(BaseTab):
     """图片反推标签页"""

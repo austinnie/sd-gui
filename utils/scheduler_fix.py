@@ -6,7 +6,7 @@
 from diffusers import EulerDiscreteScheduler
 
 
-from utils.logger import get_logger, info, warning, error, debug
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 def fix_euler_scheduler_for_img2img(pipe, steps, strength):

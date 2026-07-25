@@ -8,7 +8,7 @@ from typing import Dict, List, Optional
 from services.prompt_template_service import prompt_service
 
 
-from utils.logger import get_logger, info, warning, error, debug
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 class TemplateManager:

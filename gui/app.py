@@ -11,7 +11,7 @@ import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-from utils.logger import get_logger, info, warning, error, debug
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

@@ -14,7 +14,7 @@ from PIL import Image
 from typing import Optional, Literal, List
 
 
-from utils.logger import get_logger, info, warning, error, debug
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 # ============================================================

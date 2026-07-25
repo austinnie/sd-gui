@@ -6,8 +6,8 @@
 import json
 import os
 from typing import Dict, Any, Optional
-
-from utils.logger import get_logger, info, warning, error, debug
+from .schema import ConfigValidator
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 class ConfigManager:
@@ -50,17 +50,34 @@ class ConfigManager:
         self._configs['prompt_templates'] = self._load_json('data/templates/prompt_templates.json')
     
     def _load_json(self, relative_path: str) -> dict:
-        """加载 JSON 文件"""
+        """加载 JSON 文件并验证"""
         full_path = os.path.join(self._project_root, relative_path)
         if os.path.exists(full_path):
             try:
                 with open(full_path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                    data = json.load(f)
+                
+                # ✅ 根据路径选择验证器
+                self._validate_config(data, relative_path)
+                return data
+            except json.JSONDecodeError as e:
+                print(f"⚠️ JSON 解析失败 {relative_path}: {e}")
+                return {}
             except Exception as e:
-                logger.info(f"⚠️ 加载配置失败 {relative_path}: {e}")
+                print(f"⚠️ 加载配置失败 {relative_path}: {e}")
                 return {}
         return {}
     
+
+    def _validate_config(self, data: dict, relative_path: str) -> None:
+        """验证配置"""
+        if "gui_config.json" in relative_path:
+            ConfigValidator.validate_gui_config(data)
+        elif "nsfw_config.json" in relative_path:
+            ConfigValidator.validate_nsfw_config(data)
+        elif "janus_config.json" in relative_path:
+            ConfigValidator.validate_janus_config(data)
+            
     def get(self, name: str) -> dict:
         """获取配置"""
         return self._configs.get(name, {})

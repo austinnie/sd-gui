@@ -15,7 +15,7 @@ from .pipeline import get_multi_controlnet_pipeline
 from .types import get_controlnet_info
 
 
-from utils.logger import get_logger, info, warning, error, debug
+from utils.logger import get_logger
 
 logger = get_logger(__name__)
 def get_recommended_multi_controlnet_combos():
