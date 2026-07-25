@@ -1,0 +1,62 @@
+{
+  "name": "各国美女",
+  "icon": "🌍",
+  "priority": 7,
+  "templates": [
+    {
+      "name": "巴西美女（性感）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Brazilian woman, tan skin, curvy body, huge round buttocks, big natural breasts, long dark hair, sensual smile, wearing tiny bikini, Rio beach background, golden sunset, full body shot, sexy pose, summer vibe, high quality, detailed face, exotic beauty",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, flat butt, small chest"
+    },
+    {
+      "name": "哥伦比亚美女（性感）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Colombian woman, golden tan skin, hourglass figure, huge round buttocks, full breasts, dark wavy hair, sensual gaze, wearing tiny bikini, Caribbean beach background, warm lighting, full body shot, sexy pose, exotic beauty, high quality, detailed face",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, flat butt, small chest"
+    },
+    {
+      "name": "法国美女（优雅）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful French woman, elegant, sophisticated, pale skin, slim figure, natural breasts, wearing sheer translucent lingerie, no bra, braless, visible body through thin fabric, Parisian bedroom, soft morning light, intimate atmosphere, high quality, detailed face, timeless elegance",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, bra, underwear, padded, heavy makeup, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "瑞典美女（北欧）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Swedish woman, pale skin, blonde hair, blue eyes, tall and slim, natural beauty, naked, standing in a Scandinavian forest, soft northern light, ethereal atmosphere, artistic nude, high quality, detailed face, stunning and serene",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, heavy makeup, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "意大利美女（地中海）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Italian woman, olive skin, dark hair, sensual curves, full breasts, round buttocks, wearing sheer translucent lingerie, visible body through thin fabric, Mediterranean villa background, warm golden lighting, intimate atmosphere, high quality, detailed face, passionate beauty",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, bra, underwear, padded, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "日本美女（和服）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Japanese woman, flawless skin, dark hair, elegant, wearing kimono with nothing underneath, visible body silhouette, cherry blossoms background, traditional Japanese garden, soft lighting, intimate atmosphere, high quality, detailed face, graceful beauty",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, bra, underwear, heavy makeup, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "韩国美女（时尚）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Korean woman, flawless skin, perfect body, natural breasts, wearing sheer translucent lingerie, visible body through thin fabric, no bra, braless, Seoul city view, modern apartment, soft lighting, high quality, detailed face, elegant and trendy",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, bra, underwear, padded, heavy makeup, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "美国美女（辣妹）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a stunning American woman, tan skin, fit body, large breasts, big round buttocks, wearing tiny bikini, Miami beach background, golden sunset, full body shot, sexy pose, summer vibe, high quality, detailed face, confident and gorgeous",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, flat butt, small chest"
+    },
+    {
+      "name": "俄罗斯美女（东欧）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Russian woman, pale skin, blonde hair, piercing blue eyes, tall and elegant, big natural breasts, round buttocks, naked, snowy forest background, soft northern light, artistic nude, high quality, detailed face, stunning and mysterious",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, heavy makeup, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "印度美女（异域）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Indian woman, warm brown skin, dark eyes, long black hair, full curves, natural breasts, round buttocks, naked, wearing sheer translucent dupatta, visible body through thin fabric, Taj Mahal background, warm golden lighting, intimate atmosphere, high quality, detailed face, exotic beauty",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, bra, underwear, padded, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "非洲美女（埃塞俄比亚）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Ethiopian woman, dark skin, elegant features, slim figure, natural breasts, round buttocks, naked, African savanna background, golden sunset, artistic nude, high quality, detailed face, stunning and regal",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, heavy makeup, explicit, pornographic, vulgar"
+    }
+  ]
+}

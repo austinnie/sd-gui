@@ -1,0 +1,62 @@
+{
+  "name": "动漫风格",
+  "icon": "🎭",
+  "priority": 6,
+  "templates": [
+    {
+      "name": "色气护士",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful seductive nurse, sexy nurse uniform, white outfit, fishnet stockings, stethoscope, naughty smile, playful eyes, medical setting, dramatic lighting, sensual pose, curvy body, high quality, detailed face, erotic roleplay",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, gore, blood, explicit"
+    },
+    {
+      "name": "色气女仆",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful seductive maid, sexy French maid outfit, black and white lace, fishnet stockings, apron, holding a feather duster, playful expression, luxurious bedroom, dramatic lighting, sensual pose, curvy body, high quality, detailed face, erotic roleplay",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, vulgar"
+    },
+    {
+      "name": "色气教师",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful seductive teacher, sexy schoolteacher outfit, glasses, tight pencil skirt, white blouse, holding a pointer, classroom background, naughty smile, sensual pose, curvy body, high quality, detailed face, erotic roleplay",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, vulgar, underage"
+    },
+    {
+      "name": "动漫触手",
+      "prompt": "masterpiece, best quality, anime style, a beautiful anime woman, tentacles wrapped around curvy body, huge breasts, sensual expression, fantasy atmosphere, dark magical setting, dramatic lighting, high quality, detailed, vibrant colors, erotic fantasy art",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, gore, blood, injury, extreme violence"
+    },
+    {
+      "name": "动漫百合",
+      "prompt": "masterpiece, best quality, anime style, two beautiful anime women, intimate embrace, kissing, huge breasts, sensual pose, soft romantic lighting, bedroom setting, high quality, detailed, vibrant colors, yuri, girls love, erotic and artistic",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, men, heterosexual"
+    },
+    {
+      "name": "动漫巫女",
+      "prompt": "masterpiece, best quality, anime style, a beautiful anime shrine maiden, huge breasts, wearing revealing miko outfit, white and red, seductive pose, traditional Japanese shrine background, soft lighting, high quality, detailed, vibrant colors, big boobs, spiritual yet sensual",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, small chest, flat chest"
+    },
+    {
+      "name": "动漫女王",
+      "prompt": "masterpiece, best quality, anime style, a beautiful anime queen, huge breasts, wearing revealing royal outfit, crown, holding a scepter, commanding presence, dramatic lighting, throne room, sensual and dominant, high quality, detailed, vibrant colors, big boobs",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, small chest, flat chest"
+    },
+    {
+      "name": "动漫精灵",
+      "prompt": "masterpiece, best quality, anime style, a beautiful anime elf, huge breasts, long pointed ears, flowing silver hair, wearing sheer translucent robes, visible body through thin fabric, magical forest background, soft ethereal lighting, high quality, detailed, vibrant colors, big boobs, fantasy beauty",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, small chest, flat chest"
+    },
+    {
+      "name": "动漫恶魔娘",
+      "prompt": "masterpiece, best quality, anime style, a beautiful anime demon girl, huge breasts, horns, wings, tail, revealing dark outfit, seductive expression, hellfire background, dramatic lighting, high quality, detailed, vibrant colors, big boobs, dark fantasy beauty",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, small chest, flat chest"
+    },
+    {
+      "name": "动漫天使",
+      "prompt": "masterpiece, best quality, anime style, a beautiful anime angel, huge breasts, white wings, flowing white robes, heavenly glow, soft golden lighting, cloudy sky background, divine beauty, high quality, detailed, vibrant colors, big boobs, ethereal and sensual",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, small chest, flat chest"
+    },
+    {
+      "name": "动漫新娘",
+      "prompt": "masterpiece, best quality, anime style, a beautiful anime bride, huge breasts, wearing revealing wedding dress, sheer veil, visible body through thin fabric, seductive pose, romantic wedding setting, soft lighting, high quality, detailed, vibrant colors, big boobs",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, small chest, flat chest"
+    }
+  ]
+}

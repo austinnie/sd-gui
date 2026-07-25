@@ -1,0 +1,107 @@
+{
+  "name": "古典艺术",
+  "icon": "🏛️",
+  "priority": 5,
+  "templates": [
+    {
+      "name": "纯白大理石雕像",
+      "prompt": "masterpiece, best quality, 8k, a beautiful woman turned into a flawless pure white marble statue, classical sculpture, pure white stone, smooth marble texture, elegant pose, museum display, dramatic lighting, no color, monochrome white, intricate carving details, high quality, photorealistic, masterpiece",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, color, skin tone, warm tones, beige, yellow, gray, painting, cartoon, 3d render, shiny, glossy, wet, oil, plastic, wax"
+    },
+    {
+      "name": "纯白大理石半身像",
+      "prompt": "masterpiece, best quality, 8k, a beautiful woman as a pure white marble bust, classical sculpture, white stone, smooth texture, detailed face, elegant expression, museum pedestal, soft dramatic lighting, monochrome white, high quality, photorealistic, masterpiece",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, color, skin tone, warm tones, beige, yellow, gray, painting, cartoon, 3d render, shiny, glossy, wet, oil, plastic, wax"
+    },
+    {
+      "name": "纯白希腊女神雕像",
+      "prompt": "masterpiece, best quality, 8k, a beautiful woman as a pure white Greek goddess statue, classical Greek sculpture, flawless marble, flowing robes, elegant pose, ancient temple background, dramatic lighting, monochrome white, intricate details, high quality, photorealistic, masterpiece",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, color, skin tone, warm tones, beige, yellow, gray, painting, cartoon, 3d render, shiny, glossy, wet, oil, plastic, wax"
+    },
+    {
+      "name": "纯白大理石全身像",
+      "prompt": "masterpiece, best quality, 8k, a beautiful woman as a pure white marble statue, full body sculpture, flawless white stone, classical pose, museum gallery, marble pedestal, soft dramatic lighting, monochrome white, intricate carving details, high quality, photorealistic, masterpiece",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, color, skin tone, warm tones, beige, yellow, gray, painting, cartoon, 3d render, shiny, glossy, wet, oil, plastic, wax"
+    },
+    {
+      "name": "纯白大理石卧像",
+      "prompt": "masterpiece, best quality, 8k, a beautiful woman as a pure white marble reclining statue, lying down, classical sculpture, smooth white stone, peaceful expression, elegant pose, museum display, soft lighting, monochrome white, high quality, photorealistic, masterpiece",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, color, skin tone, warm tones, beige, yellow, gray, painting, cartoon, 3d render, shiny, glossy, wet, oil, plastic, wax"
+    },
+    {
+      "name": "纯白石膏雕像",
+      "prompt": "masterpiece, best quality, 8k, a beautiful woman as a pure white plaster cast statue, matte white finish, classical sculpture, smooth surface, elegant pose, studio photography, dramatic lighting, monochrome white, high quality, photorealistic, masterpiece",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, color, skin tone, warm tones, beige, yellow, gray, painting, cartoon, 3d render, shiny, glossy, wet, oil, plastic, wax"
+    },
+    {
+      "name": "纯白大理石坐像",
+      "prompt": "masterpiece, best quality, 8k, a beautiful woman as a pure white marble seated statue, sitting gracefully, classical sculpture, flawless white stone, elegant posture, museum pedestal, dramatic lighting, monochrome white, intricate carving details, high quality, photorealistic, masterpiece",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, color, skin tone, warm tones, beige, yellow, gray, painting, cartoon, 3d render, shiny, glossy, wet, oil, plastic, wax"
+    },
+    {
+      "name": "纯白大理石天使雕像",
+      "prompt": "masterpiece, best quality, 8k, a beautiful woman as a pure white marble angel statue, wings, heavenly, classical sculpture, flawless white stone, ethereal pose, soft dramatic lighting, monochrome white, intricate details, high quality, photorealistic, masterpiece",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, color, skin tone, warm tones, beige, yellow, gray, painting, cartoon, 3d render, shiny, glossy, wet, oil, plastic, wax"
+    },
+    {
+      "name": "纯白大理石维纳斯",
+      "prompt": "masterpiece, best quality, 8k, a beautiful woman as a pure white marble Venus statue, goddess of beauty, classical sculpture, flawless white stone, elegant pose, soft dramatic lighting, monochrome white, intricate details, high quality, photorealistic, masterpiece, timeless beauty",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, color, skin tone, warm tones, beige, yellow, gray, painting, cartoon, 3d render, shiny, glossy, wet, oil, plastic, wax"
+    },
+    {
+      "name": "古希腊女神像",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful ancient Greek goddess, classical Greek sculpture, flowing white robes, golden laurel wreath, standing in a temple, soft marble columns, dramatic golden lighting, divine aura, majestic pose, high quality, detailed face, flawless skin, ethereal beauty",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, modern clothes, casual, cartoon, anime, explicit, pornographic"
+    },
+    {
+      "name": "雅典娜女神",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, Athena the Greek goddess of wisdom, wearing ancient Greek armor and helmet, holding a spear and shield, majestic pose, temple of Athena background, dramatic golden lighting, divine aura, powerful and wise, high quality, detailed face, goddess of wisdom",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, modern clothes, casual, cartoon, anime, explicit, pornographic"
+    },
+    {
+      "name": "阿佛洛狄忒女神",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, Aphrodite the Greek goddess of love and beauty, emerging from sea foam, flowing golden hair, flawless body, nude or draped in sheer fabric, seashells, soft romantic lighting, divine beauty, enchanting smile, high quality, detailed face, goddess of love",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, modern clothes, casual, cartoon, anime, explicit, pornographic"
+    },
+    {
+      "name": "阿尔忒弥斯女神",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, Artemis the Greek goddess of the hunt, wearing ancient Greek hunting attire, holding a bow and arrow, moonlit forest background, silver light, wild and free, majestic pose, divine aura, high quality, detailed face, goddess of the hunt",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, modern clothes, casual, cartoon, anime, explicit, pornographic"
+    },
+    {
+      "name": "赫拉女神",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, Hera the Greek goddess of marriage, wearing a majestic crown, royal robes, holding a scepter, peacock background, dramatic lighting, regal and powerful, high quality, detailed face, goddess of marriage, divine aura",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, modern clothes, casual, cartoon, anime, explicit, pornographic"
+    },
+    {
+      "name": "珀耳塞福涅女神",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, Persephone the Greek goddess of spring and underworld, flowers in hair, holding pomegranate, half spring meadow half underworld background, mystical lighting, dual nature beauty, high quality, detailed face, goddess of spring, divine aura",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, modern clothes, casual, cartoon, anime, explicit, pornographic"
+    },
+    {
+      "name": "赫斯提亚女神",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, Hestia the Greek goddess of hearth and home, gentle expression, holding a flame, warm glowing light, cozy domestic background, peaceful and nurturing, high quality, detailed face, goddess of hearth, divine aura",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, modern clothes, casual, cartoon, anime, explicit, pornographic"
+    },
+    {
+      "name": "尼刻女神",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, Nike the Greek goddess of victory, winged, flying with laurel wreath, golden light, victorious pose, dramatic clouds background, inspiring and triumphant, high quality, detailed face, goddess of victory, divine aura",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, modern clothes, casual, cartoon, anime, explicit, pornographic"
+    },
+    {
+      "name": "缪斯女神",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a Greek Muse goddess of inspiration, wearing flowing robes, holding a lyre or scroll, surrounded by artistic symbols, temple of Apollo background, soft inspiring light, creative and elegant, high quality, detailed face, goddess of inspiration, divine aura",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, modern clothes, casual, cartoon, anime, explicit, pornographic"
+    },
+    {
+      "name": "厄俄斯女神",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, Eos the Greek goddess of dawn, rosy fingers, golden pink sky, flowing robes, birds in flight, soft morning light, ethereal and beautiful, high quality, detailed face, goddess of dawn, divine aura",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, modern clothes, casual, cartoon, anime, explicit, pornographic"
+    },
+    {
+      "name": "古典油画",
+      "prompt": "masterpiece, best quality, oil painting style, renaissance, a beautiful woman in classical painting style, soft lighting, rich colors, velvet dress, pearl necklace, elegant pose, vintage atmosphere, artistic masterpiece, high quality, detailed",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, modern, photorealistic"
+    }
+  ]
+}

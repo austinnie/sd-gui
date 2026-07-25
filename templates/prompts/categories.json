@@ -11,11 +11,25 @@
       "file": "beauty.json"
     },
     {
+      "id": "beauty_pure",
+      "name": "清纯甜美",
+      "icon": "🌸",
+      "priority": 1,
+      "file": "beauty_pure.json"
+    },
+    {
       "id": "handsome",
       "name": "帅哥",
       "icon": "👨",
       "priority": 2,
       "file": "handsome.json"
+    },
+    {
+      "id": "beauty_sexy",
+      "name": "性感诱惑",
+      "icon": "🔥",
+      "priority": 2,
+      "file": "beauty_sexy.json"
     },
     {
       "id": "landscape",
@@ -25,6 +39,13 @@
       "file": "landscape.json"
     },
     {
+      "id": "beauty_breast",
+      "name": "巨乳系列",
+      "icon": "🍒",
+      "priority": 3,
+      "file": "beauty_breast.json"
+    },
+    {
       "id": "animal",
       "name": "动物",
       "icon": "🐱",
@@ -32,11 +53,53 @@
       "file": "animal.json"
     },
     {
+      "id": "beauty_nude",
+      "name": "裸体艺术",
+      "icon": "🎨",
+      "priority": 4,
+      "file": "beauty_nude.json"
+    },
+    {
       "id": "plant",
       "name": "植物",
       "icon": "🌺",
       "priority": 5,
       "file": "plant.json"
+    },
+    {
+      "id": "beauty_classic",
+      "name": "古典艺术",
+      "icon": "🏛️",
+      "priority": 5,
+      "file": "beauty_classic.json"
+    },
+    {
+      "id": "beauty_anime",
+      "name": "动漫风格",
+      "icon": "🎭",
+      "priority": 6,
+      "file": "beauty_anime.json"
+    },
+    {
+      "id": "beauty_ethnic",
+      "name": "各国美女",
+      "icon": "🌍",
+      "priority": 7,
+      "file": "beauty_ethnic.json"
+    },
+    {
+      "id": "beauty_style",
+      "name": "时尚风格",
+      "icon": "👗",
+      "priority": 8,
+      "file": "beauty_style.json"
+    },
+    {
+      "id": "beauty_other",
+      "name": "beauty_other",
+      "icon": "📁",
+      "priority": 99,
+      "file": "beauty_other.json"
     }
   ]
 }

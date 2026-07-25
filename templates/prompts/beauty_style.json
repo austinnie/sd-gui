@@ -1,0 +1,27 @@
+{
+  "name": "时尚风格",
+  "icon": "👗",
+  "priority": 8,
+  "templates": [
+    {
+      "name": "运动健康",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful athletic woman, fit and toned body, sporty, wearing yoga pants and sports bra, flat tummy, defined abs, muscular legs, sweaty skin, gym background, natural lighting, full body shot, confident smile, healthy glow",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, fat, overweight, unhealthy"
+    },
+    {
+      "name": "赛博朋克",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful cyberpunk woman, neon lights, futuristic city, cybernetic implants, colorful hair, reflective jacket, dark atmosphere, rain, holographic elements, high tech, edgy, full body shot, high quality",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, vintage, rustic"
+    },
+    {
+      "name": "哥特暗黑",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful gothic woman, dark makeup, black lace dress, corset, choker, pale skin, dramatic shadows, cemetery or cathedral background, mysterious atmosphere, elegant darkness, high quality, detailed face",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, bright, colorful"
+    },
+    {
+      "name": "欧美辣妹",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a stunning Western woman, gorgeous, sexy, curvy body, full lips, bright eyes, wearing trendy outfit, urban background, confident attitude, full body shot, high quality, detailed face",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, Asian features"
+    }
+  ]
+}

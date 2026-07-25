@@ -1,0 +1,127 @@
+{
+  "name": "清纯甜美",
+  "icon": "🌸",
+  "priority": 1,
+  "templates": [
+    {
+      "name": "清纯甜美",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful young Asian woman, sweet smile, pure and innocent, flawless skin, long black hair, wearing white sundress, natural makeup, soft natural lighting, standing in a flower field, gentle breeze, full body shot, detailed face, high resolution",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, makeup heavy, seductive, mature"
+    },
+    {
+      "name": "纯欲风",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful young woman, pure and sexy, innocent face with seductive eyes, flawless porcelain skin, slightly parted lips, soft natural makeup, disheveled hair, wearing sheer white lace lingerie, soft morning light, intimate atmosphere, cozy bedroom, natural beauty, alluring yet innocent, high quality, detailed face",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, heavy makeup, artificial, plastic, overdone"
+    },
+    {
+      "name": "纯欲学院",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful college girl, pure and innocent with a hint of seduction, school uniform, white shirt slightly unbuttoned, pleated skirt, knee-high socks, messy hair, glasses, library background, soft window light, shy yet alluring expression, high quality, detailed face, natural beauty",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, heavy makeup, mature, old"
+    },
+    {
+      "name": "纯欲浴室",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful young woman, pure and seductive, wet hair, water droplets on skin, wearing a white sheer bathrobe, steam rising, soft bathroom lighting, intimate atmosphere, natural beauty, flawless skin, seductive gaze, high quality, detailed face, artistic nude",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, heavy makeup, explicit, pornographic"
+    },
+    {
+      "name": "纯欲睡衣",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful young woman, pure and alluring, wearing silk nightgown, disheveled hair, sleepy eyes, morning sunlight, cozy bedroom, soft bed sheets, natural beauty, intimate and cozy atmosphere, high quality, detailed face, sensual yet innocent",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, heavy makeup, artificial"
+    },
+    {
+      "name": "仙女风",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, an ethereal goddess, beautiful angelic woman, flowing white dress, long silky hair, glowing skin, surrounded by soft mist and flowers, magical atmosphere, dreamy lighting, fantasy, ethereal beauty, full body shot, perfect face, high quality",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, dark, scary"
+    },
+    {
+      "name": "晨光私密",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful woman in bed, morning sunlight, messy hair, sleepy eyes, wearing only a sheet, intimate morning atmosphere, soft warm lighting, natural beauty, sensual and cozy, high quality, detailed face",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "雪白肌肤",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful woman with porcelain white skin, snow-white complexion, flawless pale skin, glowing ivory skin, stunning beauty, soft natural lighting, high quality, detailed face, ethereal beauty, pure and elegant",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, tan, sun-kissed, dark skin, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "雪白肌肤（裸体）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful woman with porcelain white skin, snow-white complexion, flawless pale skin, glowing ivory skin, naked, artistic nude, soft natural lighting, high quality, detailed face, ethereal beauty, pure and elegant, timeless beauty",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, tan, sun-kissed, dark skin, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "雪白肌肤（红发）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful woman with porcelain white skin, snow-white complexion, long red hair, striking contrast, flawless pale skin, freckles, naked or sheer fabric, soft natural lighting, high quality, detailed face, ethereal beauty, unique and stunning",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, tan, sun-kissed, dark skin, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "雪白肌肤（北欧）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Nordic woman, porcelain white skin, platinum blonde hair, pale blue eyes, flawless complexion, naked, snowy Scandinavian forest background, soft northern light, artistic nude, high quality, detailed face, stunning and serene, icy beauty",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, tan, sun-kissed, dark skin, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "雪白肌肤（东欧）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Eastern European woman, porcelain white skin, pale complexion, dark hair, striking contrast, flawless skin, naked, soft natural lighting, high quality, detailed face, mysterious and elegant, timeless beauty",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, tan, sun-kissed, dark skin, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "雪白肌肤（黑发）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful woman with porcelain white skin, snow-white complexion, long black hair, dramatic contrast, flawless pale skin, naked or sheer lingerie, soft natural lighting, high quality, detailed face, ethereal beauty, stunning contrast",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, tan, sun-kissed, dark skin, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "雪白肌肤（内衣）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful woman with porcelain white skin, snow-white complexion, wearing sheer translucent white lingerie, flawless pale skin, visible body through thin fabric, soft romantic lighting, intimate atmosphere, high quality, detailed face, pure and sensual",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, tan, sun-kissed, dark skin, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "雪白肌肤（巨乳）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a stunning woman with porcelain white skin, snow-white complexion, huge natural breasts, flawless pale skin, naked, soft natural lighting, high quality, detailed face, ethereal beauty, pure and sensual, curvy and pale",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, tan, sun-kissed, dark skin, small chest, flat chest, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "雪白肌肤（浴室）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful woman with porcelain white skin, snow-white complexion, wet body, water droplets on pale skin, steam rising, naked, soft bathroom lighting, intimate atmosphere, high quality, detailed face, ethereal beauty, pure and sensual",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, tan, sun-kissed, dark skin, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "雪白肌肤（月光）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful woman with porcelain white skin, snow-white complexion, glowing in moonlight, flawless pale skin, naked, night setting, soft silver light, ethereal atmosphere, high quality, detailed face, mystical and pure, moon goddess",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, tan, sun-kissed, dark skin, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "雪白肌肤（宫廷）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful woman with porcelain white skin, snow-white complexion, wearing elegant white gown or corset, flawless pale skin, dramatic contrast, luxurious palace background, soft golden lighting, high quality, detailed face, regal and pure, timeless beauty",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, tan, sun-kissed, dark skin, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "睡衣居家",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful woman in silk pajamas, cozy home atmosphere, morning sunlight, sitting on a comfortable bed, relaxed and natural, bed hair, natural beauty, warm lighting, intimate atmosphere, half body shot, high quality",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, formal, business"
+    },
+    {
+      "name": "韩系时尚",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Korean woman, trendy fashion, stylish outfit, flawless skin, perfect makeup, city street background, soft lighting, full body shot, confident pose, high quality, detailed face, K-pop style",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, unfashionable, outdated"
+    },
+    {
+      "name": "复古港风",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful woman in classic Hong Kong retro style, 90s fashion, vintage makeup, red lips, oversized jacket, high-waisted jeans, city night background, neon signs, nostalgic atmosphere, high quality, detailed face",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, modern fashion"
+    },
+    {
+      "name": "森系少女",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful forest girl, nature lover, wearing floral dress, barefoot, surrounded by trees and flowers, dappled sunlight, peaceful and serene, natural beauty, full body shot, high quality, detailed face, ethereal",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, urban, city"
+    },
+    {
+      "name": "校园初恋",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful girl next door, campus beauty, first love feeling, wearing casual school uniform, backpack, shy smile, cherry blossom background, soft sunlight, youthful and fresh, full body shot, high quality, detailed face",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, mature, heavy makeup"
+    },
+    {
+      "name": "不良少女",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful bad girl, rebellious attitude, leather jacket, ripped jeans, dark makeup, piercing, city alley background, night atmosphere, edgy and cool, confident pose, high quality, detailed face",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, sweet, innocent"
+    }
+  ]
+}

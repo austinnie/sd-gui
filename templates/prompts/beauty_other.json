@@ -1,0 +1,87 @@
+{
+  "name": "beauty_other",
+  "icon": "📁",
+  "priority": 99,
+  "templates": [
+    {
+      "name": "色气办公室",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful seductive office lady, sexy business attire, tight pencil skirt, white blouse unbuttoned, glasses, stockings, high heels, sitting on desk, naughty smile, modern office background, dramatic lighting, sensual pose, curvy body, high quality, detailed face",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, vulgar"
+    },
+    {
+      "name": "知性优雅",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, an elegant and intellectual woman, sophisticated, wearing professional business attire, glasses, confident posture, in a modern office with city view, soft window light, half body shot, intelligent expression, refined, classy, high quality",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, casual, sloppy"
+    },
+    {
+      "name": "复古旗袍",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Chinese woman, wearing elegant traditional qipao dress, vintage style, classic beauty, red lips, dark hair in updo, standing in traditional Chinese garden, soft golden lighting, full body shot, graceful pose, cultural, elegant",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, modern clothes, casual"
+    },
+    {
+      "name": "诱人曲线",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful woman, perfect hourglass figure, sensual curves, elegant pose, dramatic lighting, artistic nude photography, high quality, detailed face, flawless skin, tempting silhouette",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "传教士体位",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a man and a woman having sex in missionary position, man on top, woman lying down, intimate lovemaking, passionate, romantic atmosphere, soft lighting, bedroom setting, both bodies visible, sensual, high quality, detailed",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, gore, blood, injury"
+    },
+    {
+      "name": "后入体位",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a man and a woman having sex in doggy style position, from behind, passionate sex, intimate, bedroom setting, soft lighting, both bodies visible, sensual, high quality, detailed",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, gore, blood, injury"
+    },
+    {
+      "name": "骑乘体位",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a man and a woman having sex in cowgirl position, woman on top, riding, passionate lovemaking, intimate, bedroom setting, soft lighting, both bodies visible, sensual, high quality, detailed",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, gore, blood, injury"
+    },
+    {
+      "name": "站立后入",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a man and a woman having sex standing up from behind, passionate sex, intimate, bedroom or bathroom setting, soft lighting, both bodies visible, sensual, high quality, detailed",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, gore, blood, injury"
+    },
+    {
+      "name": "侧躺体位",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a man and a woman having sex in spooning position, side lying, intimate lovemaking, passionate, bedroom setting, soft lighting, both bodies visible, sensual, high quality, detailed",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, gore, blood, injury"
+    },
+    {
+      "name": "激情性爱",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a man and a woman having passionate sex, intense lovemaking, intimate, bedroom setting, dramatic lighting, both bodies visible, sensual, high quality, detailed, erotic atmosphere",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, gore, blood, injury"
+    },
+    {
+      "name": "透明内裤",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful woman wearing sheer translucent panties, see-through underwear, visible body through thin fabric, seductive pose, soft bedroom lighting, intimate atmosphere, flawless skin, sensual gaze, high quality, detailed face, artistic lingerie photography",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, heavy makeup, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "真丝内裤",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful woman in silk panties, smooth shiny fabric, elegant lingerie, soft natural lighting, sensual pose, luxurious bedroom, high quality, detailed face, flawless skin, intimate atmosphere, sophisticated beauty",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, heavy makeup, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "高腰内裤",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful woman in high-waisted panties, retro style underwear, elegant vintage lingerie, soft lighting, intimate atmosphere, high quality, detailed face, flawless skin, feminine beauty",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, heavy makeup, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "透明内裤（跪姿）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful woman wearing sheer translucent panties, see-through underwear, on her knees, visible body through thin fabric, seductive pose, soft dramatic lighting, intimate atmosphere, flawless skin, high quality, detailed face",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, heavy makeup, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "透明内裤（弯腰）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful woman wearing sheer translucent panties, see-through underwear, bent over, visible body through thin fabric, perfect round buttocks, seductive pose, soft dramatic lighting, intimate atmosphere, flawless skin, high quality, detailed face",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, heavy makeup, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "樱花和服",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Japanese woman, wearing elegant kimono, cherry blossoms falling, traditional Japanese garden, soft pink lighting, full body shot, graceful pose, serene atmosphere, high quality, detailed face",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, western clothes, modern"
+    }
+  ]
+}
