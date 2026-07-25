@@ -84,9 +84,7 @@ class VaporwaveStep(PipelineStep, ControlNetMixin):
                 init_image = init_image.resize((width, height), Image.Resampling.LANCZOS)
             
             # ===== 设置 ControlNet =====
-            controlnet_pipe, control_image, use_controlnet = self._setup_controlnet(
-                config, model_path, image_path, init_image
-            )
+            controlnet_pipe, control_image, use_controlnet = self._setup_controlnet(config, model_path, image_path, init_image, context)
             
             if controlnet_pipe is not None:
                 pipe = controlnet_pipe
