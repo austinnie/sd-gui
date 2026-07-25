@@ -2,10 +2,13 @@
 """组合反推后端 - BLIP + CLIP"""
 
 import re
+import os
 from .base import InterrogateBackend
 from .blip import BlipBackend
 from .clip import ClipBackend
 
+# ✅ 在文件顶部添加
+from services.cache_config import HF_HUB_CACHE
 
 class CombinedBackend(InterrogateBackend):
     """组合反推模式"""

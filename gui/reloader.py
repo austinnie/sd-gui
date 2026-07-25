@@ -107,7 +107,8 @@ class Reloader:
 
         # ✅ 新增
         "services.llm_service",
-        "services.ollama_service",        
+        "services.ollama_service",   
+        "services.cache_config",        
     ]
     
     def __init__(self, app):

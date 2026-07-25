@@ -6,6 +6,12 @@ import time
 from PIL import Image
 from .base import InterrogateBackend
 
+# ✅ 在文件顶部添加
+from services.cache_config import HF_HUB_CACHE
+
+# 设置环境变量（确保 transformers 使用统一缓存）
+os.environ["TRANSFORMERS_CACHE"] = HF_HUB_CACHE
+
 # 全局缓存
 _classifiers = {}
 

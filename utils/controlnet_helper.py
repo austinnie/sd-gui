@@ -14,6 +14,9 @@ from diffusers import ControlNetModel, StableDiffusionControlNetPipeline, EulerD
 import cv2
 import numpy as np
 
+# ✅ 在文件顶部添加（导入部分）
+from services.cache_config import HF_HUB_CACHE
+
 # ============================================================
 # ControlNet 类型配置
 # ============================================================

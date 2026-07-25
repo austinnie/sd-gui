@@ -1,8 +1,15 @@
 # gui/tabs/interrogate/backends/blip.py
 """BLIP 反推后端"""
 
+import os
 from PIL import Image
 from .base import InterrogateBackend
+
+# ✅ 在文件顶部添加
+from services.cache_config import HF_HUB_CACHE
+
+# 设置环境变量
+os.environ["TRANSFORMERS_CACHE"] = HF_HUB_CACHE
 
 
 class BlipBackend(InterrogateBackend):

@@ -26,20 +26,8 @@ from gui.chat.utils import PromptCleaner, ParamEstimator, ImageAnalyzer, SafetyC
 # ✅ 添加
 from services.llm_service import llm_service
 
-# ===== Hugging Face 缓存配置 =====
-CACHE_ROOT = r"E:\hf_cache\.cache"
-os.makedirs(CACHE_ROOT, exist_ok=True)
-
-os.environ["HF_HOME"] = CACHE_ROOT
-os.environ["HF_HUB_CACHE"] = os.path.join(CACHE_ROOT, "hub")
-os.environ["U2NET_HOME"] = os.path.join(CACHE_ROOT, "u2net")
-os.environ["DEEPFACE_HOME"] = os.path.join(CACHE_ROOT, "deepface")
-
-for env_var in ['HF_HOME', 'HF_HUB_CACHE', 'U2NET_HOME', 'DEEPFACE_HOME']:
-    path = os.environ.get(env_var)
-    if path:
-        os.makedirs(path, exist_ok=True)
-        print(f"   ✅ {env_var} = {path}")
+# ✅ 在文件顶部添加
+from services.cache_config import CACHE_ROOT, HF_HUB_CACHE, U2NET_HOME, DEEPFACE_HOME
 
 
 class ChatTab(BaseTab):

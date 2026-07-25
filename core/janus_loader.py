@@ -9,7 +9,8 @@ import torch
 import time
 from typing import Optional
 from config.janus_config import janus_config
-
+# ✅ 在文件顶部添加
+from services.cache_config import HF_HUB_CACHE
 
 class JanusLoader:
     """Janus-Pro 模型加载器（单例）"""
