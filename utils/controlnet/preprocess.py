@@ -1,12 +1,13 @@
 # utils/controlnet/preprocess.py
 """
 ControlNet 图片预处理
+支持中文路径（通过 PIL 读取）
 """
 
 import cv2
 import numpy as np
 from PIL import Image
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 from .types import get_controlnet_info
 from .config import CONTROLNET_PREPROCESS_MODE
@@ -15,13 +16,24 @@ from .config import CONTROLNET_PREPROCESS_MODE
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
 def preprocess_image_for_controlnet(
-    image_path: str,
+    image_input: Union[str, Image.Image],
     controlnet_type: str = "openpose",
     output_size: Tuple[int, int] = (512, 512)
 ) -> Optional[Image.Image]:
     """
     根据 ControlNet 类型预处理图片
+    支持中文路径（通过 PIL 读取）
+    
+    参数:
+        image_input: 图片路径 (str) 或 PIL Image
+        controlnet_type: ControlNet 类型
+        output_size: 输出尺寸 (width, height)
+    
+    返回:
+        处理后的 PIL Image
     """
     try:
         from controlnet_aux import (
@@ -40,56 +52,84 @@ def preprocess_image_for_controlnet(
         logger.info(f"⚠️ controlnet_aux 未安装，请运行: pip install controlnet-aux")
         return None
     
-    # 读取图片
-    image = cv2.imread(image_path)
-    if image is None:
+    # ===== ✅ 支持两种输入方式：路径字符串 或 PIL Image =====
+    try:
+        if isinstance(image_input, str):
+            # 如果是路径，用 PIL 读取（支持中文）
+            pil_image = Image.open(image_input).convert('RGB')
+            logger.debug(f"   📁 从路径读取: {image_input[:50]}...")
+        elif isinstance(image_input, Image.Image):
+            pil_image = image_input.convert('RGB')
+            logger.debug(f"   📁 从 PIL Image 读取")
+        else:
+            logger.info(f"   ⚠️ 不支持的输入类型: {type(image_input)}")
+            return None
+        
+        # 转为 numpy 数组（OpenCV 格式）
+        image = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
+        
+    except Exception as e:
+        logger.info(f"   ⚠️ 读取图片失败: {e}")
         return None
     
     info = get_controlnet_info(controlnet_type)
     preprocessor = info.get("preprocessor")
     
     if preprocessor is None:
-        pil_image = Image.open(image_path).convert('RGB')
+        # 不需要预处理，直接返回
         return pil_image.resize(output_size, Image.Resampling.LANCZOS)
     
     try:
+        # ===== 各种预处理 =====
         if preprocessor == "openpose":
             detector = OpenposeDetector.from_pretrained("lllyasviel/ControlNet")
             result = _preprocess_openpose(detector, image, output_size)
+            
         elif preprocessor == "openpose_full":
             detector = OpenposeDetector.from_pretrained("lllyasviel/ControlNet")
             result = detector(image, output_type="pil", include_hands=True, include_face=True)
+            
         elif preprocessor == "dwpose":
             result = _preprocess_dwpose(image, output_size)
+            
         elif preprocessor == "canny":
             detector = CannyDetector()
             result = detector(image, output_type="pil")
+            
         elif preprocessor == "hed":
             result = _preprocess_hed(image, output_size)
+            
         elif preprocessor == "lineart":
             result = _preprocess_lineart(image, output_size)
+            
         elif preprocessor == "scribble":
             detector = HEDdetector.from_pretrained("lllyasviel/ControlNet")
             result = detector(image, output_type="pil", scribble=True)
+            
         elif preprocessor == "depth":
             detector = MidasDetector.from_pretrained("lllyasviel/ControlNet")
             result = detector(image, output_type="pil")
+            
         elif preprocessor == "midas":
             detector = MidasDetector.from_pretrained("lllyasviel/ControlNet")
             result = detector(image, output_type="pil")
+            
         elif preprocessor == "normal":
             detector = NormalBaeDetector.from_pretrained("lllyasviel/ControlNet")
             result = detector(image, output_type="pil")
+            
         elif preprocessor == "mlsd":
             detector = MLSDdetector.from_pretrained("lllyasviel/ControlNet")
             result = detector(image, output_type="pil")
+            
         elif preprocessor == "seg":
             from controlnet_aux import SamDetector
             detector = SamDetector.from_pretrained("ybelkada/segment-anything", subfolder="checkpoints")
             result = detector(image, output_type="pil")
+            
         else:
-            result = Image.open(image_path).convert('RGB')
-        
+            result = pil_image
+            
         if result and output_size and output_size[0] > 0:
             result = result.resize(output_size, Image.Resampling.LANCZOS)
         return result
@@ -104,11 +144,11 @@ def _preprocess_openpose(detector, image, output_size):
     mode = CONTROLNET_PREPROCESS_MODE
     
     if mode == "pil":
-        logger.info(f"   📌 OpenPose 模式: PIL (原图+骨架)")
+        logger.debug(f"   📌 OpenPose 模式: PIL (原图+骨架)")
         return detector(image, output_type="pil")
     
     elif mode == "skeleton":
-        logger.info(f"   📌 OpenPose 模式: Skeleton (纯骨架)")
+        logger.debug(f"   📌 OpenPose 模式: Skeleton (纯骨架)")
         try:
             result_pil = detector(image, output_type="pil", include_hands=False, include_face=False)
             result_np = np.array(result_pil)
@@ -159,9 +199,9 @@ def _preprocess_dwpose(image, output_size):
                 image_resolution=max_dim,
                 max_people=1
             )
-            logger.info(f"   ✅ DWPose 使用 max_people=1")
+            logger.debug(f"   ✅ DWPose 使用 max_people=1")
         except TypeError:
-            logger.info(f"   ℹ️ DWPose 版本不支持 max_people，使用默认行为")
+            logger.debug(f"   ℹ️ DWPose 版本不支持 max_people，使用默认行为")
             result = detector(
                 image,
                 output_type="pil",
@@ -194,10 +234,10 @@ def _preprocess_hed(image, output_size):
         local_model_path = Path(cache_dir) / "controlnet_aux" / "ControlNetHED.pth"
         
         if local_model_path.exists():
-            logger.info(f"   📁 使用本地 HED 模型: {local_model_path}")
+            logger.debug(f"   📁 使用本地 HED 模型: {local_model_path}")
             detector = HEDdetector()
         else:
-            logger.info(f"   ⚠️ 本地 HED 模型不存在，尝试下载...")
+            logger.debug(f"   ⚠️ 本地 HED 模型不存在，尝试下载...")
             detector = HEDdetector.from_pretrained("lllyasviel/ControlNet")
         
         result = detector(image, output_type="pil")
@@ -226,7 +266,7 @@ def _preprocess_lineart(image, output_size):
         local_model_path = Path(cache_dir) / "controlnet_aux" / "sk_model.pth"
         
         if local_model_path.exists():
-            logger.info(f"   📁 使用本地 Lineart 模型: {local_model_path}")
+            logger.debug(f"   📁 使用本地 Lineart 模型: {local_model_path}")
             try:
                 detector = LineartDetector()
                 result = detector(image, output_type="pil")
@@ -236,7 +276,7 @@ def _preprocess_lineart(image, output_size):
                 detector = CannyDetector()
                 result = detector(image, output_type="pil")
         else:
-            logger.info(f"   ⚠️ 本地 Lineart 模型不存在，尝试下载...")
+            logger.debug(f"   ⚠️ 本地 Lineart 模型不存在，尝试下载...")
             detector = LineartDetector.from_pretrained("lllyasviel/ControlNet")
             result = detector(image, output_type="pil")
         

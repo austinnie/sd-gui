@@ -14,6 +14,8 @@ from utils.controlnet import get_controlnet_info, preprocess_image_for_controlne
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
 class ControlNetMixin:
     """ControlNet 混入类 - 提供 ControlNet 加载、预处理和场景数限制功能"""
     
@@ -63,16 +65,60 @@ class ControlNetMixin:
     
     def _preprocess_for_controlnet(self, image_path: str, controlnet_type: str = "canny", 
                                     target_size: tuple = None):
-        """预处理图片生成 ControlNet 控制图"""
+        """
+        预处理图片生成 ControlNet 控制图
+        支持中文路径（自动处理）
+        """
         try:
+            import tempfile
+            import shutil
+            import os
+            from PIL import Image
+            
+            # ===== ✅ 检查路径是否包含非 ASCII 字符 =====
+            try:
+                image_path.encode('ascii')
+                is_ascii = True
+            except UnicodeEncodeError:
+                is_ascii = False
+            
+            use_path = image_path
+            temp_path = None
+            
+            if not is_ascii:
+                # 中文路径：复制到临时英文路径
+                try:
+                    # 用 PIL 读取并保存到临时文件
+                    img = Image.open(image_path).convert('RGB')
+                    with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp:
+                        temp_path = tmp.name
+                    img.save(temp_path, format='PNG')
+                    use_path = temp_path
+                    logger.debug(f"   📁 中文路径转临时: {os.path.basename(temp_path)}")
+                except Exception as e:
+                    logger.info(f"   ⚠️ 临时文件创建失败: {e}")
+                    # 如果临时文件创建失败，尝试直接使用原路径（可能失败）
+                    use_path = image_path
+            
+            # ===== 调用 ControlNet 预处理 =====
             result = preprocess_image_for_controlnet(
-                image_path,
+                use_path,
                 controlnet_type=controlnet_type,
                 output_size=target_size
             )
+            
+            # ===== 清理临时文件 =====
+            if temp_path and os.path.exists(temp_path):
+                try:
+                    os.unlink(temp_path)
+                    logger.debug(f"   🗑️ 临时文件已删除")
+                except Exception as e:
+                    logger.debug(f"   ⚠️ 临时文件删除失败: {e}")
+            
             if result:
                 logger.info(f"   ✅ 控制图已生成: {result.size}")
             return result
+            
         except Exception as e:
             logger.info(f"   ⚠️ ControlNet 预处理失败: {e}")
             return None
@@ -123,6 +169,7 @@ class ControlNetMixin:
                 
                 if pipe:
                     w, h = init_image.size
+                    # ✅ 使用支持中文路径的预处理方法
                     control_image = self._preprocess_for_controlnet(
                         image_path,
                         controlnet_type=controlnet_type,
