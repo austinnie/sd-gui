@@ -309,63 +309,37 @@ class Txt2ImgTab(BaseTab):
         
 
     def _load_templates(self):
-        """加载提示词模板"""
-        template_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            "templates", "prompt_templates.json"
-        )
+        """加载提示词模板 - 使用新的共享服务"""
+        from services.prompt_template_service import prompt_service
         
         self.templates = {}
-        self.template_icons = {}  # ✅ 新增：存储图标
-        self.template_priority = {}  # ✅ 新增：存储优先级
+        self.template_icons = {}
+        self.template_priority = {}
         
-        if os.path.exists(template_path):
-            try:
-                with open(template_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                
-                # ✅ 转换数据格式
-                for category, info in data.items():
-                    if isinstance(info, dict) and "templates" in info:
-                        # 新格式：{"美女": {"icon": "👩", "templates": [...]}}
-                        self.templates[category] = info.get("templates", [])
-                        self.template_icons[category] = info.get("icon", "📁")
-                        self.template_priority[category] = info.get("priority", 99)
-                    elif isinstance(info, list):
-                        # 旧格式：{"美女": [...]}
-                        self.templates[category] = info
-                        self.template_icons[category] = "📁"
-                        self.template_priority[category] = 99
-                    else:
-                        self.templates[category] = []
-                        self.template_icons[category] = "📁"
-                        self.template_priority[category] = 99
-                
-                print(f"✅ 加载了 {len(self.templates)} 个模板分类")
-            except Exception as e:
-                print(f"⚠️ 加载模板失败: {e}")
-                self._create_default_templates()
-        else:
-            print(f"⚠️ 模板文件不存在: {template_path}")
-            self._create_default_templates()
-            # 保存默认模板
-            try:
-                os.makedirs(os.path.dirname(template_path), exist_ok=True)
-                # 保存为新格式
-                save_data = {}
-                for category, templates in self.templates.items():
-                    save_data[category] = {
-                        "icon": self.template_icons.get(category, "📁"),
-                        "priority": self.template_priority.get(category, 99),
-                        "templates": templates
-                    }
-                with open(template_path, 'w', encoding='utf-8') as f:
-                    json.dump(save_data, f, ensure_ascii=False, indent=2)
-                print(f"✅ 已创建默认模板文件: {template_path}")
-            except Exception as e:
-                print(f"⚠️ 保存模板失败: {e}")
+        # 从服务加载
+        prompt_service.reload()
+        
+        for cat in prompt_service.get_categories():
+            templates = prompt_service.get_templates(cat.id)
+            self.templates[cat.name] = [
+                {"name": t.name, "prompt": t.prompt, "negative": t.negative}
+                for t in templates
+            ]
+            self.template_icons[cat.name] = cat.icon
+            self.template_priority[cat.name] = cat.priority
+            print(f"📁 {cat.name}: {len(templates)} 个模板")
+        
+        total = sum(len(t) for t in self.templates.values())
+        print(f"✅ 总计加载 {len(self.templates)} 个分类, {total} 个模板")
+        
+        # 更新 UI
+        categories = list(self.templates.keys())
+        if hasattr(self, 'category_combo'):
+            self.category_combo['values'] = categories
+            if categories:
+                self.template_category_var.set(categories[0])
+                self._update_template_list()
             
-
     def _create_default_templates(self):
         """创建默认模板"""
         self.templates = {
