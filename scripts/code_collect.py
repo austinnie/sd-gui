@@ -36,7 +36,7 @@ def get_target_directory():
             print(f"⚠️ 命令行指定的目录不存在: {target}")
     
     # 自动检测：从当前脚本所在目录向上查找
-    script_dir = os.path.dirname(os.path.abspath(__file__))
+    script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     
     # 检查当前目录是否包含项目特征文件
     markers = ["main.py", "gui_config.json", "scene_patterns.json", "gui", "core"]

@@ -348,7 +348,7 @@ def main():
     print("  ✅ 使用 DWposeDetector（不依赖 mediapipe）")
     print()
     
-    project_dir = Path(__file__).parent.absolute()
+    project_dir = Path(__file__).parent.parent.absolute()
     venv_python = get_venv_python(project_dir)
     
     print(f"[1/6] 项目目录: {project_dir}")

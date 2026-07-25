@@ -6,7 +6,7 @@ import subprocess
 from pathlib import Path
 
 # 获取虚拟环境的 python 路径
-project_dir = Path(__file__).parent.absolute()
+project_dir = Path(__file__).parent.parent.absolute()
 venv_python = project_dir / "venv" / "Scripts" / "python.exe"
 
 if not venv_python.exists():

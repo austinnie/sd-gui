@@ -271,7 +271,7 @@ def main():
     # ===== 配置文件检查 =====
     print_cyan("\n📄 配置文件检查")
     print("-" * 50)
-    config_files = ["gui_config.json", "scene_patterns.json", "pipelines_config.json"]
+    config_files = ["data/configs/gui_config.json", "data/configs/scene_patterns.json", "data/configs/pipelines_config.json"]
     for cfg in config_files:
         if os.path.exists(cfg):
             try:
@@ -288,7 +288,7 @@ def main():
     print_cyan("\n📁 模型目录检查")
     print("-" * 50)
     try:
-        with open("gui_config.json", 'r', encoding='utf-8') as f:
+        with open("data/configs/gui_config.json", 'r', encoding='utf-8') as f:
             config = json.load(f)
         model_paths = config.get("paths", {}).get("model_base_paths", [])
         for path in model_paths:
