@@ -74,8 +74,11 @@ class ControlNetMixin:
             print(f"   ⚠️ ControlNet 预处理失败: {e}")
             return None
     
+    # ============================================================
+    # ✅ 修改：添加 context 参数支持取消
+    # ============================================================
     def _setup_controlnet(self, config: dict, model_path: str, image_path: str, 
-                          init_image: Image.Image) -> tuple:
+                          init_image: Image.Image, context=None) -> tuple:
         """
         设置 ControlNet
         
@@ -84,6 +87,7 @@ class ControlNetMixin:
             model_path: 模型路径
             image_path: 原图路径
             init_image: 已加载的原图 PIL Image
+            context: StepContext（用于检查取消）
         
         返回:
             (pipe, control_image, use_controlnet)
@@ -96,22 +100,43 @@ class ControlNetMixin:
         control_image = None
         
         if use_controlnet and model_path:
-            pipe = self._get_controlnet_pipeline(model_path, controlnet_type)
-            if pipe:
-                w, h = init_image.size
-                control_image = self._preprocess_for_controlnet(
-                    image_path,
-                    controlnet_type=controlnet_type,
-                    target_size=(w, h)
-                )
-                if control_image:
-                    print(f"   🧠 使用 ControlNet: {controlnet_type} (强度: {controlnet_strength})")
+            # ✅ 检查取消
+            if context and context.is_cancelled():
+                print("   ⏹️ 用户在加载 ControlNet 前取消了")
+                return None, None, False
+            
+            try:
+                # ✅ 检查取消
+                if context and context.is_cancelled():
+                    print("   ⏹️ 用户在加载 ControlNet 时取消了")
+                    return None, None, False
+                
+                pipe = self._get_controlnet_pipeline(model_path, controlnet_type)
+                
+                # ✅ 检查取消
+                if context and context.is_cancelled():
+                    print("   ⏹️ 用户在加载 ControlNet 后取消了")
+                    return None, None, False
+                
+                if pipe:
+                    w, h = init_image.size
+                    control_image = self._preprocess_for_controlnet(
+                        image_path,
+                        controlnet_type=controlnet_type,
+                        target_size=(w, h)
+                    )
+                    if control_image:
+                        print(f"   🧠 使用 ControlNet: {controlnet_type} (强度: {controlnet_strength})")
+                    else:
+                        print("   ⚠️ 控制图生成失败，使用普通模式")
+                        pipe = None
+                        control_image = None
                 else:
-                    print("   ⚠️ 控制图生成失败，使用普通模式")
-                    pipe = None
-                    control_image = None
-            else:
-                print("   ⚠️ ControlNet 不可用，使用普通模式")
+                    print("   ⚠️ ControlNet 不可用，使用普通模式")
+            except Exception as e:
+                print(f"   ⚠️ ControlNet 设置失败: {e}，使用普通模式")
+                pipe = None
+                control_image = None
         
         return pipe, control_image, use_controlnet
     
@@ -124,7 +149,7 @@ class ControlNetMixin:
         return gen_kwargs
 
     # ============================================================
-    # ✅ 新增：场景数限制方法（所有步骤自动获得）
+    # 场景数限制方法（所有步骤自动获得）
     # ============================================================
     
     def _get_scene_limit(self, config: dict) -> Optional[int]:
