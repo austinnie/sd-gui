@@ -29,6 +29,9 @@ def log(msg):
 # ✅ 简化导入
 from utils import process_with_controlnet
 
+from services.prompt_template_service import prompt_service
+from gui.components.template_selector import TemplateSelector
+
 MAX_PIXELS = 1024 * 1024  # 限制总像素不超过 1024x1024
 
 # ========== 辅助函数 ==========
@@ -258,14 +261,7 @@ class Img2ImgTab(BaseTab):
         ttk.Button(self.directory_path_frame, text="清空", command=self._clear_images).pack(side=tk.LEFT, padx=2)
         
         row += 1
-
-        # ===== 【新增】图片预览行 =====
-        preview_frame = ttk.Frame(frame)
-        preview_frame.grid(row=row, column=0, columnspan=3, pady=5, padx=5)
-        self.preview_label = ttk.Label(preview_frame)
-        self.preview_label.pack()
-        row += 1
-    
+        
         # 提示词
         ttk.Label(frame, text="目标提示词:").grid(row=row, column=0, sticky=tk.W, pady=5, padx=5)
         self.prompt_text = tk.Text(frame, height=4, width=70)
@@ -277,7 +273,39 @@ class Img2ImgTab(BaseTab):
         self.neg_text = tk.Text(frame, height=3, width=70)
         self.neg_text.grid(row=row, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5, padx=5)
         self.neg_text.insert("1.0", self.default_negative)
+        row += 1        
+
+        # ===== 模板选择器（新增） =====
+        template_row = ttk.Frame(frame)
+        template_row.grid(row=row, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=2, padx=5)
+        
+        # 创建模板选择器
+        self.template_selector = TemplateSelector(
+            template_row,
+            on_select=self._on_template_selected,
+            show_apply_button=False  # 选择后自动应用
+        )
+        self.template_selector.pack(fill=tk.X)
+
+        ttk.Button(
+            template_row,
+            text="✖ 清空",
+            command=self._clear_template_prompt,
+            width=6
+        ).pack(side=tk.RIGHT, padx=2)
+    
         row += 1
+        
+        ttk.Separator(frame, orient='horizontal').grid(row=row, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=5)
+        row += 1
+    
+        # ===== 【新增】图片预览行 =====
+        preview_frame = ttk.Frame(frame)
+        preview_frame.grid(row=row, column=0, columnspan=3, pady=5, padx=5)
+        self.preview_label = ttk.Label(preview_frame)
+        self.preview_label.pack()
+        row += 1
+    
 
         # ===== 参数提示 =====
         hint_frame = ttk.Frame(frame)
@@ -394,6 +422,26 @@ class Img2ImgTab(BaseTab):
             command=self._run_strength_test
         ).pack(side=tk.LEFT, padx=5)       
 
+    def _clear_template_prompt(self):
+        """清空模板填充的内容"""
+        self.prompt_text.delete("1.0", tk.END)
+        self.neg_text.delete("1.0", tk.END)
+        self.update_status("已清空模板内容")
+    
+    def _on_template_selected(self, template):
+        """模板选择回调 - 自动填充提示词"""
+        if template:
+            # 填充正面提示词
+            self.prompt_text.delete("1.0", tk.END)
+            self.prompt_text.insert("1.0", template.prompt)
+            
+            # 填充负面提示词（如果有）
+            if template.negative:
+                self.neg_text.delete("1.0", tk.END)
+                self.neg_text.insert("1.0", template.negative)
+            
+            self.update_status(f"✅ 已应用模板: {template.name}")
+        
     # gui/tabs/img2img_tab.py
     def _on_controlnet_combo_changed(self, event):
         """ControlNet 组合切换时更新提示"""
@@ -543,7 +591,8 @@ class Img2ImgTab(BaseTab):
             messagebox.showwarning("提示", "请先选择图片")
             return
         
-        if self.app.pipeline is None:
+        # ✅ 正确：检查 model_manager 的状态
+        if not self.app.model_manager.is_sd_loaded:
             messagebox.showwarning("提示", "请先加载模型")
             return
         
@@ -930,7 +979,7 @@ class Img2ImgTab(BaseTab):
                 except Exception as e:
                     print(f"⚠️ 启用局部重绘失败，回退到普通图生图: {e}")
                     use_inpaint = False
-                    pipe = self.app.pipeline
+                    #pipe = self.app.pipeline
             # ===== [新增] 结束 =====
             
             
@@ -1225,9 +1274,9 @@ class Img2ImgTab(BaseTab):
         self.update_status("⏹️ 正在取消...")
         self.cancel_btn.config(state=tk.DISABLED)
         
-        # 如果 pipeline 支持中断，直接停止
-        if hasattr(self.app.pipeline, 'cancel'):
-            self.app.pipeline.cancel()
+        ## 如果 pipeline 支持中断，直接停止
+        #if hasattr(self.app.pipeline, 'cancel'):
+        #    self.app.pipeline.cancel()
 
 
 
@@ -1407,7 +1456,8 @@ class Img2ImgTab(BaseTab):
             messagebox.showwarning("提示", "正在生成中，请等待完成")
             return
         
-        if self.app.pipeline is None:
+        # ✅ 正确：检查 model_manager
+        if not self.app.model_manager.is_sd_loaded:
             messagebox.showwarning("提示", "请先加载模型")
             return
         
