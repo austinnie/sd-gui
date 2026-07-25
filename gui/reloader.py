@@ -422,8 +422,51 @@ class Reloader:
                 f"{', '.join(failed[:10])}\n\n"
                 f"请查看控制台输出获取详细信息。"
             )
+        # ✅ 热重载完成后自动重新加载模型
+        self._auto_reload_model_after_reload()
+        
 
+    def _auto_reload_model_after_reload(self):
+        """热重载后自动重新加载模型"""
+        if not hasattr(self.app, 'model_manager'):
+            return
+        
+        # 从 UI 获取当前选择的模型
+        if not hasattr(self.app, 'model_var'):
+            return
+        
+        model_name = self.app.model_var.get()
+        if not model_name or model_name not in self.app.checkpoint_paths:
+            # 没有选择模型，尝试使用 _last_model_path
+            if hasattr(self.app, '_last_model_path') and self.app._last_model_path:
+                model_name = os.path.basename(self.app._last_model_path)
+                model_path = self.app._last_model_path
+            else:
+                return
+        else:
+            model_path = self.app.checkpoint_paths[model_name]
+        
+        self.app.update_status(f"🔄 自动重新加载模型: {model_name[:40]}...")
+        
+        import threading
+        def load_thread():
+            def progress_cb(value, msg):
+                self.app.root.after(0, lambda: self.app.update_progress(value, msg))
+            
+            success = self.app.model_manager.load_sd(
+                model_path, model_name, progress_cb
+            )
+            if success:
+                self.app.root.after(0, lambda: self.app.update_status(f"✅ 模型已重新加载: {model_name[:40]}..."))
+                self.app.root.after(0, self.app._update_model_ui)
+                self.app.root.after(0, self.app._update_lora_list)
+            else:
+                self.app.root.after(0, lambda: self.app.update_status("❌ 模型自动加载失败，请手动加载"))
+        
+        threading.Thread(target=load_thread, daemon=True).start()
+    
+        
     def _reload_modules(self):
         """热重载模块"""
         self.reloader.reload_all()
-    
+  
