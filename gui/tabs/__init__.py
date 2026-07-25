@@ -4,7 +4,7 @@
 
 from .base_tab import BaseTab
 from .txt2img import Txt2ImgTab
-from .img2img_tab import Img2ImgTab
+from .img2img import Img2ImgTab
 
 from .universal_tab import UniversalTab
 from .scene_tab import SceneTab

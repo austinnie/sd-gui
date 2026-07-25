@@ -39,7 +39,15 @@ class Reloader:
         "gui.tabs.txt2img.utils",
         "gui.tabs.txt2img.callbacks",
 
-        "gui.tabs.img2img_tab",
+        "gui.tabs.img2img",
+        "gui.tabs.img2img.tab",
+        "gui.tabs.img2img.ui",
+        "gui.tabs.img2img.generator",
+        "gui.tabs.img2img.batch",
+        "gui.tabs.img2img.mask_editor",
+        "gui.tabs.img2img.controlnet",
+        "gui.tabs.img2img.utils",
+        "gui.tabs.img2img.callbacks",
 
         # ✅ 新代码
         "gui.tabs.interrogate",
@@ -354,7 +362,7 @@ class Reloader:
     def _recreate_tabs(self):
         """重建标签页"""
         from gui.tabs.txt2img import Txt2ImgTab
-        from gui.tabs.img2img_tab import Img2ImgTab
+        from gui.tabs.img2img import Img2ImgTab
         from gui.tabs.interrogate import InterrogateTab
         from gui.tabs.universal_tab import UniversalTab
         from gui.tabs.scene_tab import SceneTab
