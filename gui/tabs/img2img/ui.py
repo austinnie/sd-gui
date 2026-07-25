@@ -163,7 +163,7 @@ class Img2ImgUI:
                         variable=self.tab.use_controlnet_var,
                         command=self.tab._on_controlnet_toggle).pack(side=tk.LEFT, padx=5)
         
-        from utils.controlnet_helper import get_recommended_multi_controlnet_combos
+        from utils.controlnet import get_recommended_multi_controlnet_combos
         ttk.Label(controlnet_row, text="模式:").pack(side=tk.LEFT, padx=5)
         
         combos = get_recommended_multi_controlnet_combos()

@@ -32,7 +32,7 @@ class ControlNetManager:
     
     def on_type_changed(self, event):
         """类型切换"""
-        from utils.controlnet_helper import get_controlnet_info
+        from utils.controlnet import get_controlnet_info
         
         selected = self.tab.controlnet_type_var.get()
         key = selected.split(" ")[0] if " " in selected else selected
@@ -52,7 +52,7 @@ class ControlNetManager:
 
         try:
             from diffusers import ControlNetModel, StableDiffusionControlNetPipeline
-            from utils.controlnet_helper import get_controlnet_info
+            from utils.controlnet import get_controlnet_info
             from utils.pipeline_pool import pipeline_pool
 
             selected = self.tab.controlnet_type_var.get()

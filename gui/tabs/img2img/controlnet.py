@@ -1,7 +1,7 @@
 # gui/tabs/img2img/controlnet.py
 """ControlNet 处理"""
 
-from utils.controlnet_helper import controlnet_config
+from utils.controlnet import controlnet_config
 
 
 class ControlNetHandler:
@@ -18,7 +18,7 @@ class ControlNetHandler:
     
     def get_combo_info(self):
         """获取当前 ControlNet 组合信息"""
-        from utils.controlnet_helper import get_recommended_multi_controlnet_combos
+        from utils.controlnet import get_recommended_multi_controlnet_combos
         
         combos = get_recommended_multi_controlnet_combos()
         selected = self.tab.controlnet_combo_var.get()

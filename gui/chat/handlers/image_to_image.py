@@ -155,7 +155,7 @@ class ImageToImageHandler(BaseHandler):
 
     def _get_control_image(self):
         """获取控制图"""
-        from utils.controlnet_helper import preprocess_image_for_controlnet
+        from utils.controlnet import preprocess_image_for_controlnet
         
         selected = self.tab.controlnet_type_var.get()
         controlnet_type = selected.split(" ")[0] if " " in selected else "openpose"

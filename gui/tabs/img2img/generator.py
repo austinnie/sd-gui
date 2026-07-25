@@ -52,9 +52,9 @@ class ImageGenerator:
         if use_controlnet:
             try:
                 log("🧠 启用多层 ControlNet 模式...")
-                from utils.controlnet_helper import get_recommended_multi_controlnet_combos
-                from utils.controlnet_helper import preprocess_image_for_controlnet
-                from utils.controlnet_helper import process_with_multi_controlnet
+                from utils.controlnet import get_recommended_multi_controlnet_combos
+                from utils.controlnet import preprocess_image_for_controlnet
+                from utils.controlnet import process_with_multi_controlnet
                 from config.app_config import app_config
                 
                 combo_name = self.tab.controlnet_combo_var.get()

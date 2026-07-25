@@ -8,7 +8,7 @@ import torch
 from PIL import Image
 from typing import Optional, List, Any
 from diffusers import ControlNetModel, StableDiffusionControlNetPipeline, EulerDiscreteScheduler
-from utils.controlnet_helper import get_controlnet_info, preprocess_image_for_controlnet
+from utils.controlnet import get_controlnet_info, preprocess_image_for_controlnet
 
 
 class ControlNetMixin:

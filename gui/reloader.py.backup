@@ -128,7 +128,7 @@ class Reloader:
         "utils.scheduler_fix",
         "utils.pipeline_pool",
         "utils.vae_utils",
-        "utils.controlnet",
+        "utils.controlnet_helper",
 
         # ✅ 新增
         "services.llm_service",

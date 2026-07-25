@@ -37,7 +37,7 @@ from .strength_tester import (
     run_strength_test
 )
 
-from .scheduler_fix import (          # ✅ 新增
+from .scheduler_fix import (
     fix_euler_scheduler_for_img2img,
     fix_scheduler_before_step
 )
@@ -47,20 +47,28 @@ from .scheduler_factory import (
     get_scheduler_description
 )
 
-from .pipeline_pool import PipelinePool, pipeline_pool  # ✅ 新
+from .pipeline_pool import PipelinePool, pipeline_pool
 
 from .vae_utils import load_vae
 
-# ✅ 新增：ControlNet 辅助函数
-# ✅ 修改：ControlNet 辅助函数
-from .controlnet_helper import (
+# ✅ ControlNet 模块 (拆分后)
+from .controlnet import (
+    # 单层 ControlNet
     process_with_controlnet,
     get_controlnet_pipeline,
-    preprocess_image_for_controlnet,  # 使用这个替代 extract_pose
+    preprocess_image_for_controlnet,
+    extract_pose,  # 别名，兼容旧代码
+    # 类型信息
     get_controlnet_types,
     get_controlnet_display_names,
     get_controlnet_info,
-    is_controlnet_available
+    is_controlnet_available,
+    # 多层 ControlNet
+    process_with_multi_controlnet,
+    get_recommended_multi_controlnet_combos,
+    # 配置
+    controlnet_config,
+    CONTROLNET_CONFIG,
 )
 
 __all__ = [
@@ -99,7 +107,7 @@ __all__ = [
     'StrengthTester',
     'run_strength_test',
     
-    # scheduler_fix                         # ✅ 新增
+    # scheduler_fix
     'fix_euler_scheduler_for_img2img',
     'fix_scheduler_before_step',
     
@@ -110,15 +118,23 @@ __all__ = [
     'PipelinePool',
     'pipeline_pool',
     
-    'load_vae', 
+    'load_vae',
 
-    # ✅ 新增：ControlNet
+    # ✅ ControlNet (单层)
     'process_with_controlnet',
     'get_controlnet_pipeline',
-    'preprocess_image_for_controlnet',  # 替代 extract_pose
+    'preprocess_image_for_controlnet',
+    'extract_pose',
     'get_controlnet_types',
     'get_controlnet_display_names',
     'get_controlnet_info',
     'is_controlnet_available',
     
+    # ✅ ControlNet (多层)
+    'process_with_multi_controlnet',
+    'get_recommended_multi_controlnet_combos',
+    
+    # ✅ ControlNet (配置)
+    'controlnet_config',
+    'CONTROLNET_CONFIG',
 ]

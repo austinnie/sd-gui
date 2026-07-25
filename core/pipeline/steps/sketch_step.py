@@ -133,7 +133,7 @@ class SketchStep(PipelineStep, ControlNetMixin):  # ✅ 继承 ControlNetMixin
         """获取 ControlNet Pipeline"""
         try:
             from diffusers import ControlNetModel, StableDiffusionControlNetPipeline
-            from utils.controlnet_helper import get_controlnet_info
+            from utils.controlnet import get_controlnet_info
             
             info = get_controlnet_info(controlnet_type)
             print(f"   📦 加载 ControlNet: {info['name']}")
@@ -188,7 +188,7 @@ class SketchStep(PipelineStep, ControlNetMixin):  # ✅ 继承 ControlNetMixin
                                     target_size: tuple = None):
         """预处理图片生成 ControlNet 控制图"""
         try:
-            from utils.controlnet_helper import preprocess_image_for_controlnet
+            from utils.controlnet import preprocess_image_for_controlnet
             return preprocess_image_for_controlnet(
                 image_path,
                 controlnet_type=controlnet_type,

@@ -153,7 +153,7 @@ class PipelineRunner:
         """设置 ControlNet"""
         try:
             from diffusers import ControlNetModel, StableDiffusionControlNetPipeline
-            from utils.controlnet_helper import get_controlnet_info
+            from utils.controlnet import get_controlnet_info
             
             info = get_controlnet_info(controlnet_type)
             print(f"📦 加载 ControlNet: {info['name']}")

@@ -78,7 +78,7 @@ class ToolbarBuilder:
     
     def _build_controlnet_controls(self, parent):
         """构建 ControlNet 控制"""
-        from utils.controlnet_helper import get_controlnet_display_names
+        from utils.controlnet import get_controlnet_display_names
         
         cn_frame = ttk.Frame(parent)
         cn_frame.pack(side=tk.LEFT, padx=5)

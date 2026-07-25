@@ -176,7 +176,7 @@ class Img2ImgTab(BaseTab):
     
     def _on_controlnet_combo_changed(self, event):
         """ControlNet 组合切换"""
-        from utils.controlnet_helper import get_recommended_multi_controlnet_combos
+        from utils.controlnet import get_recommended_multi_controlnet_combos
         
         combos = get_recommended_multi_controlnet_combos()
         selected = self.controlnet_combo_var.get()
@@ -237,7 +237,7 @@ class Img2ImgTab(BaseTab):
         conditioning_scales = []
         
         if use_controlnet:
-            from utils.controlnet_helper import get_recommended_multi_controlnet_combos
+            from utils.controlnet import get_recommended_multi_controlnet_combos
             combo_name = self.controlnet_combo_var.get()
             combos = get_recommended_multi_controlnet_combos()
             combo_info = combos.get(combo_name, list(combos.values())[0])
