@@ -49,7 +49,24 @@ BUILTIN_PIPELINES = {
         "description": "转换为婚纱/婚礼风格",
         "steps": [{"type": "wedding", "config": {}}]
     },
-    
+
+    # ===== 唯美风格 =====
+    "唯美风景": {
+        "description": "转换为唯美风景风格 (6种场景)",
+        "steps": [{"type": "aesthetic", "config": {"scenes": 6}}]
+    },
+    "唯美人物": {
+        "description": "转换为唯美人物风格 (6种场景)",
+        "steps": [{"type": "aesthetic", "config": {"scenes": 6}}]
+    },
+    "唯美意境": {
+        "description": "转换为唯美意境风格 (4种场景)",
+        "steps": [{"type": "aesthetic", "config": {"scenes": 4}}]
+    },
+    "唯美全风格": {
+        "description": "转换为唯美风格 (16种场景)",
+        "steps": [{"type": "aesthetic", "config": {}}]
+    },    
     # ===== 服装/造型类 =====
     "洛丽塔": {
         "description": "转换为洛丽塔风格",

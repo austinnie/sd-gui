@@ -23,6 +23,7 @@ from .steps import (
     CoupleWatercolorStep, CoupleOilPaintingStep, FamilySketchStep,
     FriendsStyleStep, GroupPhotoStep, CoupleWeddingStep,
     CyberHanfuStep, MarbleYogaStep, BronzeStatueStep,
+    AestheticStep,
 )
 
 
@@ -66,6 +67,7 @@ def register_all_steps():
     PipelineRegistry.register_step("cyber_hanfu", CyberHanfuStep)
     PipelineRegistry.register_step("marble_yoga", MarbleYogaStep)
     PipelineRegistry.register_step("bronze_statue", BronzeStatueStep)
+    PipelineRegistry.register_step("aesthetic", AestheticStep)
 
 
 __all__ = [

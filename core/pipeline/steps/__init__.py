@@ -48,6 +48,8 @@ from .cyber_hanfu_step import CyberHanfuStep  # <-- 新增这行
 from .marble_yoga_step import MarbleYogaStep  
 from .bronze_statue_step import BronzeStatueStep
 
+from .aesthetic_step import AestheticStep
+
 __all__ = [
     'ControlNetMixin',  # ✅ 新增
     'MarbleStep',
@@ -72,4 +74,6 @@ __all__ = [
     'CyberHanfuStep',  # <-- 新增这行
     'MarbleYogaStep',  
     'BronzeStatueStep',    
+    
+    'AestheticStep',
 ]
