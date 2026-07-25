@@ -429,19 +429,30 @@ class Img2ImgTab(BaseTab):
         self.update_status("已清空模板内容")
     
     def _on_template_selected(self, template):
-        """模板选择回调 - 自动填充提示词"""
-        if template:
-            # 填充正面提示词
-            self.prompt_text.delete("1.0", tk.END)
-            self.prompt_text.insert("1.0", template.prompt)
-            
-            # 填充负面提示词（如果有）
-            if template.negative:
-                self.neg_text.delete("1.0", tk.END)
-                self.neg_text.insert("1.0", template.negative)
-            
-            self.update_status(f"✅ 已应用模板: {template.name}")
+        """模板选择回调 - 带确认"""
+        if not template:
+            return
         
+        # ✅ 如果有图片，提示用户确认模板匹配
+        if self.selected_images:
+            if not messagebox.askyesno("模板确认", 
+                f"📋 模板: {template.name}\n\n"
+                f"请确认模板描述与图片内容匹配：\n"
+                f"{template.prompt[:80]}...\n\n"
+                f"如果不匹配，建议手动修改提示词。\n\n"
+                f"确定要应用此模板吗？"):
+                return
+        
+        # 填充提示词
+        self.prompt_text.delete("1.0", tk.END)
+        self.prompt_text.insert("1.0", template.prompt)
+        
+        if template.negative:
+            self.neg_text.delete("1.0", tk.END)
+            self.neg_text.insert("1.0", template.negative)
+        
+        self.update_status(f"✅ 已应用模板: {template.name}")
+    
     # gui/tabs/img2img_tab.py
     def _on_controlnet_combo_changed(self, event):
         """ControlNet 组合切换时更新提示"""
@@ -552,16 +563,66 @@ class Img2ImgTab(BaseTab):
         self.preview_label.image = None
 
     def _show_preview(self, filepath):
-        """显示图片预览"""
+        """显示图片预览 - 带模板匹配检查"""
         try:
             from PIL import Image, ImageTk
+            
+            # 先显示预览
             img = Image.open(filepath)
             img.thumbnail((300, 300), Image.Resampling.LANCZOS)
             photo = ImageTk.PhotoImage(img)
             self.preview_label.config(image=photo)
             self.preview_label.image = photo
+            
+            # ✅ 检查是否有已选模板
+            if hasattr(self, 'template_selector'):
+                current_template = self.template_selector.get_selected()
+                if current_template:
+                    # 延迟弹窗，让预览先显示
+                    self.app.root.after(100, lambda: self._check_template_match(current_template, filepath))
+                    
         except Exception as e:
             print(f"⚠️ 预览失败: {e}")
+
+    def _check_template_match(self, template, filepath):
+        """检查模板与图片是否匹配"""
+        # 简单关键词匹配检测
+        prompt_lower = template.prompt.lower()
+        filename_lower = os.path.basename(filepath).lower()
+        
+        # 检测图片文件名中的关键词
+        image_keywords = []
+        for kw in ['woman', 'man', 'girl', 'boy', 'female', 'male', 'asian', 'chinese', 
+                   'japanese', 'korean', 'cat', 'dog', 'landscape', 'flower', 'animal']:
+            if kw in filename_lower:
+                image_keywords.append(kw)
+        
+        # 检测模板中的关键词
+        template_keywords = []
+        for kw in ['woman', 'man', 'girl', 'boy', 'female', 'male', 'asian', 'chinese',
+                   'japanese', 'korean', 'cat', 'dog', 'landscape', 'flower', 'animal']:
+            if kw in prompt_lower:
+                template_keywords.append(kw)
+        
+        # 如果有共同关键词，可能匹配
+        has_match = any(kw in template_keywords for kw in image_keywords) if image_keywords and template_keywords else True
+        
+        if not has_match:
+            if not messagebox.askyesno("模板匹配提示",
+                f"📋 模板: {template.name}\n"
+                f"📷 图片: {os.path.basename(filepath)}\n\n"
+                f"⚠️ 模板描述与图片文件名似乎不太匹配。\n"
+                f"模板关键词: {', '.join(template_keywords[:3]) if template_keywords else '无'}\n"
+                f"图片关键词: {', '.join(image_keywords[:3]) if image_keywords else '无'}\n\n"
+                f"建议确认模板与图片内容一致。\n"
+                f"确定要继续使用此模板吗？"):
+                # 用户取消，清空模板选择
+                self.template_selector.template_var.set("")
+                self.template_selector.category_var.set("")
+                self.update_status("已清空模板，请选择匹配的模板")
+                return
+        
+        self.update_status(f"✅ 已应用模板: {template.name}")
             
     
     def _on_size_change(self, event):
