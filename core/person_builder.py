@@ -15,7 +15,7 @@ class PersonBuilder:
     
     def __init__(self, templates_path: str = None):
         if templates_path is None:
-            templates_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
+            templates_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "templates")
         self.templates_path = templates_path
         self.persons_config = self._load_config("persons.json")
         self.scenes_config = self._load_config("scenes.json")
@@ -196,7 +196,7 @@ class CoupleBuilder:
     
     def __init__(self, templates_path: str = None):
         if templates_path is None:
-            templates_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
+            templates_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "templates")
         self.templates_path = templates_path
         self.relationships_config = self._load_config("relationships.json")
         self.scenes_config = self._load_config("scenes.json")
@@ -295,7 +295,7 @@ class GroupBuilder:
     
     def __init__(self, templates_path: str = None):
         if templates_path is None:
-            templates_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
+            templates_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "templates")
         self.templates_path = templates_path
         self.relationships_config = self._load_config("relationships.json")
         self.scenes_config = self._load_config("scenes.json")

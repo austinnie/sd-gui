@@ -26,7 +26,8 @@ EXCLUDE_DIRS = [
     "build",
     "*.egg-info",
     "cache",
-]
+
+    "configs",]
 
 # 要排除的文件扩展名
 EXCLUDE_EXTENSIONS = [

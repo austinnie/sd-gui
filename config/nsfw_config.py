@@ -52,7 +52,7 @@ class NSFWConfig:
     safe_keywords: List[str] = field(default_factory=list)
     
     @classmethod
-    def load(cls, config_path: str = "nsfw_config.json") -> 'NSFWConfig':
+    def load(cls, config_path: str = "data/configs/nsfw_config.json") -> 'NSFWConfig':
         """加载配置"""
         default = cls()
         
@@ -135,7 +135,7 @@ class NSFWConfig:
             json.dump(data, f, ensure_ascii=False, indent=2)
         print(f"📄 已创建默认 NSFW 配置: {config_path}")
     
-    def save(self, config_path: str = "nsfw_config.json"):
+    def save(self, config_path: str = "data/configs/nsfw_config.json"):
         """保存配置"""
         data = {
             "enabled": self.enabled,

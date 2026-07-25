@@ -11,7 +11,9 @@ import sys
 from datetime import datetime
 
 # 要排除的目录
-EXCLUDE_DIRS = ["__pycache__", "outputs", ".git", "venv", "dist", "build", ".pytest_cache"]
+EXCLUDE_DIRS = ["__pycache__", "outputs", ".git", "venv", "dist", "build", ".pytest_cache"
+    "configs",
+    "data",]
 
 # 要收集的文件扩展名
 INCLUDE_EXTENSIONS = [".py", ".json", ".txt", ".md", ".yaml", ".yml"]

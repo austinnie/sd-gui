@@ -51,7 +51,7 @@ class PromptTemplateService:
         self._loaded = False
         self._base_dir = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
-            "templates", "prompts"
+            "data","templates", "prompts"
         )
     
     def load(self):

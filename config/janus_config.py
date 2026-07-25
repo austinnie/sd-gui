@@ -160,8 +160,8 @@ class JanusAppConfig:
     def _find_config(cls) -> str:
         """查找配置文件"""
         possible_paths = [
-            "janus_config.json",
-            os.path.join(os.path.dirname(os.path.dirname(__file__)), "janus_config.json")
+            "data/configs/janus_config.json",
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), "data/configs/janus_config.json")
         ]
         for path in possible_paths:
             if os.path.exists(path):

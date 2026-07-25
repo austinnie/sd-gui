@@ -12,7 +12,7 @@ from config.config_manager import config_manager
 class SceneManager:
     """场景管理器"""
     
-    def __init__(self, config_path: str = "scene_patterns.json"):
+    def __init__(self, config_path: str = "data/configs/scene_patterns.json"):
         self.config_path = config_path
         self.scene_config = None
         self._default_negative = ""

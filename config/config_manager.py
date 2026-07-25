@@ -29,22 +29,22 @@ class ConfigManager:
     def _load_all(self):
         """加载所有配置文件"""
         # 1. 加载 gui_config.json
-        self._configs['gui'] = self._load_json('gui_config.json')
+        self._configs['gui'] = self._load_json('data/configs/gui_config.json')
         
         # 2. 加载 nsfw_config.json
-        self._configs['nsfw'] = self._load_json('nsfw_config.json')
+        self._configs['nsfw'] = self._load_json('data/configs/nsfw_config.json')
         
         # 3. 加载 scene_patterns.json
-        self._configs['scene'] = self._load_json('scene_patterns.json')
+        self._configs['scene'] = self._load_json('data/configs/scene_patterns.json')
         
         # 4. 加载 templates/persons.json
-        self._configs['persons'] = self._load_json('templates/persons.json')
+        self._configs['persons'] = self._load_json('data/templates/persons.json')
         
         # 5. 加载 templates/relationships.json
-        self._configs['relationships'] = self._load_json('templates/relationships.json')
+        self._configs['relationships'] = self._load_json('data/templates/relationships.json')
         
         # 6. 加载 templates/prompt_templates.json
-        self._configs['prompt_templates'] = self._load_json('templates/prompt_templates.json')
+        self._configs['prompt_templates'] = self._load_json('data/templates/prompt_templates.json')
     
     def _load_json(self, relative_path: str) -> dict:
         """加载 JSON 文件"""

@@ -452,7 +452,7 @@ class GridTestTab(BaseTab):
             JANUS_TEMPS = [0.4, 0.6, 0.8, 1.0, 1.2]
             JANUS_TOKENS = [1024, 2048, 4096]
             
-            output_dir = "grid_configs"
+            output_dir = "data/configs/grid_configs"
             os.makedirs(output_dir, exist_ok=True)
             
             config_type = self.gen_config_type.get()
@@ -734,7 +734,7 @@ class GridTestTab(BaseTab):
         self._refresh_config_dropdown()  # ✅ 复用下拉刷新
         
         # 自动选择第一个配置文件并预览
-        config_dir = "grid_configs"
+        config_dir = "data/configs/grid_configs"
         if os.path.exists(config_dir):
             configs = [f for f in os.listdir(config_dir) if f.endswith('.json')]
             if configs:
@@ -745,7 +745,7 @@ class GridTestTab(BaseTab):
                 
     def _open_config_dir(self):
         """打开配置目录"""
-        config_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "grid_configs")
+        config_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "configs", "grid_configs")
         if os.path.exists(config_dir):
             os.startfile(config_dir)
         else:
@@ -753,7 +753,7 @@ class GridTestTab(BaseTab):
 
     def _refresh_config_dropdown(self):
         """刷新配置文件下拉列表"""
-        config_dir = "grid_configs"
+        config_dir = "data/configs/grid_configs"
         configs = []
         if os.path.exists(config_dir):
             configs = [f for f in os.listdir(config_dir) if f.endswith('.json')]
@@ -782,7 +782,7 @@ class GridTestTab(BaseTab):
         """下拉框选择事件"""
         selected = self.config_combo.get()
         if selected:
-            config_dir = "grid_configs"
+            config_dir = "data/configs/grid_configs"
             config_path = os.path.join(config_dir, selected)
             if os.path.exists(config_path):
                 self.config_path_var.set(config_path)
@@ -791,7 +791,7 @@ class GridTestTab(BaseTab):
             
     def _select_config(self):
         """选择配置文件"""
-        config_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "grid_configs")
+        config_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "configs", "grid_configs")
         if not os.path.exists(config_dir):
             config_dir = os.getcwd()
         
@@ -1104,7 +1104,7 @@ class GridTestTab(BaseTab):
             ]
         }
         
-        config_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "grid_configs")
+        config_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "configs", "grid_configs")
         os.makedirs(config_dir, exist_ok=True)
         
         filepath = filedialog.asksaveasfilename(
