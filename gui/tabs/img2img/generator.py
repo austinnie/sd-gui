@@ -11,25 +11,25 @@ from PIL import Image
 
 from .utils import log, safe_del, auto_shorten_prompt
 from .callbacks import Img2ImgStepCallback
+from .saver import ImageSaver
 
 MAX_PIXELS = 1024 * 1024
 
 
 class ImageGenerator:
-    """图生图生成器"""
+    """图生图图片生成器"""
     
     def __init__(self, tab):
         self.tab = tab
         self.app = tab.app
         self.params = tab.params
+        self.saver = ImageSaver(tab)
     
     def generate(self, prompt, negative, strength, steps, cfg, seed,
                  num_images_per, target_width, target_height, use_controlnet=False):
         """生成图生图"""
         from utils.pipeline_pool import pipeline_pool
         from utils.scheduler_fix import fix_euler_scheduler_for_img2img
-        from utils.watermark_remover import WatermarkRemover
-        from utils.image_post_processor import post_process_image
         
         log("开始图生图...")
         
@@ -248,7 +248,7 @@ class ImageGenerator:
                             if face_ratio > 0.15:
                                 strength = min(strength, 0.3)
                                 print(f"   🧑 检测到头像 (人脸占比 {face_ratio:.1%})，强度自动调整为: {strength:.2f}")
-                except:
+                except Exception as e:
                     pass
                 
                 for i in range(num_images_per):
@@ -296,36 +296,15 @@ class ImageGenerator:
                     log("pipeline 调用完成")
                     image = result.images[0]
                     
-                    # 保存图片
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    prompt_preview = "".join(c for c in prompt[:30] if c.isalnum() or c in " _-") or "image"
-                    filename = f"{timestamp}_img2img_img{img_idx+1}_var{i+1}_{prompt_preview}.png"
+                    # 保存图片 - 使用 saver
+                    filepath = self.saver.save(
+                        image=image,
+                        prompt=prompt,
+                        img_idx=img_idx,
+                        var_idx=i
+                    )
                     
-                    from config.app_config import app_config
-                    output_dir = app_config.paths.output_dir
-                    os.makedirs(output_dir, exist_ok=True)
-                    filepath = os.path.join(output_dir, filename)
-                    
-                    watermark_remover = WatermarkRemover()
-                    if self.params.remove_watermark_var.get() and self.params.watermark_post_process_var.get():
-                        methods = ["opencv_inpaint", "opencv_blur"]
-                        cleaned = watermark_remover.remove_watermark(
-                            image, methods=methods,
-                            strength=self.params.watermark_strength_var.get(),
-                            auto_detect=self.params.watermark_auto_detect_var.get()
-                        )
-                        cleaned.save(filepath, quality=95)
-                    else:
-                        image.save(filepath)
-                    
-                    final_path = post_process_image(filepath, self.params, prompt=prompt, log_prefix="[图生图]")
-                    if final_path != filepath:
-                        try:
-                            os.remove(filepath)
-                        except:
-                            pass
-                        filepath = final_path
-                    
+                    # 添加到预览
                     self.app.root.after(0, lambda fp=filepath, img=image: self.app.add_to_preview(fp, img))
                     
                     safe_del(result)

@@ -6,23 +6,26 @@ import random
 import time
 import torch
 from datetime import datetime
-from PIL import Image
 
-from .utils import get_smart_size, get_smart_params, auto_shorten_prompt, log, safe_del
+from .utils import log, safe_del
 from .callbacks import Txt2ImgStepCallback
+from .saver import ImageSaver
 
 
 class ImageGenerator:
-    """图片生成器"""
+    """文生图图片生成器"""
     
     def __init__(self, tab):
         self.tab = tab
         self.app = tab.app
         self.params = tab.params
+        self.saver = ImageSaver(tab)
     
     def generate_single(self, prompt, negative, steps=None, cfg=None, seed=None,
                         height=None, width=None, index=1, total=1, callback=None, pipe=None):
         """生成单张图片"""
+        from .utils import auto_shorten_prompt
+        
         log(f"开始生成第 {index}/{total} 张")
         
         # 默认值
@@ -43,15 +46,15 @@ class ImageGenerator:
             return
         
         # 尺寸安全处理
-        width = max(1, width)
-        height = max(1, height)
-        
         from config.app_config import app_config
         gen_cfg = app_config.generation
         size_cfg = gen_cfg.size
         
+        width = max(1, width)
+        height = max(1, height)
         width = ((width + 31) // 64) * 64
         height = ((height + 31) // 64) * 64
+        
         max_cpu_w = size_cfg.get("cpu_safe_max_width", 1024)
         max_cpu_h = size_cfg.get("cpu_safe_max_height", 1024)
         width = min(max_cpu_w, max(size_cfg["min_width"], width))
@@ -73,6 +76,15 @@ class ImageGenerator:
             self.app.root.after(0, lambda: self.tab.update_progress(value, msg))
         
         progress_cb((index - 1) / total, f"🎨 生成第 {index}/{total} 张...")
+        
+        # 水印去除 - 增强负面提示词
+        from utils.watermark_remover import WatermarkRemover
+        watermark_remover = WatermarkRemover()
+        enhanced_negative = negative
+        if self.params.remove_watermark_var.get():
+            strength = self.params.watermark_strength_var.get()
+            enhanced_negative = watermark_remover.get_enhanced_negative(enhanced_negative, strength)
+            print(f"✅ 负面提示词已增强 (水印强度: {strength})")
         
         # 获取高清修复参数
         hires_enabled = self.params.hires_fix_var.get()
@@ -100,16 +112,18 @@ class ImageGenerator:
         conditioning_scale = CONTROLNET_STRENGTH_MAP.get(controlnet_type, 0.80)
         
         try:
+            pipe.to("cpu")
             generator = torch.Generator("cpu").manual_seed(seed)
             cancel_flag = lambda: self.tab.cancel_generation
             step_callback = Txt2ImgStepCallback(progress_cb, steps, start_time, cancel_flag, source="文生图")
             
+            log("调用 pipeline...")
             with torch.no_grad():
                 if not hires_enabled:
                     if use_controlnet and control_image is not None:
                         result = pipe(
                             prompt=prompt,
-                            negative_prompt=negative,
+                            negative_prompt=enhanced_negative,
                             control_image=control_image,
                             controlnet_conditioning_scale=conditioning_scale,
                             num_inference_steps=steps,
@@ -123,7 +137,7 @@ class ImageGenerator:
                     else:
                         result = pipe(
                             prompt=prompt,
-                            negative_prompt=negative,
+                            negative_prompt=enhanced_negative,
                             num_inference_steps=steps,
                             guidance_scale=cfg,
                             generator=generator,
@@ -138,12 +152,13 @@ class ImageGenerator:
                     low_res_w = max(512, ((low_res_w + 31) // 64) * 64)
                     low_res_h = max(512, ((low_res_h + 31) // 64) * 64)
                     
+                    print(f"📐 启用高清修复: 初稿 {low_res_w}x{low_res_h} -> 最终 {width}x{height}")
                     progress_cb((index - 1) / total, f"🎨 生成初稿 ({low_res_w}x{low_res_h})...")
                     
                     if use_controlnet and control_image is not None:
                         low_res_result = pipe(
                             prompt=prompt,
-                            negative_prompt=negative,
+                            negative_prompt=enhanced_negative,
                             control_image=control_image,
                             controlnet_conditioning_scale=conditioning_scale,
                             num_inference_steps=steps,
@@ -157,7 +172,7 @@ class ImageGenerator:
                     else:
                         low_res_result = pipe(
                             prompt=prompt,
-                            negative_prompt=negative,
+                            negative_prompt=enhanced_negative,
                             num_inference_steps=steps,
                             guidance_scale=cfg,
                             generator=generator,
@@ -172,7 +187,7 @@ class ImageGenerator:
                     
                     result = pipe(
                         prompt=prompt,
-                        negative_prompt=negative,
+                        negative_prompt=enhanced_negative,
                         image=low_res_img,
                         strength=hires_denoise,
                         num_inference_steps=steps,
@@ -187,49 +202,18 @@ class ImageGenerator:
                     safe_del(low_res_result)
                     safe_del(low_res_img)
             
+            log("pipeline 调用完成")
             image = result.images[0]
             
-            # 保存图片
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            prompt_preview = "".join(c for c in prompt[:30] if c.isalnum() or c in " _-") or "image"
-            if len(prompt_preview) > 50:
-                prompt_preview = prompt_preview[:50]
-            filename = f"{timestamp}_txt2img_{index}_{prompt_preview}.png"
+            # 保存图片 - 使用 saver
+            filepath = self.saver.save(
+                image=image,
+                prompt=prompt,
+                index=index
+            )
             
-            from config.app_config import app_config
-            output_dir = app_config.paths.output_dir
-            os.makedirs(output_dir, exist_ok=True)
-            filepath = os.path.join(output_dir, filename)
-            
-            # 水印去除
-            from utils.watermark_remover import WatermarkRemover
-            watermark_remover = WatermarkRemover()
-            
-            if self.params.remove_watermark_var.get() and self.params.watermark_post_process_var.get():
-                methods = ["opencv_inpaint", "opencv_blur"]
-                cleaned = watermark_remover.remove_watermark(
-                    image,
-                    methods=methods,
-                    strength=self.params.watermark_strength_var.get(),
-                    auto_detect=self.params.watermark_auto_detect_var.get()
-                )
-                cleaned.save(filepath, quality=95)
-                print(f"✅ 水印已去除: {filename}")
-            else:
-                image.save(filepath)
-            
-            # 图片后期处理
-            from utils.image_post_processor import post_process_image
-            final_path = post_process_image(filepath, self.params, prompt=prompt, log_prefix="[文生图]")
-            
-            if final_path != filepath:
-                try:
-                    os.remove(filepath)
-                except:
-                    pass
-                filepath = final_path
-            
-            self.app.root.after(0, lambda: self.app.add_to_preview(filepath, image))
+            # 添加到预览
+            self.app.root.after(0, lambda fp=filepath, img=image: self.app.add_to_preview(fp, img))
             
             safe_del(result)
             safe_del(generator)
