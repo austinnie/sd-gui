@@ -386,6 +386,9 @@ class SDApp:
 
 def main():
     """主入口"""
+    from utils.performance import start_timer, log_startup
+    start_timer()
+    
     print("=" * 60)
     logger.info(f"Stable Diffusion 桌面GUI版 - v8")
     logger.info(f"输出目录: {app_config.paths.output_dir}")
@@ -403,6 +406,7 @@ def main():
     print("=" * 60)
     
     app = SDApp()
+    log_startup("GUI 初始化完成")
     app.run()
 
 

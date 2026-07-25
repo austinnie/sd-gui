@@ -243,43 +243,42 @@ class UIBuilder:
         notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
         from gui.tabs.txt2img import Txt2ImgTab
-        from gui.tabs.img2img import Img2ImgTab
-        from gui.tabs.interrogate import InterrogateTab
-        from gui.tabs.universal_tab import UniversalTab
-        from gui.tabs.scene_tab import SceneTab
-        from gui.tabs.janus_tab import JanusTab
-        from gui.tabs.grid_test_tab import GridTestTab
-        from gui.tabs.pipeline_tab import PipelineTab
-        from gui.tabs.lora_manager import LoraManagerTab
-        from gui.tabs.chat_tab import ChatTab
-        
         self.app.txt2img_tab = Txt2ImgTab(notebook, self.app)
         notebook.add(self.app.txt2img_tab.get_frame(), text="📝 文生图")
         
+        from gui.tabs.scene_tab import SceneTab
         self.app.scene_tab = SceneTab(notebook, self.app)
         notebook.add(self.app.scene_tab.get_frame(), text="💑 亲密文生图")
         
+        from gui.tabs.universal_tab import UniversalTab
         self.app.universal_tab = UniversalTab(notebook, self.app)
         notebook.add(self.app.universal_tab.get_frame(), text="🌍 通用生成器")
         
+        from gui.tabs.img2img import Img2ImgTab
         self.app.img2img_tab = Img2ImgTab(notebook, self.app)
         notebook.add(self.app.img2img_tab.get_frame(), text="🖼️ 图生图")
         
+        from gui.tabs.interrogate import InterrogateTab
         self.app.interrogate_tab = InterrogateTab(notebook, self.app)
         notebook.add(self.app.interrogate_tab.get_frame(), text="🔍 图片反推")
         
+        from gui.tabs.janus_tab import JanusTab
         self.app.janus_tab = JanusTab(notebook, self.app, self.app.model_manager)
         notebook.add(self.app.janus_tab.get_frame(), text="🤖 Janus-Pro")
         
+        from gui.tabs.grid_test_tab import GridTestTab
         self.app.grid_test_tab = GridTestTab(notebook, self.app)
         notebook.add(self.app.grid_test_tab.frame, text="🧪 网格测试")
         
+        from gui.tabs.pipeline_tab import PipelineTab
         self.app.pipeline_tab = PipelineTab(notebook, self.app)
         notebook.add(self.app.pipeline_tab.get_frame(), text="🔧 流水线")
         
+        from gui.tabs.lora_manager import LoraManagerTab
         self.app.lora_manager_tab = LoraManagerTab(notebook, self.app)
         notebook.add(self.app.lora_manager_tab.get_frame(), text="🔧 LoRA 管理")
         
+        from gui.tabs.chat_tab import ChatTab
         self.app.chat_tab = ChatTab(notebook, self.app)
         notebook.add(self.app.chat_tab.get_frame(), text="💬 智能生图")
         

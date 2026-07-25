@@ -88,6 +88,21 @@ from .controlnet import (
     CONTROLNET_CONFIG,
 )
 
+from .performance import (
+    timer,
+    async_task,
+    PerformanceMonitor,
+    perf_monitor,
+    start_timer,
+    get_elapsed,
+    log_startup,
+)
+
+from .image_cache import (
+    ImageCache,
+    image_cache,
+)
+
 __all__ = [
     'ModuleDiscovery',
     
