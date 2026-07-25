@@ -23,6 +23,9 @@ from .utils import log
 from gui.components.memory_monitor import force_memory_cleanup, get_memory_usage
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class Img2ImgTab(BaseTab):
     """图生图标签页"""
     
@@ -150,7 +153,7 @@ class Img2ImgTab(BaseTab):
             self.preview_label.config(image=photo)
             self.preview_label.image = photo
         except Exception as e:
-            print(f"⚠️ 预览失败: {e}")
+            logger.info(f"⚠️ 预览失败: {e}")
     
     # ==================== 模板 ====================
     
@@ -245,9 +248,9 @@ class Img2ImgTab(BaseTab):
             combo_info = combos.get(combo_name, list(combos.values())[0])
             controlnet_types = combo_info["types"]
             conditioning_scales = combo_info["scales"]
-            print(f"🧠 ControlNet 组合: {combo_name}")
-            print(f"   类型: {controlnet_types}")
-            print(f"   权重: {conditioning_scales}")
+            logger.info(f"🧠 ControlNet 组合: {combo_name}")
+            logger.info(f"   类型: {controlnet_types}")
+            logger.info(f"   权重: {conditioning_scales}")
         
         self.update_status(f"🎨 开始图生图... (共 {total_tasks} 张)")
         self.generate_btn.config(state=tk.DISABLED)

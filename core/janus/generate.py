@@ -11,6 +11,9 @@ from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class JanusGenerate:
     """Janus-Pro 文生图（功能有限）"""
     
@@ -21,7 +24,7 @@ class JanusGenerate:
         self._loaded = False
     
     def _log(self, msg: str):
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
+        logger.info(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
     
     def _ensure_loaded(self):
         if self._loaded:

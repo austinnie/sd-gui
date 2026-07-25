@@ -16,6 +16,9 @@ from .backends import (
     BlipBackend,
     CombinedBackend,
     LLMBackend,  # ✅ 新增
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 )
 
 
@@ -69,7 +72,7 @@ class InterrogateTab(BaseTab):
             self.preview_label.config(image=photo)
             self.preview_label.image = photo
         except Exception as e:
-            print(f"⚠️ 预览失败: {e}")
+            logger.info(f"⚠️ 预览失败: {e}")
     
     def _on_backend_changed(self, event):
         """后端切换"""

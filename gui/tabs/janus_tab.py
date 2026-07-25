@@ -19,6 +19,9 @@ from gui.components.memory_monitor import force_memory_cleanup
 from config.app_config import app_config
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class JanusTab(BaseTab):
     """Janus-Pro 多功能标签页"""
     
@@ -66,7 +69,7 @@ class JanusTab(BaseTab):
             try:
                 cb()
             except Exception as e:
-                print(f"⚠️ 取消回调执行失败: {e}")
+                logger.info(f"⚠️ 取消回调执行失败: {e}")
 
     # ============================================================
     # ✅ 修改：取消命令
@@ -353,7 +356,7 @@ class JanusTab(BaseTab):
                     self.result_text.delete("1.0", tk.END)
                     self.result_text.insert("1.0", "✅ Janus 模型加载完成\n\n现在可以使用 Janus 功能了！")
             except Exception as e:
-                print(f"⚠️ 更新结果文本框失败: {e}")
+                logger.info(f"⚠️ 更新结果文本框失败: {e}")
         else:
             self._on_operation_error("Janus 模型加载失败")
             messagebox.showerror("错误", "Janus 模型加载失败，请查看控制台输出")
@@ -390,7 +393,7 @@ class JanusTab(BaseTab):
             #self._update_model_status()
             
         except Exception as e:
-            print(f"⚠️ 模式切换失败: {e}")
+            logger.info(f"⚠️ 模式切换失败: {e}")
             import traceback
             traceback.print_exc()
     
@@ -797,7 +800,7 @@ class JanusTab(BaseTab):
                 self.result_text.delete("1.0", tk.END)
                 self.result_text.insert("1.0", result)
         except Exception as e:
-            print(f"⚠️ 更新结果文本框失败: {e}")
+            logger.info(f"⚠️ 更新结果文本框失败: {e}")
 
     # ============================================================
     # ✅ 修改：操作错误 - 清理取消回调
@@ -818,7 +821,7 @@ class JanusTab(BaseTab):
                 self.result_text.delete("1.0", tk.END)
                 self.result_text.insert("1.0", f"❌ 操作失败:\n{error}")
         except Exception as e:
-            print(f"⚠️ 更新结果文本框失败: {e}")
+            logger.info(f"⚠️ 更新结果文本框失败: {e}")
         
     def cancel_generation_cmd(self):
         self.cancel_generation = True

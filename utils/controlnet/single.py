@@ -15,6 +15,9 @@ from .pipeline import get_controlnet_pipeline
 from .types import get_controlnet_info
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 # ControlNet 强度映射
 CONTROLNET_STRENGTH_MAP = {
     "openpose": 0.85,
@@ -52,10 +55,10 @@ def process_with_controlnet(
     使用 ControlNet 处理图生图
     """
     print("=" * 60)
-    print("🔍 [ControlNet 调试] process_with_controlnet 被调用")
-    print(f"   selected_images: {len(selected_images)} 张")
-    print(f"   prompt: {prompt[:50]}...")
-    print(f"   controlnet_type: {controlnet_type}")
+    logger.info(f"🔍 [ControlNet 调试] process_with_controlnet 被调用")
+    logger.info(f"   selected_images: {len(selected_images)} 张")
+    logger.info(f"   prompt: {prompt[:50]}...")
+    logger.info(f"   controlnet_type: {controlnet_type}")
     print("=" * 60)
     
     if not selected_images:
@@ -78,7 +81,7 @@ def process_with_controlnet(
         return False, []
     
     conditioning_scale = CONTROLNET_STRENGTH_MAP.get(controlnet_type, 0.80)
-    print(f"   🎛️ ControlNet 强度: {conditioning_scale:.2f} ({controlnet_type})")
+    logger.info(f"   🎛️ ControlNet 强度: {conditioning_scale:.2f} ({controlnet_type})")
     
     generated_images = []
     total = len(selected_images)

@@ -5,6 +5,9 @@ from typing import Dict, Any, Optional, Callable, Type
 from .step import PipelineStep, StepContext, StepResult, StepStatus
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class Pipeline:
     """流水线 - 包含多个步骤"""
     
@@ -33,7 +36,7 @@ class Pipeline:
         for idx, step in enumerate(self.steps):
             # ✅ 在每一步开始前检查取消
             if context.is_cancelled():
-                print(f"⏹️ 流水线在步骤 '{step.name}' 前被取消")
+                logger.info(f"⏹️ 流水线在步骤 '{step.name}' 前被取消")
                 self.results[step.name] = StepResult(
                     status=StepStatus.FAILED,
                     error="用户取消"
@@ -57,7 +60,7 @@ class Pipeline:
                 if not result.success:
                     # 检查是否是取消导致的失败
                     if result.error and ("取消" in result.error or "cancelled" in result.error.lower()):
-                        print(f"⏹️ 步骤 '{step.name}' 因取消而停止")
+                        logger.info(f"⏹️ 步骤 '{step.name}' 因取消而停止")
                     break
                     
             except Exception as e:
@@ -70,7 +73,7 @@ class Pipeline:
                 )
                 
                 if is_cancelled:
-                    print(f"⏹️ 流水线在步骤 '{step.name}' 被取消")
+                    logger.info(f"⏹️ 流水线在步骤 '{step.name}' 被取消")
                 break
         
         return self.results
@@ -137,6 +140,6 @@ class PipelineRegistry:
                 step.set_config(step_config.get("config", {}))
                 pipeline.add_step(step)
             else:
-                print(f"⚠️ 未找到步骤类型: {step_type_name}")
+                logger.info(f"⚠️ 未找到步骤类型: {step_type_name}")
         
         return pipeline

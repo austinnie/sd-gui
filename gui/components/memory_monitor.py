@@ -10,6 +10,9 @@ import psutil
 import torch
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 def get_memory_usage():
     """获取当前进程内存使用量 (GB)"""
     return psutil.Process().memory_info().rss / 1024 / 1024 / 1024
@@ -23,12 +26,12 @@ def get_memory_usage_mb():
 def force_memory_cleanup():
     """强制执行内存清理"""
     import gc
-    print("   🔧 执行内存清理...")
+    logger.info(f"   🔧 执行内存清理...")
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
         torch.cuda.synchronize()
-    print(f"   ✅ 内存清理完成，当前内存: {get_memory_usage():.1f} GB")
+    logger.info(f"   ✅ 内存清理完成，当前内存: {get_memory_usage():.1f} GB")
 
 
 class MemoryMonitor:

@@ -9,6 +9,9 @@ import os
 from typing import Optional
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class PostProcessConfig:
     """后期处理配置 - 用于命令行工具和模块化调用"""
     def __init__(self, clear_metadata=False, inject_exif=False, 
@@ -70,7 +73,7 @@ def post_process_image(
     # 如果传入的不是文件（比如是一个目录），则不进行任何处理，直接返回
     import os
     if not os.path.isfile(filepath):
-        print(f"{log_prefix} 跳过非文件路径: {filepath}")
+        logger.info(f"{log_prefix} 跳过非文件路径: {filepath}")
         return filepath
     # ===== 安全检查结束 =====
     
@@ -105,9 +108,9 @@ def post_process_image(
         try:
             from utils.imagemeta_cleaner import smart_clean_image
             final_path = smart_clean_image(final_path, method='jpg', jpg_quality=92)
-            print(f"🧹 {log_prefix} 元数据已清理: {os.path.basename(final_path)}")
+            logger.info(f"🧹 {log_prefix} 元数据已清理: {os.path.basename(final_path)}")
         except Exception as e:
-            print(f"⚠️ {log_prefix} 元数据清理失败: {e}")
+            logger.info(f"⚠️ {log_prefix} 元数据清理失败: {e}")
     
     # ===== 2. 照片真实化（包含 EXIF 注入） =====
     if need_realistic:
@@ -120,9 +123,9 @@ def post_process_image(
                 strength=strength,
                 inject_exif_data=True
             )
-            print(f"📷 {log_prefix} 照片真实化完成: {os.path.basename(final_path)}")
+            logger.info(f"📷 {log_prefix} 照片真实化完成: {os.path.basename(final_path)}")
         except Exception as e:
-            print(f"⚠️ {log_prefix} 照片真实化失败: {e}")
+            logger.info(f"⚠️ {log_prefix} 照片真实化失败: {e}")
     
     # ===== 3. 只注入 EXIF（如果真实化没开，但 EXIF 开关开了） =====
     if need_exif and not need_realistic:
@@ -130,8 +133,8 @@ def post_process_image(
             from utils.exif_injector import inject_exif
             
             final_path = inject_exif(final_path, camera=camera)
-            print(f"📷 {log_prefix} EXIF 已注入: {os.path.basename(final_path)}")
+            logger.info(f"📷 {log_prefix} EXIF 已注入: {os.path.basename(final_path)}")
         except Exception as e:
-            print(f"⚠️ {log_prefix} EXIF 注入失败: {e}")
+            logger.info(f"⚠️ {log_prefix} EXIF 注入失败: {e}")
     
     return final_path

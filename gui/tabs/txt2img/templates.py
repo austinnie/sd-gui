@@ -8,6 +8,9 @@ from typing import Dict, List, Optional
 from services.prompt_template_service import prompt_service
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class TemplateManager:
     """提示词模板管理器"""
     
@@ -34,10 +37,10 @@ class TemplateManager:
             ]
             self.template_icons[cat.name] = cat.icon
             self.template_priority[cat.name] = cat.priority
-            print(f"📁 {cat.name}: {len(templates)} 个模板")
+            logger.info(f"📁 {cat.name}: {len(templates)} 个模板")
         
         total = sum(len(t) for t in self.templates.values())
-        print(f"✅ 总计加载 {len(self.templates)} 个分类, {total} 个模板")
+        logger.info(f"✅ 总计加载 {len(self.templates)} 个分类, {total} 个模板")
         
         return self.templates
     

@@ -9,6 +9,9 @@ from typing import Optional, Dict, Tuple
 from datetime import datetime
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class JanusChat:
     """Janus-Pro 对话器 - 纯文本多轮对话"""
     
@@ -20,7 +23,7 @@ class JanusChat:
         self._history = []
     
     def _log(self, msg: str):
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
+        logger.info(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
     
     def _ensure_loaded(self):
         if self._loaded:

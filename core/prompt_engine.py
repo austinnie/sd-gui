@@ -8,6 +8,9 @@ from typing import Dict, List, Optional, Tuple
 from .config_loader import config
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class PromptEngine:
     """提示词引擎 - 负责组合和优化提示词"""
     
@@ -88,7 +91,7 @@ class PromptEngine:
             result = result[:self.max_prompt_length]
         
         if len(result) < len(prompt):
-            print(f"✂️ 提示词已精简: {len(prompt)} -> {len(result)} 字符")
+            logger.info(f"✂️ 提示词已精简: {len(prompt)} -> {len(result)} 字符")
         
         return result
     

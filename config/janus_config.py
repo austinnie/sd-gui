@@ -10,6 +10,9 @@ from pathlib import Path
 from dataclasses import dataclass
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 def resolve_path(path: str, base_dir: str = None) -> str:
     """解析路径为绝对路径"""
     if base_dir is None:
@@ -119,9 +122,9 @@ class JanusAppConfig:
                 with open(config_path, 'r', encoding='utf-8') as f:
                     user_config = json.load(f)
                 default_config = cls._merge_config(default_config, user_config)
-                print(f"✅ 已加载 Janus 配置: {config_path}")
+                logger.info(f"✅ 已加载 Janus 配置: {config_path}")
             except Exception as e:
-                print(f"⚠️ 加载配置失败: {e}，使用默认配置")
+                logger.info(f"⚠️ 加载配置失败: {e}，使用默认配置")
         
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         
@@ -182,8 +185,8 @@ class JanusAppConfig:
 # 全局配置实例
 janus_config = JanusAppConfig.get_instance()
 
-print("\n📁 Janus 配置路径:")
-print(f"   Janus 1B: {janus_config.janus.get_resolved_1b_path()}")
-print(f"   Janus 7B: {janus_config.janus.get_resolved_7b_path()}")
-print(f"   输出目录: {janus_config.paths.get_resolved_output_dir()}")
+logger.info(f"\n📁 Janus 配置路径:")
+logger.info(f"   Janus 1B: {janus_config.janus.get_resolved_1b_path()}")
+logger.info(f"   Janus 7B: {janus_config.janus.get_resolved_7b_path()}")
+logger.info(f"   输出目录: {janus_config.paths.get_resolved_output_dir()}")
 print()

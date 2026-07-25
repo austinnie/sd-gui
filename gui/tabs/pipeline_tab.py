@@ -18,6 +18,9 @@ from core.pipeline.scene_counter import get_total_scenes
 from gui.tabs.pipeline_ui import PipelineUI
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class PipelineTab(BaseTab):
     """流水线标签页 - 精简版"""
     
@@ -110,7 +113,7 @@ class PipelineTab(BaseTab):
         if scene_details:
             self.scenes_info_var.set(f"共 {len(scene_details)} 个步骤, 总计 {total_scenes} 个场景")
             # 可选：在日志中输出详细信息
-            print(f"📊 场景统计: {', '.join(scene_details)}")
+            logger.info(f"📊 场景统计: {', '.join(scene_details)}")
         else:
             self.scenes_info_var.set("无场景数据")
         

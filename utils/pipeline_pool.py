@@ -16,6 +16,9 @@ from diffusers import (
     StableDiffusionPipeline,
     StableDiffusionXLPipeline,
     EulerDiscreteScheduler,
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 )
 import psutil  # 顶部添加导入
 from config.app_config import app_config
@@ -63,18 +66,18 @@ class PipelinePool:
             if key in self._pipelines:
                 self._pipelines[key]["ref_count"] += 1
                 self._pipelines.move_to_end(key)
-                print(f"🔗 复用 Pipeline: {os.path.basename(model_path)} (引用: {self._pipelines[key]['ref_count']})")
+                logger.info(f"🔗 复用 Pipeline: {os.path.basename(model_path)} (引用: {self._pipelines[key]['ref_count']})")
                 return self._pipelines[key]["pipe"], False
             
             # 检查是否已达最大实例数
             if len(self._pipelines) >= self._max_instances:
                 oldest_key, oldest_data = self._pipelines.popitem(last=False)
                 self._release_pipe_internal(oldest_data)
-                print(f"🗑️ 释放旧的 Pipeline (达到上限 {self._max_instances})")
+                logger.info(f"🗑️ 释放旧的 Pipeline (达到上限 {self._max_instances})")
                 gc.collect()
             
             # 创建新 pipeline
-            print(f"📦 创建新的 Pipeline ({self._total_created + 1}): {os.path.basename(model_path)} (任务: {task_id})")
+            logger.info(f"📦 创建新的 Pipeline ({self._total_created + 1}): {os.path.basename(model_path)} (任务: {task_id})")
             
             is_sdxl = 'xl' in model_name.lower() or 'sdxl' in model_name.lower()
             
@@ -105,10 +108,10 @@ class PipelinePool:
                 # 加载 LoRA
                 if lora_path and os.path.exists(lora_path):
                     try:
-                        print(f"   🔗 加载 LoRA: {os.path.basename(lora_path)} (权重: {lora_weight})")
+                        logger.info(f"   🔗 加载 LoRA: {os.path.basename(lora_path)} (权重: {lora_weight})")
                         pipe.load_lora_weights(lora_path)
                     except Exception as e:
-                        print(f"   ⚠️ LoRA 加载失败: {e}")
+                        logger.info(f"   ⚠️ LoRA 加载失败: {e}")
                 
                 # 配置调度器
                 pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
@@ -130,12 +133,12 @@ class PipelinePool:
                 # ✅ 添加内存信息
                 import psutil
                 mem_gb = psutil.Process().memory_info().rss / 1024 / 1024 / 1024
-                print(f"✅ Pipeline 创建完成 (任务: {task_id})")  # ← 加这行
+                logger.info(f"✅ Pipeline 创建完成 (任务: {task_id})")  # ← 加这行
                 
                 return pipe, True
                 
             except Exception as e:
-                print(f"❌ Pipeline 创建失败: {e}")
+                logger.info(f"❌ Pipeline 创建失败: {e}")
                 import traceback
                 traceback.print_exc()
                 raise
@@ -143,28 +146,28 @@ class PipelinePool:
     def release_pipeline(self, model_path: str, lora_path: str = None, task_id: str = None):
         """释放 pipeline 实例（引用计数 -1）"""
         key = self._get_key(model_path, lora_path, task_id)  # ✅ 传入 task_id
-        print(f"🔧 release_pipeline: task_id={task_id}, key={key}")
+        logger.info(f"🔧 release_pipeline: task_id={task_id}, key={key}")
         with self._lock:
             if key not in self._pipelines:
-                print(f"⚠️ Pipeline 不存在: {key}")
+                logger.info(f"⚠️ Pipeline 不存在: {key}")
                 # 列出所有现有的 key
-                print(f"   现有 keys: {list(self._pipelines.keys())}")            
+                logger.info(f"   现有 keys: {list(self._pipelines.keys())}")            
                 return
             
             self._pipelines[key]["ref_count"] -= 1
-            print(f"📊 Pipeline 引用计数: {self._pipelines[key]['ref_count']}")
+            logger.info(f"📊 Pipeline 引用计数: {self._pipelines[key]['ref_count']}")
             
             if self._pipelines[key]["ref_count"] <= 0:
                 data = self._pipelines.pop(key)
                 self._release_pipe_internal(data)
-                print(f"🗑️ 释放 Pipeline: {os.path.basename(model_path)} (任务: {task_id})")
+                logger.info(f"🗑️ 释放 Pipeline: {os.path.basename(model_path)} (任务: {task_id})")
 
                 # ✅ 推荐：先回收，再打印
                 gc.collect()
                 # ✅ 添加内存信息
                 import psutil
                 mem_gb = psutil.Process().memory_info().rss / 1024 / 1024 / 1024
-                print(f"   💾 释放后内存: {mem_gb:.1f} GB")
+                logger.info(f"   💾 释放后内存: {mem_gb:.1f} GB")
             
 
     
@@ -226,7 +229,7 @@ class PipelinePool:
                 self._pipelines[key]["lora_name"] = os.path.basename(lora_path) if lora_path else None
                 self._pipelines[key]["lora_weight"] = lora_weight if lora_path else None
                 self._pipelines[key]["last_used"] = datetime.now()
-                print(f"🔗 更新 LoRA 状态: {self._pipelines[key]['lora_name'] or '无'}")
+                logger.info(f"🔗 更新 LoRA 状态: {self._pipelines[key]['lora_name'] or '无'}")
                 
     def clear_all(self):
         """强制释放所有 pipeline"""
@@ -235,7 +238,7 @@ class PipelinePool:
                 self._release_pipe_internal(data)
             self._pipelines.clear()
             gc.collect()
-            print("🗑️ 所有 Pipeline 已清理")
+            logger.info(f"🗑️ 所有 Pipeline 已清理")
 
 
 # 全局单例

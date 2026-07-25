@@ -3,6 +3,23 @@
 """
 工具模块
 """
+from .logger import (
+    setup_logging,
+    get_logger,
+    set_level,
+    get_log_file,
+    get_log_dir,
+    debug,
+    info,
+    warning,
+    error,
+    critical,
+    print_info,
+    print_debug,
+    print_warning,
+    print_error,
+)
+
 from .module_discovery import ModuleDiscovery
 from .watermark_remover import WatermarkRemover, remove_watermark_from_file
 from .imagemeta_cleaner import (

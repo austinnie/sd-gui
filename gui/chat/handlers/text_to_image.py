@@ -9,6 +9,9 @@ from PIL import Image
 from .base_handler import BaseHandler
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class TextToImageHandler(BaseHandler):
     """文生图处理器"""
     
@@ -40,7 +43,7 @@ class TextToImageHandler(BaseHandler):
         prompt = self._clean_prompt_for_sd(prompt)
 
         print("\n" + "=" * 60)
-        print(f"📊 [文生图] 提示词: {prompt}")
+        logger.info(f"📊 [文生图] 提示词: {prompt}")
         print("=" * 60 + "\n")
 
         params = self._estimate_params(prompt)

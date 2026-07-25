@@ -15,6 +15,9 @@ from .pipeline import get_multi_controlnet_pipeline
 from .types import get_controlnet_info
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 def get_recommended_multi_controlnet_combos():
     """
     获取推荐的多层 ControlNet 组合
@@ -128,10 +131,10 @@ def process_with_multi_controlnet(
             conditioning_scales = [0.5] * len(controlnet_types)
     
     print("=" * 60)
-    print("🔍 [多层 ControlNet] process_with_multi_controlnet 被调用")
-    print(f"   selected_images: {len(selected_images)} 张")
-    print(f"   controlnet_types: {controlnet_types}")
-    print(f"   conditioning_scales: {conditioning_scales}")
+    logger.info(f"🔍 [多层 ControlNet] process_with_multi_controlnet 被调用")
+    logger.info(f"   selected_images: {len(selected_images)} 张")
+    logger.info(f"   controlnet_types: {controlnet_types}")
+    logger.info(f"   conditioning_scales: {conditioning_scales}")
     print("=" * 60)
     
     if not selected_images:
@@ -178,7 +181,7 @@ def process_with_multi_controlnet(
         
         for ctype in controlnet_types:
             info = get_controlnet_info(ctype)
-            print(f"   🎨 生成 {info['name']} 控制图...")
+            logger.info(f"   🎨 生成 {info['name']} 控制图...")
             
             control_img = preprocess_image_for_controlnet(
                 image_path,
@@ -187,9 +190,9 @@ def process_with_multi_controlnet(
             )
             if control_img is not None:
                 control_images.append(control_img)
-                print(f"      ✅ {ctype} 控制图已生成")
+                logger.info(f"      ✅ {ctype} 控制图已生成")
             else:
-                print(f"      ⚠️ {ctype} 控制图生成失败，使用原图")
+                logger.info(f"      ⚠️ {ctype} 控制图生成失败，使用原图")
                 control_images.append(init_image.copy())
         
         if not control_images:

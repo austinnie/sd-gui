@@ -5,6 +5,9 @@ import re
 from PIL import Image
 from .base import InterrogateBackend
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 _cli_interrogator = None
 
 # ✅ 添加导入
@@ -39,13 +42,13 @@ class ClipBackend(InterrogateBackend):
                 # ✅ 指定缓存目录
                 config.cache_path = cache_path
                 _cli_interrogator = Interrogator(config)
-                print("✅ CLIP Interrogator 加载成功")
-                print(f"   📁 缓存: {cache_path}")
+                logger.info(f"✅ CLIP Interrogator 加载成功")
+                logger.info(f"   📁 缓存: {cache_path}")
             except ImportError:
-                print("⚠️ CLIP Interrogator 未安装，使用 LLM 降级方案")
+                logger.info(f"⚠️ CLIP Interrogator 未安装，使用 LLM 降级方案")
                 return self._fallback_with_llm(image_path, mode)
             except Exception as e:
-                print(f"⚠️ CLIP 加载失败: {e}")
+                logger.info(f"⚠️ CLIP 加载失败: {e}")
                 return self._fallback_with_llm(image_path, mode)
         
         if _cli_interrogator is None:
@@ -68,12 +71,12 @@ class ClipBackend(InterrogateBackend):
             return result
             
         except Exception as e:
-            print(f"⚠️ CLIP 推理失败: {e}")
+            logger.info(f"⚠️ CLIP 推理失败: {e}")
             return self._fallback_with_llm(image_path, mode)
     
     def _fallback_with_llm(self, image_path: str, mode: str) -> str:
         """使用 BLIP + LLM 作为降级方案"""
-        print("🔄 使用 BLIP + LLM 降级方案...")
+        logger.info(f"🔄 使用 BLIP + LLM 降级方案...")
         
         # 1. 先用 BLIP 生成描述
         from .blip import BlipBackend
@@ -85,7 +88,7 @@ class ClipBackend(InterrogateBackend):
         
         # 2. ✅ 直接使用 llm_service
         if llm_service.is_available():
-            print("🧠 使用 LLM 增强描述...")
+            logger.info(f"🧠 使用 LLM 增强描述...")
             prompt = f"""请将以下图片描述转换为 Stable Diffusion 提示词格式（英文，用逗号分隔）：
 
 原始描述：{caption}

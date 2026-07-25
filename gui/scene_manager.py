@@ -9,6 +9,9 @@ from typing import Dict, List, Optional, Any
 from config.config_manager import config_manager
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class SceneManager:
     """场景管理器"""
     
@@ -24,7 +27,7 @@ class SceneManager:
         
         # 如果配置为空，创建默认配置
         if not self.scene_config:
-            print("⚠️ 场景配置为空，创建默认配置")
+            logger.info(f"⚠️ 场景配置为空，创建默认配置")
             self._create_default_config()
             # 保存到文件
             self.save_config()
@@ -475,9 +478,9 @@ class SceneManager:
         try:
             with open(self.config_path, 'w', encoding='utf-8') as f:
                 json.dump(self.scene_config, f, ensure_ascii=False, indent=2)
-            print(f"✅ 已保存场景配置: {self.config_path}")
+            logger.info(f"✅ 已保存场景配置: {self.config_path}")
         except Exception as e:
-            print(f"❌ 保存场景配置失败: {e}")
+            logger.info(f"❌ 保存场景配置失败: {e}")
     
     # ===== 以下所有方法保持不变 =====
     

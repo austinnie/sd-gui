@@ -11,6 +11,9 @@ from diffusers import ControlNetModel, StableDiffusionControlNetPipeline, EulerD
 from utils.controlnet import get_controlnet_info, preprocess_image_for_controlnet
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class ControlNetMixin:
     """ControlNet 混入类 - 提供 ControlNet 加载、预处理和场景数限制功能"""
     
@@ -26,7 +29,7 @@ class ControlNetMixin:
         """获取 ControlNet Pipeline"""
         try:
             info = get_controlnet_info(controlnet_type)
-            print(f"   📦 加载 ControlNet: {info['name']}")
+            logger.info(f"   📦 加载 ControlNet: {info['name']}")
             
             controlnet = ControlNetModel.from_pretrained(
                 info["model_id"],
@@ -51,11 +54,11 @@ class ControlNetMixin:
                 pipe.vae.enable_tiling()
             pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
             
-            print(f"   ✅ ControlNet Pipeline 加载完成: {info['name']}")
+            logger.info(f"   ✅ ControlNet Pipeline 加载完成: {info['name']}")
             return pipe
             
         except Exception as e:
-            print(f"   ⚠️ ControlNet 加载失败: {e}，回退到普通模式")
+            logger.info(f"   ⚠️ ControlNet 加载失败: {e}，回退到普通模式")
             return None
     
     def _preprocess_for_controlnet(self, image_path: str, controlnet_type: str = "canny", 
@@ -68,10 +71,10 @@ class ControlNetMixin:
                 output_size=target_size
             )
             if result:
-                print(f"   ✅ 控制图已生成: {result.size}")
+                logger.info(f"   ✅ 控制图已生成: {result.size}")
             return result
         except Exception as e:
-            print(f"   ⚠️ ControlNet 预处理失败: {e}")
+            logger.info(f"   ⚠️ ControlNet 预处理失败: {e}")
             return None
     
     # ============================================================
@@ -102,20 +105,20 @@ class ControlNetMixin:
         if use_controlnet and model_path:
             # ✅ 检查取消
             if context and context.is_cancelled():
-                print("   ⏹️ 用户在加载 ControlNet 前取消了")
+                logger.info(f"   ⏹️ 用户在加载 ControlNet 前取消了")
                 return None, None, False
             
             try:
                 # ✅ 检查取消
                 if context and context.is_cancelled():
-                    print("   ⏹️ 用户在加载 ControlNet 时取消了")
+                    logger.info(f"   ⏹️ 用户在加载 ControlNet 时取消了")
                     return None, None, False
                 
                 pipe = self._get_controlnet_pipeline(model_path, controlnet_type)
                 
                 # ✅ 检查取消
                 if context and context.is_cancelled():
-                    print("   ⏹️ 用户在加载 ControlNet 后取消了")
+                    logger.info(f"   ⏹️ 用户在加载 ControlNet 后取消了")
                     return None, None, False
                 
                 if pipe:
@@ -126,15 +129,15 @@ class ControlNetMixin:
                         target_size=(w, h)
                     )
                     if control_image:
-                        print(f"   🧠 使用 ControlNet: {controlnet_type} (强度: {controlnet_strength})")
+                        logger.info(f"   🧠 使用 ControlNet: {controlnet_type} (强度: {controlnet_strength})")
                     else:
-                        print("   ⚠️ 控制图生成失败，使用普通模式")
+                        logger.info(f"   ⚠️ 控制图生成失败，使用普通模式")
                         pipe = None
                         control_image = None
                 else:
-                    print("   ⚠️ ControlNet 不可用，使用普通模式")
+                    logger.info(f"   ⚠️ ControlNet 不可用，使用普通模式")
             except Exception as e:
-                print(f"   ⚠️ ControlNet 设置失败: {e}，使用普通模式")
+                logger.info(f"   ⚠️ ControlNet 设置失败: {e}，使用普通模式")
                 pipe = None
                 control_image = None
         
@@ -195,7 +198,7 @@ class ControlNetMixin:
             return prompts
         
         limited = prompts[:max_scenes]
-        print(f"   📊 场景限制: 只生成前 {len(limited)}/{len(prompts)} 个场景")
+        logger.info(f"   📊 场景限制: 只生成前 {len(limited)}/{len(prompts)} 个场景")
         return limited
     
     def _get_prompt_count(self, prompts: List[Any]) -> int:

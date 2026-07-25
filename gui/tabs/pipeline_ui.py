@@ -6,6 +6,9 @@ from tkinter import ttk, filedialog
 from PIL import Image, ImageTk
 from typing import TYPE_CHECKING
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 if TYPE_CHECKING:
     from .pipeline_tab import PipelineTab
 
@@ -374,7 +377,7 @@ class PipelineUI:
             self.tab.preview_label.config(image=photo)
             self.tab.preview_label.image = photo
         except Exception as e:
-            print(f"⚠️ 预览失败: {e}")
+            logger.info(f"⚠️ 预览失败: {e}")
     
     def clear_preview(self):
         """清除预览"""

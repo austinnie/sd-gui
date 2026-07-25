@@ -12,6 +12,9 @@ from .callbacks import Txt2ImgStepCallback
 from .saver import ImageSaver
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class ImageGenerator:
     """文生图图片生成器"""
     
@@ -84,7 +87,7 @@ class ImageGenerator:
         if self.params.remove_watermark_var.get():
             strength = self.params.watermark_strength_var.get()
             enhanced_negative = watermark_remover.get_enhanced_negative(enhanced_negative, strength)
-            print(f"✅ 负面提示词已增强 (水印强度: {strength})")
+            logger.info(f"✅ 负面提示词已增强 (水印强度: {strength})")
         
         # 获取高清修复参数
         hires_enabled = self.params.hires_fix_var.get()
@@ -152,7 +155,7 @@ class ImageGenerator:
                     low_res_w = max(512, ((low_res_w + 31) // 64) * 64)
                     low_res_h = max(512, ((low_res_h + 31) // 64) * 64)
                     
-                    print(f"📐 启用高清修复: 初稿 {low_res_w}x{low_res_h} -> 最终 {width}x{height}")
+                    logger.info(f"📐 启用高清修复: 初稿 {low_res_w}x{low_res_h} -> 最终 {width}x{height}")
                     progress_cb((index - 1) / total, f"🎨 生成初稿 ({low_res_w}x{low_res_h})...")
                     
                     if use_controlnet and control_image is not None:

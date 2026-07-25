@@ -10,6 +10,9 @@ from datetime import datetime
 from PIL import Image
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class JanusUnderstand:
     """Janus-Pro 图片理解器 - 图生文"""
     
@@ -20,7 +23,7 @@ class JanusUnderstand:
         self._loaded = False
     
     def _log(self, msg: str):
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
+        logger.info(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
     
     def _ensure_loaded(self):
         if self._loaded:
@@ -110,7 +113,7 @@ class JanusUnderstand:
             )
             
             print("=" * 60)
-            print("📝 分析结果:")
+            logger.info(f"📝 分析结果:")
             print(answer)
             print("=" * 60)
     

@@ -10,6 +10,9 @@ import json
 import os
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class ContentLevel(Enum):
     """内容等级"""
     SAFE = "safe"              # 安全 - 纯艺术/时尚
@@ -81,9 +84,9 @@ class NSFWConfig:
                 default.nsfw_keywords = data.get("nsfw_keywords", default._get_default_nsfw_keywords())
                 default.safe_keywords = data.get("safe_keywords", default._get_default_safe_keywords())
                 
-                print(f"✅ NSFW 配置已加载: 等级={default.level.value}")
+                logger.info(f"✅ NSFW 配置已加载: 等级={default.level.value}")
             except Exception as e:
-                print(f"⚠️ NSFW 配置加载失败: {e}，使用默认配置")
+                logger.info(f"⚠️ NSFW 配置加载失败: {e}，使用默认配置")
         else:
             # 创建默认配置
             default._save_default_config(config_path)
@@ -133,7 +136,7 @@ class NSFWConfig:
         os.makedirs(os.path.dirname(config_path) or '.', exist_ok=True)
         with open(config_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
-        print(f"📄 已创建默认 NSFW 配置: {config_path}")
+        logger.info(f"📄 已创建默认 NSFW 配置: {config_path}")
     
     def save(self, config_path: str = "data/configs/nsfw_config.json"):
         """保存配置"""

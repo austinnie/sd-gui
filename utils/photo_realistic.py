@@ -12,6 +12,9 @@ from typing import Optional, Dict, Literal
 from .exif_injector import inject_exif
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 def add_realistic_features(
     image: Image.Image,
     iso: int = 400,
@@ -47,7 +50,7 @@ def add_realistic_features(
         noise_strength = max(1, min(20, iso / 50))  # ISO 100 -> 2, ISO 3200 -> 64
         noise = np.random.normal(0, noise_strength, img_cv.shape).astype(np.uint8)
         img_cv = cv2.add(img_cv, noise)
-        print(f"   📷 添加噪点 (ISO {iso} -> 强度 {noise_strength:.1f})")
+        logger.info(f"   📷 添加噪点 (ISO {iso} -> 强度 {noise_strength:.1f})")
     
     # 2. 添加暗角
     if add_vignette:
@@ -57,7 +60,7 @@ def add_realistic_features(
         mask = 1 - kernel * 0.25  # 暗角强度
         for i in range(3):
             img_cv[:, :, i] = (img_cv[:, :, i] * mask).astype(np.uint8)
-        print(f"   📷 添加暗角")
+        logger.info(f"   📷 添加暗角")
     
     # 3. 添加镜头畸变 (广角端畸变更明显)
     if add_lens_distortion:
@@ -90,7 +93,7 @@ def add_realistic_features(
                     K, dist_coeffs, np.eye(3), K, (w, h), cv2.CV_32FC1
                 )
                 img_cv = cv2.remap(img_cv, map1, map2, cv2.INTER_LINEAR)
-                print(f"   📷 添加镜头畸变 (焦距 {focal_length}mm -> 强度 {distortion:.4f})")
+                logger.info(f"   📷 添加镜头畸变 (焦距 {focal_length}mm -> 强度 {distortion:.4f})")
             except:
                 pass
     
@@ -99,7 +102,7 @@ def add_realistic_features(
         kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]]) * 0.8 + 0.2 * np.eye(3)
         kernel = kernel / np.sum(kernel)
         img_cv = cv2.filter2D(img_cv, -1, kernel)
-        print(f"   📷 添加锐化")
+        logger.info(f"   📷 添加锐化")
     
     return Image.fromarray(cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB))
 
@@ -171,7 +174,7 @@ def make_photo_realistic(
         fnumber = style_preset.get("FNumber", [2.8])[0]
         focal_length = style_preset.get("FocalLength", [50])[0]
     
-    print(f"📷 真实化处理: ISO={iso}, F={fnumber}, 焦距={focal_length}mm")
+    logger.info(f"📷 真实化处理: ISO={iso}, F={fnumber}, 焦距={focal_length}mm")
     
     # 添加真实相机特征
     image = add_realistic_features(
@@ -187,7 +190,7 @@ def make_photo_realistic(
     
     # 保存为 JPG
     image.save(output_path, format='JPEG', quality=92, optimize=True)
-    print(f"✅ 图片已保存: {output_path}")
+    logger.info(f"✅ 图片已保存: {output_path}")
     
     # 注入 EXIF
     if inject_exif_data:

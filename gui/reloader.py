@@ -13,6 +13,9 @@ from tkinter import messagebox
 from typing import List, Optional
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class Reloader:
     """热重载器"""
     
@@ -143,7 +146,7 @@ class Reloader:
         """执行完整热重载"""
         self.app.update_status("🔄 正在重载模块...")
         print("\n" + "=" * 70)
-        print("🔄 开始热重载模块 (自举 + 两步重载法)")
+        logger.info(f"🔄 开始热重载模块 (自举 + 两步重载法)")
         print("=" * 70)
         
         # 第一步：重载配置模块
@@ -169,7 +172,7 @@ class Reloader:
     
     def _reload_config_modules(self) -> bool:
         """重载配置模块"""
-        print("\n📦 第一步: 重载配置模块")
+        logger.info(f"\n📦 第一步: 重载配置模块")
         
         config_modules = [
             'config.app_config',
@@ -181,9 +184,9 @@ class Reloader:
             try:
                 if mod_name in sys.modules:
                     importlib.reload(sys.modules[mod_name])
-                    print(f"   ✅ 重载: {mod_name}")
+                    logger.info(f"   ✅ 重载: {mod_name}")
             except Exception as e:
-                print(f"   ❌ 重载失败 {mod_name}: {e}")
+                logger.info(f"   ❌ 重载失败 {mod_name}: {e}")
                 return False
         
         # 更新配置到 UI
@@ -194,31 +197,31 @@ class Reloader:
                 steps=AppConfig.get_instance().generation.steps["default"],
                 cfg=AppConfig.get_instance().generation.cfg["default"]
             )
-            print("   ✅ 配置已更新到 UI")
+            logger.info(f"   ✅ 配置已更新到 UI")
         except Exception as e:
-            print(f"   ⚠️ 配置更新失败: {e}")
+            logger.info(f"   ⚠️ 配置更新失败: {e}")
         
         return True
     
     def _reload_module_discovery(self):
         """自举：重载 ModuleDiscovery"""
-        print("\n📦 第二步: 自举 - 重载 ModuleDiscovery")
+        logger.info(f"\n📦 第二步: 自举 - 重载 ModuleDiscovery")
         
         try:
             if 'utils.module_discovery' in sys.modules:
                 importlib.reload(sys.modules['utils.module_discovery'])
-                print("   ✅ 自举成功: ModuleDiscovery 已重载")
+                logger.info(f"   ✅ 自举成功: ModuleDiscovery 已重载")
         except Exception as e:
-            print(f"   ⚠️ 自举失败: {e}")
+            logger.info(f"   ⚠️ 自举失败: {e}")
     
     def _discover_modules(self) -> Optional[List[str]]:
         """发现所有模块"""
-        print("\n📦 第三步: 发现所有模块")
+        logger.info(f"\n📦 第三步: 发现所有模块")
         
         try:
             from utils.module_discovery import ModuleDiscovery
             all_modules = ModuleDiscovery.discover(force=True)
-            print(f"   📋 发现 {len(all_modules)} 个模块")
+            logger.info(f"   📋 发现 {len(all_modules)} 个模块")
             
             categories = {}
             for mod in all_modules:
@@ -226,19 +229,19 @@ class Reloader:
                 categories[category] = categories.get(category, 0) + 1
             
             for cat, count in categories.items():
-                print(f"      - {cat}: {count} 个模块")
+                logger.info(f"      - {cat}: {count} 个模块")
             
             return all_modules
             
         except Exception as e:
-            print(f"   ❌ 模块发现失败: {e}")
+            logger.info(f"   ❌ 模块发现失败: {e}")
             import traceback
             traceback.print_exc()
             return None
     
     def _reload_business_modules(self, all_modules: List[str]) -> tuple:
         """重载业务模块"""
-        print("\n📦 第四步: 重载业务模块")
+        logger.info(f"\n📦 第四步: 重载业务模块")
         
         already_reloaded = {
             'config.app_config', 'config.nsfw_config', 'config.janus_config',
@@ -257,7 +260,7 @@ class Reloader:
             and not m.endswith('.tests')
         ]
         
-        print(f"   📋 需要重载的业务模块: {len(modules_to_reload)} 个")
+        logger.info(f"   📋 需要重载的业务模块: {len(modules_to_reload)} 个")
         
         reloaded = []
         failed = []
@@ -270,42 +273,42 @@ class Reloader:
                 else:
                     pass
             except Exception as e:
-                print(f"   ❌ 重载失败 {mod_name}: {e}")
+                logger.info(f"   ❌ 重载失败 {mod_name}: {e}")
                 failed.append(mod_name)
         
         # 重新注册流水线步骤
         try:
             from core.pipeline import register_all_steps
             register_all_steps()
-            print("   ✅ 流水线步骤已重新注册")
+            logger.info(f"   ✅ 流水线步骤已重新注册")
         except Exception as e:
-            print(f"   ⚠️ 流水线步骤注册失败: {e}")
+            logger.info(f"   ⚠️ 流水线步骤注册失败: {e}")
         
         return reloaded, failed
     
     def _rebuild_ui(self):
         """重建 UI"""
-        print("\n📦 第五步: 重建 UI 组件")
-        print("   🔨 重建 UI 组件:")
+        logger.info(f"\n📦 第五步: 重建 UI 组件")
+        logger.info(f"   🔨 重建 UI 组件:")
         
         try:
             parent_frame = self.app.params_panel.frame.master
             self.app.params_panel.rebuild(parent_frame)
-            print("      ✅ 参数面板重建完成")
+            logger.info(f"      ✅ 参数面板重建完成")
         except Exception as e:
-            print(f"      ❌ 参数面板重建失败: {e}")
+            logger.info(f"      ❌ 参数面板重建失败: {e}")
         
         try:
             self._recreate_tabs()
-            print("      ✅ 标签页重建完成")
+            logger.info(f"      ✅ 标签页重建完成")
         except Exception as e:
-            print(f"      ❌ 标签页重建失败: {e}")
+            logger.info(f"      ❌ 标签页重建失败: {e}")
         
         try:
             self._recreate_nsfw_panel()
-            print("      ✅ NSFW 面板重建完成")
+            logger.info(f"      ✅ NSFW 面板重建完成")
         except Exception as e:
-            print(f"      ⚠️ NSFW 面板重建失败: {e}")
+            logger.info(f"      ⚠️ NSFW 面板重建失败: {e}")
         
         # 重新布局
         try:
@@ -316,9 +319,9 @@ class Reloader:
                     side=tk.TOP, fill=tk.X, padx=10, pady=5,
                     before=self.app.notebook
                 )
-                print("      ✅ 参数面板重定位完成")
+                logger.info(f"      ✅ 参数面板重定位完成")
         except Exception as e:
-            print(f"      ⚠️ 参数面板重定位失败: {e}")
+            logger.info(f"      ⚠️ 参数面板重定位失败: {e}")
         
         try:
             if hasattr(self.app, 'nsfw_panel') and self.app.nsfw_panel:
@@ -329,33 +332,33 @@ class Reloader:
                         side=tk.TOP, fill=tk.X, padx=10, pady=5,
                         before=self.app.notebook
                     )
-                    print("      ✅ NSFW 面板重定位完成")
+                    logger.info(f"      ✅ NSFW 面板重定位完成")
         except Exception as e:
-            print(f"      ⚠️ NSFW 面板重定位失败: {e}")
+            logger.info(f"      ⚠️ NSFW 面板重定位失败: {e}")
         
         try:
             self.app._update_model_ui()
-            print("      ✅ 模型状态已更新")
+            logger.info(f"      ✅ 模型状态已更新")
         except Exception as e:
-            print(f"      ⚠️ 模型状态更新失败: {e}")
+            logger.info(f"      ⚠️ 模型状态更新失败: {e}")
         
         try:
             if hasattr(self.app, '_update_lora_list'):
                 self.app._update_lora_list()
-                print("      ✅ LoRA 列表已刷新")
+                logger.info(f"      ✅ LoRA 列表已刷新")
         except Exception as e:
-            print(f"      ⚠️ LoRA 列表刷新失败: {e}")
+            logger.info(f"      ⚠️ LoRA 列表刷新失败: {e}")
         
         try:
             if hasattr(self.app, '_refresh_lora_viewer'):
                 self.app._refresh_lora_viewer()
-                print("      ✅ LoRA 信息查看器已刷新")
+                logger.info(f"      ✅ LoRA 信息查看器已刷新")
         except Exception as e:
-            print(f"      ⚠️ LoRA 信息查看器刷新失败: {e}")
+            logger.info(f"      ⚠️ LoRA 信息查看器刷新失败: {e}")
         
         try:
             self.app.root.update_idletasks()
-            print("      ✅ UI 刷新完成")
+            logger.info(f"      ✅ UI 刷新完成")
         except:
             pass
     
@@ -442,16 +445,16 @@ class Reloader:
                     before=self.app.notebook
                 )
         except Exception as e:
-            print(f"   ❌ NSFW 面板重建失败: {e}")
+            logger.info(f"   ❌ NSFW 面板重建失败: {e}")
     
     def _show_reload_result(self, reloaded: List[str], failed: List[str]):
         """显示重载结果"""
         print("\n" + "=" * 70)
-        print("📊 热重载结果统计:")
-        print(f"   ✅ 成功: {len(reloaded)} 个模块")
+        logger.info(f"📊 热重载结果统计:")
+        logger.info(f"   ✅ 成功: {len(reloaded)} 个模块")
         if failed:
-            print(f"   ❌ 失败: {len(failed)} 个模块")
-            print(f"      {', '.join(failed[:5])}{'...' if len(failed) > 5 else ''}")
+            logger.info(f"   ❌ 失败: {len(failed)} 个模块")
+            logger.info(f"      {', '.join(failed[:5])}{'...' if len(failed) > 5 else ''}")
         print("=" * 70)
         
         status_msg = f"✅ 热重载完成！已重载 {len(reloaded)} 个模块"

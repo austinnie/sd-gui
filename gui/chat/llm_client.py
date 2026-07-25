@@ -7,6 +7,9 @@ import requests
 from typing import Optional, Dict, Callable
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class LLMClient:
     """LLM客户端 - 支持Ollama"""
     
@@ -43,7 +46,7 @@ class LLMClient:
         if not self._available:
             return None
         
-        print(f"📤 调用 LLM: {self.model} (超时: {timeout}s, max_tokens: {max_tokens})")
+        logger.info(f"📤 调用 LLM: {self.model} (超时: {timeout}s, max_tokens: {max_tokens})")
         
         max_retries = 2
         for attempt in range(max_retries):
@@ -73,17 +76,17 @@ class LLMClient:
                     return self._handle_stream_response(response, on_chunk)
                 else:
                     result = response.json().get("response", "").strip()
-                    print(f"📥 LLM 响应: {len(result)} 字符")
+                    logger.info(f"📥 LLM 响应: {len(result)} 字符")
                     return result
                     
             except requests.exceptions.Timeout:
-                print(f"⏱️ LLM 超时 ({timeout}s)，尝试 {attempt+1}/{max_retries}")
+                logger.info(f"⏱️ LLM 超时 ({timeout}s)，尝试 {attempt+1}/{max_retries}")
                 if attempt < max_retries - 1:
                     time.sleep(2)
                     continue
                 return None
             except requests.exceptions.ConnectionError:
-                print(f"🔌 LLM 连接错误，尝试 {attempt+1}/{max_retries}")
+                logger.info(f"🔌 LLM 连接错误，尝试 {attempt+1}/{max_retries}")
                 if attempt < max_retries - 1:
                     time.sleep(2)
                     continue
@@ -117,7 +120,7 @@ class LLMClient:
                     except json.JSONDecodeError:
                         continue
         except requests.exceptions.Timeout:
-            print(f"⚠️ 流式读取超时，已接收 {len(result)} 字符")
+            logger.info(f"⚠️ 流式读取超时，已接收 {len(result)} 字符")
         
         return result.strip()
         
@@ -130,7 +133,7 @@ class LLMClient:
         result = self.generate(prompt, timeout, max_tokens)
         
         if result is None and fallback_prompt:
-            print("🔄 LLM 失败，使用降级方案")
+            logger.info(f"🔄 LLM 失败，使用降级方案")
             return self._simple_template_processing(fallback_prompt)
         
         return result

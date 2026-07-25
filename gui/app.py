@@ -11,6 +11,9 @@ import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.app_config import app_config
@@ -159,7 +162,7 @@ class SDApp:
         if lora_display and lora_display in self.lora_paths:
             lora_path = self.lora_paths[lora_display]
             lora_weight = self.lora_weight_var.get()
-            print(f"🔗 将加载 LoRA: {lora_display} (权重: {lora_weight})")
+            logger.info(f"🔗 将加载 LoRA: {lora_display} (权重: {lora_weight})")
         
         self.update_status(f"📦 加载 SD 模型...")
         self.load_btn.config(state=tk.DISABLED)
@@ -345,7 +348,7 @@ class SDApp:
         timestamp = datetime.now().strftime("%H:%M:%S")
         def update():
             self.status_var.set(message)
-            print(f"[{timestamp}] [状态] {message}")
+            logger.info(f"[{timestamp}] [状态] {message}")
         self.root.after(0, update)
     
     def update_progress(self, value: float, message: str = ""):
@@ -384,19 +387,19 @@ class SDApp:
 def main():
     """主入口"""
     print("=" * 60)
-    print("Stable Diffusion 桌面GUI版 - v8")
-    print(f"输出目录: {app_config.paths.output_dir}")
+    logger.info(f"Stable Diffusion 桌面GUI版 - v8")
+    logger.info(f"输出目录: {app_config.paths.output_dir}")
     print("=" * 60)
     
     try:
         import torch
-        print(f"PyTorch: {torch.__version__}")
-        print(f"CUDA可用: {torch.cuda.is_available()}")
+        logger.info(f"PyTorch: {torch.__version__}")
+        logger.info(f"CUDA可用: {torch.cuda.is_available()}")
     except:
-        print("⚠️ PyTorch 未安装或导入失败")
+        logger.info(f"⚠️ PyTorch 未安装或导入失败")
     
-    print("\n🌍 通用生成器已集成")
-    print("💡 模型互斥加载: SD ↔ Janus 自动切换")
+    logger.info(f"\n🌍 通用生成器已集成")
+    logger.info(f"💡 模型互斥加载: SD ↔ Janus 自动切换")
     print("=" * 60)
     
     app = SDApp()

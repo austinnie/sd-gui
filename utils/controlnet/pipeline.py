@@ -10,6 +10,9 @@ from diffusers import ControlNetModel, StableDiffusionControlNetPipeline, EulerD
 from .types import get_controlnet_info
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 def get_controlnet_pipeline(
     model_path: str,
     controlnet_type: str = "openpose",
@@ -30,14 +33,14 @@ def get_controlnet_pipeline(
                 torch_dtype=torch.float32,
                 low_cpu_mem_usage=True
             )
-            print(f"📦 加载 ControlNet (本地): {os.path.basename(controlnet_model_path)}")
+            logger.info(f"📦 加载 ControlNet (本地): {os.path.basename(controlnet_model_path)}")
         else:
             controlnet = ControlNetModel.from_pretrained(
                 model_id,
                 torch_dtype=torch.float32,
                 low_cpu_mem_usage=True
             )
-            print(f"📦 加载 ControlNet: {info['name']}")
+            logger.info(f"📦 加载 ControlNet: {info['name']}")
         
         # 加载主模型
         pipe = StableDiffusionControlNetPipeline.from_single_file(
@@ -58,12 +61,12 @@ def get_controlnet_pipeline(
             pipe.vae.enable_tiling()
         pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
         
-        print(f"✅ ControlNet Pipeline 加载完成: {info['name']}")
-        print(f"   📝 {info['description']}")
+        logger.info(f"✅ ControlNet Pipeline 加载完成: {info['name']}")
+        logger.info(f"   📝 {info['description']}")
         return pipe
         
     except Exception as e:
-        print(f"❌ ControlNet Pipeline 加载失败: {e}")
+        logger.info(f"❌ ControlNet Pipeline 加载失败: {e}")
         import traceback
         traceback.print_exc()
         return None
@@ -85,11 +88,11 @@ def get_multi_controlnet_pipeline(
         from diffusers import EulerDiscreteScheduler
         
         controlnets = []
-        print(f"\n📦 加载多层 ControlNet ({len(controlnet_types)} 层)...")
+        logger.info(f"\n📦 加载多层 ControlNet ({len(controlnet_types)} 层)...")
         
         for ctype in controlnet_types:
             info = get_controlnet_info(ctype)
-            print(f"   📦 {info['name']}...")
+            logger.info(f"   📦 {info['name']}...")
             
             cn = ControlNetModel.from_pretrained(
                 info["model_id"],
@@ -97,9 +100,9 @@ def get_multi_controlnet_pipeline(
                 low_cpu_mem_usage=True
             )
             controlnets.append(cn)
-            print(f"      ✅ 加载完成")
+            logger.info(f"      ✅ 加载完成")
         
-        print(f"   📦 加载主模型...")
+        logger.info(f"   📦 加载主模型...")
         pipe = StableDiffusionControlNetPipeline.from_single_file(
             model_path,
             controlnet=controlnets,
@@ -117,11 +120,11 @@ def get_multi_controlnet_pipeline(
             pipe.vae.enable_tiling()
         pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
         
-        print(f"   ✅ 多层 ControlNet Pipeline 加载完成")
+        logger.info(f"   ✅ 多层 ControlNet Pipeline 加载完成")
         return pipe, controlnets
         
     except Exception as e:
-        print(f"❌ 多层 ControlNet Pipeline 加载失败: {e}")
+        logger.info(f"❌ 多层 ControlNet Pipeline 加载失败: {e}")
         import traceback
         traceback.print_exc()
         return None, None

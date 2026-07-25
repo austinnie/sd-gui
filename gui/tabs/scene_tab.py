@@ -17,6 +17,9 @@ from core.nsfw_filter import nsfw_filter
 from config.nsfw_config import nsfw_config, ContentLevel
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class SceneTab(BaseTab):
     """亲密文生图标签页"""
     
@@ -367,7 +370,7 @@ class SceneTab(BaseTab):
         # 智能尺寸调整
         from gui.tabs.txt2img_tab import get_smart_size
         smart_w, smart_h, size_msg = get_smart_size(params["width"], params["height"], prompt)
-        print(f"📐 {size_msg}")
+        logger.info(f"📐 {size_msg}")
         
         # 智能参数调整
         from gui.tabs.txt2img_tab import get_smart_params
@@ -375,7 +378,7 @@ class SceneTab(BaseTab):
             prompt, params["steps"], params["cfg"], None
         )
         if smart_steps != params["steps"] or smart_cfg != params["cfg"]:
-            print(f"⚙️ {param_msg}")
+            logger.info(f"⚙️ {param_msg}")
         
         txt2img = self.app.txt2img_tab
         txt2img.set_params(
@@ -495,7 +498,7 @@ class SceneTab(BaseTab):
                 prompts_list.append(prompt)
                 negs_list.append(negative)
             else:
-                print(f"⚠️ 格式错误，跳过: {line}")
+                logger.info(f"⚠️ 格式错误，跳过: {line}")
         
         if not prompts_list:
             messagebox.showwarning("提示", "没有有效的场景配置")

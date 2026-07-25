@@ -11,6 +11,9 @@ from utils.pipeline_pool import pipeline_pool
 from utils.image_post_processor import post_process_image
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class PipelineRunner:
     """流水线运行器"""
     
@@ -79,7 +82,7 @@ class PipelineRunner:
             if use_controlnet:
                 controlnet_pipe = self._setup_controlnet(pipe, controlnet_type)
                 if controlnet_pipe:
-                    print(f"🧠 ControlNet 已加载: {controlnet_type}")
+                    logger.info(f"🧠 ControlNet 已加载: {controlnet_type}")
                     pipe = controlnet_pipe
             
             # 创建流水线
@@ -156,7 +159,7 @@ class PipelineRunner:
             from utils.controlnet import get_controlnet_info
             
             info = get_controlnet_info(controlnet_type)
-            print(f"📦 加载 ControlNet: {info['name']}")
+            logger.info(f"📦 加载 ControlNet: {info['name']}")
             
             controlnet = ControlNetModel.from_pretrained(
                 info["model_id"],
@@ -181,7 +184,7 @@ class PipelineRunner:
             return controlnet_pipe
             
         except Exception as e:
-            print(f"⚠️ ControlNet 加载失败: {e}")
+            logger.info(f"⚠️ ControlNet 加载失败: {e}")
             return None
     
     def _post_process_results(self, results: dict):
@@ -203,4 +206,4 @@ class PipelineRunner:
                             pass
                         result.output_path = final_path
                 except Exception as e:
-                    print(f"⚠️ {name}: 后期处理失败 - {e}")
+                    logger.info(f"⚠️ {name}: 后期处理失败 - {e}")

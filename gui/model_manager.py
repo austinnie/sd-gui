@@ -14,6 +14,9 @@ from diffusers import (
     StableDiffusionPipeline,
     StableDiffusionXLPipeline,
     EulerDiscreteScheduler,
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 )
 
 from config.app_config import app_config
@@ -170,7 +173,7 @@ class ModelManager:
                         else:
                             pipe.enable_model_cpu_offload()
                 except Exception as e:
-                    print(f"⚠️ CPU Offload 启用失败: {e}")
+                    logger.info(f"⚠️ CPU Offload 启用失败: {e}")
 
             self._sd_pipe = pipe
             self._sd_model_name = model_name
@@ -184,7 +187,7 @@ class ModelManager:
             return True
 
         except Exception as e:
-            print(f"❌ SD 模型加载失败: {e}")
+            logger.info(f"❌ SD 模型加载失败: {e}")
             import traceback
             traceback.print_exc()
             return False
@@ -224,14 +227,14 @@ class ModelManager:
                 pipe.scheduler.config,
                 timestep_spacing="trailing"
             )
-            print(f"⚡ Lightning 模型，已配置 EulerDiscreteScheduler (trailing)")
+            logger.info(f"⚡ Lightning 模型，已配置 EulerDiscreteScheduler (trailing)")
         else:
             try:
                 pipe.scheduler = get_scheduler(scheduler_name, pipe.scheduler.config)
                 desc = get_scheduler_description(scheduler_name)
-                print(f"✅ 使用调度器: {scheduler_name.upper()} ({desc})")
+                logger.info(f"✅ 使用调度器: {scheduler_name.upper()} ({desc})")
             except Exception as e:
-                print(f"⚠️ 调度器切换失败，使用默认: {e}")
+                logger.info(f"⚠️ 调度器切换失败，使用默认: {e}")
                 pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
 
     def _detect_lora_type(self, lora_state_dict: dict) -> str:
@@ -270,8 +273,8 @@ class ModelManager:
         
         try:
             lora_name = os.path.basename(lora_path)
-            print(f"   🔗 加载 LoRA: {lora_name} (权重: {lora_weight})")
-            print(f"   📦 模型类型: {'SDXL' if is_sdxl else 'SD1.5'}")
+            logger.info(f"   🔗 加载 LoRA: {lora_name} (权重: {lora_weight})")
+            logger.info(f"   📦 模型类型: {'SDXL' if is_sdxl else 'SD1.5'}")
 
             detected_type = 'unknown'
             lora_state_dict = None
@@ -279,21 +282,21 @@ class ModelManager:
             try:
                 lora_state_dict = safetensors.torch.load_file(lora_path)
                 detected_type = self._detect_lora_type(lora_state_dict)
-                print(f"   🏷️ 检测到 LoRA 类型: {detected_type.upper()}")
+                logger.info(f"   🏷️ 检测到 LoRA 类型: {detected_type.upper()}")
             except Exception as e:
-                print(f"   ⚠️ 无法检测 LoRA 类型: {e}")
+                logger.info(f"   ⚠️ 无法检测 LoRA 类型: {e}")
                 detected_type = 'unknown'
 
             is_compatible = True
             
             if not skip_compatibility_check:
                 if detected_type == 'both':
-                    print(f"   ✅ 双兼容 LoRA (支持 SD1.5 和 SDXL)")
+                    logger.info(f"   ✅ 双兼容 LoRA (支持 SD1.5 和 SDXL)")
                 elif detected_type == 'sdxl' and not is_sdxl:
-                    print(f"   ❌ 不兼容: LoRA 是 SDXL 格式，但当前模型是 SD1.5")
+                    logger.info(f"   ❌ 不兼容: LoRA 是 SDXL 格式，但当前模型是 SD1.5")
                     return False, False, detected_type
                 elif detected_type == 'sd15' and is_sdxl:
-                    print(f"   ❌ 不兼容: LoRA 是 SD1.5 格式，但当前模型是 SDXL")
+                    logger.info(f"   ❌ 不兼容: LoRA 是 SD1.5 格式，但当前模型是 SDXL")
                     return False, False, detected_type
 
             # 尝试加载
@@ -301,17 +304,17 @@ class ModelManager:
                 try:
                     result = method()
                     if result:
-                        print(f"   ✅ LoRA 加载成功")
+                        logger.info(f"   ✅ LoRA 加载成功")
                         return True, is_compatible, detected_type
                 except Exception as e:
-                    print(f"   ⚠️ 方法失败: {e}")
+                    logger.info(f"   ⚠️ 方法失败: {e}")
                     continue
 
-            print(f"   ❌ 所有 LoRA 加载方法均失败")
+            logger.info(f"   ❌ 所有 LoRA 加载方法均失败")
             return False, is_compatible, detected_type
 
         except Exception as e:
-            print(f"   ❌ LoRA 加载异常: {e}")
+            logger.info(f"   ❌ LoRA 加载异常: {e}")
             import traceback
             traceback.print_exc()
             return False, False, 'unknown'
@@ -399,7 +402,7 @@ class ModelManager:
                 return True
                 
         except Exception as e:
-            print(f"   ⚠️ LoRA 卸载失败: {e}")
+            logger.info(f"   ⚠️ LoRA 卸载失败: {e}")
         
         return False
 
@@ -439,7 +442,7 @@ class ModelManager:
                 return False
                 
         except Exception as e:
-            print(f"❌ Janus 模型加载失败: {e}")
+            logger.info(f"❌ Janus 模型加载失败: {e}")
             import traceback
             traceback.print_exc()
             return False

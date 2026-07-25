@@ -15,6 +15,9 @@ import random
 from typing import Optional, Dict, Literal
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 # ============================================================
 # 相机预设配置
 # ============================================================
@@ -232,8 +235,8 @@ def inject_exif(
         # 检查 exiftool 是否可用
         check = subprocess.run("exiftool -ver", shell=True, capture_output=True, timeout=5)
         if check.returncode != 0:
-            print("⚠️ ExifTool 未安装，请安装: https://exiftool.org/")
-            print("   跳过 EXIF 注入")
+            logger.info(f"⚠️ ExifTool 未安装，请安装: https://exiftool.org/")
+            logger.info(f"   跳过 EXIF 注入")
             # 直接复制文件
             import shutil
             shutil.copy2(input_path, output_path)
@@ -243,7 +246,7 @@ def inject_exif(
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
         
         if result.returncode != 0:
-            print(f"⚠️ EXIF 注入失败: {result.stderr}")
+            logger.info(f"⚠️ EXIF 注入失败: {result.stderr}")
             import shutil
             shutil.copy2(input_path, output_path)
             return output_path
@@ -253,20 +256,20 @@ def inject_exif(
             import shutil
             shutil.move(input_path, output_path)
         
-        print(f"✅ EXIF 已注入: {output_path}")
-        print(f"   📷 相机: {exif_params['Make']} {exif_params['Model']}")
-        print(f"   ⚙️  ISO: {exif_params['ISO']}  FNumber: {exif_params['FNumber']}")
-        print(f"   📸 焦距: {exif_params['FocalLength']}mm  快门: {exif_params['ExposureTime']}")
+        logger.info(f"✅ EXIF 已注入: {output_path}")
+        logger.info(f"   📷 相机: {exif_params['Make']} {exif_params['Model']}")
+        logger.info(f"   ⚙️  ISO: {exif_params['ISO']}  FNumber: {exif_params['FNumber']}")
+        logger.info(f"   📸 焦距: {exif_params['FocalLength']}mm  快门: {exif_params['ExposureTime']}")
         
         return output_path
         
     except subprocess.TimeoutExpired:
-        print("⚠️ ExifTool 超时")
+        logger.info(f"⚠️ ExifTool 超时")
         import shutil
         shutil.copy2(input_path, output_path)
         return output_path
     except Exception as e:
-        print(f"⚠️ EXIF 注入异常: {e}")
+        logger.info(f"⚠️ EXIF 注入异常: {e}")
         import shutil
         shutil.copy2(input_path, output_path)
         return output_path
@@ -316,9 +319,9 @@ def batch_inject_exif(
             result = inject_exif(input_path, output_path, camera, style, randomize)
             injected_files.append(result)
         except Exception as e:
-            print(f"❌ 注入失败: {filename} - {e}")
+            logger.info(f"❌ 注入失败: {filename} - {e}")
     
-    print(f"✅ 批量注入完成: {len(injected_files)} 个文件")
+    logger.info(f"✅ 批量注入完成: {len(injected_files)} 个文件")
     return injected_files
 
 

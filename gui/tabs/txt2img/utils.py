@@ -8,9 +8,12 @@ from datetime import datetime
 from typing import Optional, Tuple
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 def log(msg: str):
     """打印日志"""
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
+    logger.info(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
 
 
 def safe_del(obj):
@@ -171,5 +174,5 @@ def auto_shorten_prompt(prompt: str, max_len: int = 350) -> str:
         return prompt[:max_len]
     shortened = ", ".join(result)
     if len(shortened) < len(prompt):
-        print(f"✂️ 提示词已精简: {len(prompt)} -> {len(shortened)} 字符")
+        logger.info(f"✂️ 提示词已精简: {len(prompt)} -> {len(shortened)} 字符")
     return shortened

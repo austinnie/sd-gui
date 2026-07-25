@@ -11,6 +11,9 @@ from typing import Optional
 from config.app_config import app_config
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class JanusLoader:
     """Janus-Pro 模型加载器（单例）"""
     
@@ -29,7 +32,7 @@ class JanusLoader:
     
     def _log(self, msg: str):
         from datetime import datetime
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
+        logger.info(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
     
     def load(self, model_name: str = "1B", progress_callback=None) -> bool:
         """加载模型"""

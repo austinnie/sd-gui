@@ -5,6 +5,9 @@ import os
 from datetime import datetime
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class ControlNetManager:
     """ControlNet 管理器"""
     
@@ -59,7 +62,7 @@ class ControlNetManager:
             controlnet_type = selected.split(" ")[0] if " " in selected else "openpose"
             info = get_controlnet_info(controlnet_type)
 
-            print(f"📦 正在加载 ControlNet: {info['name']}...")
+            logger.info(f"📦 正在加载 ControlNet: {info['name']}...")
 
             controlnet = ControlNetModel.from_pretrained(
                 info["model_id"],
@@ -106,10 +109,10 @@ class ControlNetManager:
                 self.pipe.enable_attention_slicing()
                 self.is_available = True
                 self.tab.controlnet_status_label.config(text=f"✅ {info['name']} 就绪", foreground="green")
-                print(f"✅ ControlNet 已加载: {info['name']}")
+                logger.info(f"✅ ControlNet 已加载: {info['name']}")
 
         except Exception as e:
-            print(f"⚠️ ControlNet 加载失败: {e}")
+            logger.info(f"⚠️ ControlNet 加载失败: {e}")
             self.is_available = False
             self.tab.controlnet_status_label.config(text="❌ 加载失败", foreground="red")
     

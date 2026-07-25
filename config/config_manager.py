@@ -7,6 +7,9 @@ import json
 import os
 from typing import Dict, Any, Optional
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class ConfigManager:
     """统一配置管理器（单例）"""
     
@@ -54,7 +57,7 @@ class ConfigManager:
                 with open(full_path, 'r', encoding='utf-8') as f:
                     return json.load(f)
             except Exception as e:
-                print(f"⚠️ 加载配置失败 {relative_path}: {e}")
+                logger.info(f"⚠️ 加载配置失败 {relative_path}: {e}")
                 return {}
         return {}
     

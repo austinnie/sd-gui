@@ -9,6 +9,9 @@ from utils.watermark_remover import WatermarkRemover
 from utils.image_post_processor import post_process_image
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class ImageSaver:
     """图片保存器 - 处理水印去除和后处理"""
     
@@ -44,7 +47,7 @@ class ImageSaver:
                 auto_detect=self.params.watermark_auto_detect_var.get()
             )
             cleaned.save(filepath, quality=95)
-            print(f"✅ 水印已去除: {filename}")
+            logger.info(f"✅ 水印已去除: {filename}")
         else:
             image.save(filepath)
         

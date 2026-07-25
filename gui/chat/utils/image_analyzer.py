@@ -5,6 +5,9 @@ import cv2
 import numpy as np
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class ImageAnalyzer:
     """图片分析器"""
     
@@ -50,7 +53,7 @@ class ImageAnalyzer:
                 "is_realistic": True,
             }
         except Exception as e:
-            print(f"⚠️ 分析图片失败: {e}")
+            logger.info(f"⚠️ 分析图片失败: {e}")
             return {}
     
     @staticmethod
@@ -66,5 +69,5 @@ class ImageAnalyzer:
             detector = OpenPoseDetector.from_pretrained("lllyasviel/ControlNet")
             return detector(img, output_type="pil")
         except Exception as e:
-            print(f"⚠️ 姿态提取失败: {e}")
+            logger.info(f"⚠️ 姿态提取失败: {e}")
             return None

@@ -16,6 +16,9 @@ from diffusers import (
     StableDiffusionXLPipeline,
     StableDiffusionInpaintPipeline,
     EulerDiscreteScheduler  # ✅ 添加
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 )
 
 class GridRunner:
@@ -38,7 +41,7 @@ class GridRunner:
     def load_model(self, model_path, model_type="sd"):
         """加载模型（如果 pipe 已注入则跳过）"""
         if self._loaded and self.pipe is not None:
-            print("✅ 使用已注入的 Pipeline")
+            logger.info(f"✅ 使用已注入的 Pipeline")
             return self.pipe
         
         self.model_type = model_type
@@ -55,7 +58,7 @@ class GridRunner:
             return self.pipe
             
         if self.pipe is None:
-            print(f"📦 加载 SD 模型: {model_path}")
+            logger.info(f"📦 加载 SD 模型: {model_path}")
             self.pipe = StableDiffusionPipeline.from_single_file(
                 model_path,
                 torch_dtype=torch.float32,
@@ -66,9 +69,9 @@ class GridRunner:
             
             # ✅ 使用 EulerDiscreteScheduler
             self.pipe.scheduler = EulerDiscreteScheduler.from_config(self.pipe.scheduler.config)
-            print("✅ 使用 EulerDiscreteScheduler (稳定调度器)")
+            logger.info(f"✅ 使用 EulerDiscreteScheduler (稳定调度器)")
         
-            print("✅ SD 模型加载完成")
+            logger.info(f"✅ SD 模型加载完成")
         return self.pipe
     
     def _load_janus_model(self):
@@ -76,17 +79,17 @@ class GridRunner:
         from core.janus import janus_loader
         
         if not janus_loader.is_loaded():
-            print("📦 加载 Janus-Pro-1B 模型...")
+            logger.info(f"📦 加载 Janus-Pro-1B 模型...")
             success = janus_loader.load(model_name="1B")
             if success:
-                print("✅ Janus-Pro 模型加载完成")
+                logger.info(f"✅ Janus-Pro 模型加载完成")
                 self.pipe = janus_loader.get_model()  # 统一接口
                 return self.pipe
             else:
-                print("❌ Janus-Pro 模型加载失败")
+                logger.info(f"❌ Janus-Pro 模型加载失败")
                 return None
         else:
-            print("✅ Janus-Pro 模型已加载")
+            logger.info(f"✅ Janus-Pro 模型已加载")
             self.pipe = janus_loader.get_model()
             return self.pipe
     
@@ -103,11 +106,11 @@ class GridRunner:
         grid = config.get('grid', [])
         total = len(grid)
         
-        print(f"\n{'='*60}")
-        print(f"🧪 网格测试: {config.get('name', '未命名')}")
-        print(f"   共 {total} 个组合")
-        print(f"   模型类型: {self.model_type}")
-        print(f"{'='*60}\n")
+        logger.info(f"\n{'='*60}")
+        logger.info(f"🧪 网格测试: {config.get('name', '未命名')}")
+        logger.info(f"   共 {total} 个组合")
+        logger.info(f"   模型类型: {self.model_type}")
+        logger.info(f"{'='*60}\n")
         
         # 加载模型
         model_path = config.get('model', None)
@@ -129,7 +132,7 @@ class GridRunner:
         
         for idx, item in enumerate(grid):
             if self.cancel:
-                print("⏹️ 已取消")
+                logger.info(f"⏹️ 已取消")
                 break
             
             name = item.get('name', f'组合_{idx+1}')
@@ -145,8 +148,8 @@ class GridRunner:
             if progress_callback:
                 progress_callback(idx + 1, total, name)
             
-            print(f"\n[{idx+1}/{total}] {name}")
-            print(f"  参数: {params}")
+            logger.info(f"\n[{idx+1}/{total}] {name}")
+            logger.info(f"  参数: {params}")
             
             try:
                 # 生成图片
@@ -164,7 +167,7 @@ class GridRunner:
                         "file": filename,
                         "success": True,
                     })
-                    print(f"  ✅ 已保存: {filename}")
+                    logger.info(f"  ✅ 已保存: {filename}")
                 else:
                     results.append({
                         "name": name,
@@ -173,10 +176,10 @@ class GridRunner:
                         "success": False,
                         "error": "生成失败",
                     })
-                    print(f"  ❌ 生成失败")
+                    logger.info(f"  ❌ 生成失败")
                     
             except Exception as e:
-                print(f"  ❌ 错误: {e}")
+                logger.info(f"  ❌ 错误: {e}")
                 results.append({
                     "name": name,
                     "params": params,
@@ -198,8 +201,8 @@ class GridRunner:
                 "timestamp": datetime.now().isoformat(),
             }, f, indent=2, ensure_ascii=False)
         
-        print(f"\n📄 报告已保存: {report_path}")
-        print(f"📁 图片目录: {output_dir}")
+        logger.info(f"\n📄 报告已保存: {report_path}")
+        logger.info(f"📁 图片目录: {output_dir}")
         
         self.is_running = False
         return results

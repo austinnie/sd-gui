@@ -1,3 +1,7 @@
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
+
 # utils/controlnet/types.py
 """
 ControlNet 类型配置
@@ -131,8 +135,8 @@ def is_controlnet_available():
         import controlnet_aux
         return True
     except ImportError:
-        print("⚠️ controlnet_aux 未安装，ControlNet 功能不可用")
+        logger.info(f"⚠️ controlnet_aux 未安装，ControlNet 功能不可用")
         return False
     except Exception as e:
-        print(f"⚠️ 检查 ControlNet 可用性失败: {e}")
+        logger.info(f"⚠️ 检查 ControlNet 可用性失败: {e}")
         return False

@@ -7,6 +7,9 @@ from services.llm_service import llm_service
 from .blip import BlipBackend
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class LLMBackend(InterrogateBackend):
     """LLM 增强后端 - BLIP 描述 + LLM 优化"""
     
@@ -29,7 +32,7 @@ class LLMBackend(InterrogateBackend):
                 return f"{caption}\n\n⚠️ LLM 未就绪，使用 BLIP 原始描述\n请确保 Ollama 已启动并下载模型"
         
         # 3. 使用 LLM 增强
-        print("🧠 使用 LLM 增强描述...")
+        logger.info(f"🧠 使用 LLM 增强描述...")
         
         prompt = f"""请将以下图片描述转换为 Stable Diffusion 提示词格式（英文，用逗号分隔）：
 
@@ -62,5 +65,5 @@ class LLMBackend(InterrogateBackend):
             return clean
             
         except Exception as e:
-            print(f"⚠️ LLM 增强失败: {e}")
+            logger.info(f"⚠️ LLM 增强失败: {e}")
             return f"{caption}\n\n⚠️ LLM 增强失败，使用 BLIP 原始描述"

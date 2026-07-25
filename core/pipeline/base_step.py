@@ -14,6 +14,9 @@ from .step import PipelineStep, StepContext, StepResult, StepStatus
 from .steps.controlnet_mixin import ControlNetMixin
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class BaseStyleStep(PipelineStep, ControlNetMixin):
     """
     风格转换步骤基类
@@ -132,7 +135,7 @@ class BaseStyleStep(PipelineStep, ControlNetMixin):
             all_prompts = self.get_prompts()
             if max_scenes is not None and max_scenes > 0:
                 prompts = self._limit_prompts(all_prompts, max_scenes)
-                print(f"   📊 场景限制: 只生成前 {len(prompts)}/{len(all_prompts)} 个场景")
+                logger.info(f"   📊 场景限制: 只生成前 {len(prompts)}/{len(all_prompts)} 个场景")
             else:
                 prompts = all_prompts
             
@@ -146,7 +149,7 @@ class BaseStyleStep(PipelineStep, ControlNetMixin):
             for idx, job in enumerate(prompts):
                 # 检查取消
                 if context.is_cancelled():
-                    print(f"   ⏹️ 用户取消，已生成 {idx} 张")
+                    logger.info(f"   ⏹️ 用户取消，已生成 {idx} 张")
                     return StepResult(
                         status=StepStatus.FAILED,
                         error="用户取消",
@@ -159,7 +162,7 @@ class BaseStyleStep(PipelineStep, ControlNetMixin):
                         }
                     )
                 
-                print(f"   [{idx+1}/{len(prompts)}] {job.get('name', 'unknown')}")
+                logger.info(f"   [{idx+1}/{len(prompts)}] {job.get('name', 'unknown')}")
                 
                 gen_kwargs = {
                     "prompt": job.get("prompt", ""),
@@ -175,7 +178,7 @@ class BaseStyleStep(PipelineStep, ControlNetMixin):
                     gen_kwargs["control_image"] = control_image
                     gen_kwargs["controlnet_conditioning_scale"] = config.get("controlnet_strength", 0.6)
                     if idx == 0:
-                        print(f"      🎛️ ControlNet 强度: {config.get('controlnet_strength', 0.6)}")
+                        logger.info(f"      🎛️ ControlNet 强度: {config.get('controlnet_strength', 0.6)}")
                 
                 try:
                     result = pipe(**gen_kwargs)
@@ -186,12 +189,12 @@ class BaseStyleStep(PipelineStep, ControlNetMixin):
                     )
                     result.images[0].save(output_path)
                     success_count += 1
-                    print(f"      ✅ 已保存: {os.path.basename(output_path)}")
+                    logger.info(f"      ✅ 已保存: {os.path.basename(output_path)}")
                     
                 except Exception as e:
                     error_msg = str(e)
                     if "取消" in error_msg or "cancelled" in error_msg.lower():
-                        print(f"      ⏹️ 生成被取消")
+                        logger.info(f"      ⏹️ 生成被取消")
                         return StepResult(
                             status=StepStatus.FAILED,
                             error="用户取消",
@@ -203,7 +206,7 @@ class BaseStyleStep(PipelineStep, ControlNetMixin):
                                 "cancelled": True,
                             }
                         )
-                    print(f"      ❌ 失败: {e}")
+                    logger.info(f"      ❌ 失败: {e}")
                     import traceback
                     traceback.print_exc()
             
@@ -227,7 +230,7 @@ class BaseStyleStep(PipelineStep, ControlNetMixin):
                     output_path=output_dir,
                     metadata={"cancelled": True}
                 )
-            print(f"      ❌ 失败: {e}")
+            logger.info(f"      ❌ 失败: {e}")
             import traceback
             traceback.print_exc()
             return StepResult(status=StepStatus.FAILED, error=str(e))

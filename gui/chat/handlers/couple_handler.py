@@ -10,6 +10,9 @@ from PIL import Image
 from .base_handler import BaseHandler
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class CoupleHandler(BaseHandler):
     """双人合成处理器"""
     
@@ -62,7 +65,7 @@ class CoupleHandler(BaseHandler):
                 return self._merge_pose_images(pose1, pose2)
 
             except ImportError:
-                print("   ⚠️ controlnet_aux 未安装，使用备用方案")
+                logger.info(f"   ⚠️ controlnet_aux 未安装，使用备用方案")
 
             # 备用方案：Canny 边缘检测
             img1 = cv2.imread(img1_path)
@@ -78,7 +81,7 @@ class CoupleHandler(BaseHandler):
             return Image.fromarray(combined)
 
         except Exception as e:
-            print(f"⚠️ 双人姿态提取失败: {e}")
+            logger.info(f"⚠️ 双人姿态提取失败: {e}")
             return None
 
     def _merge_pose_images(self, pose1, pose2):

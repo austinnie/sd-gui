@@ -13,6 +13,9 @@ from .utils import log, safe_del, auto_shorten_prompt
 from .callbacks import Img2ImgStepCallback
 from .saver import ImageSaver
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 MAX_PIXELS = 1024 * 1024
 
 
@@ -42,11 +45,11 @@ class ImageGenerator:
         if user_width > 0 and user_height > 0:
             target_width = ((user_width + 31) // 64) * 64
             target_height = ((user_height + 31) // 64) * 64
-            print(f"📐 使用用户指定尺寸: {target_width}x{target_height}")
+            logger.info(f"📐 使用用户指定尺寸: {target_width}x{target_height}")
         else:
             target_width = 0
             target_height = 0
-            print(f"📐 使用原图尺寸")
+            logger.info(f"📐 使用原图尺寸")
         
         # ControlNet 模式
         if use_controlnet:
@@ -132,10 +135,10 @@ class ImageGenerator:
                     new_h = ((h + 31) // 64) * 64
                     if new_w != w or new_h != h:
                         img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
-                        print(f"   📐 原图尺寸对齐: {w}x{h} -> {new_w}x{new_h}")
+                        logger.info(f"   📐 原图尺寸对齐: {w}x{h} -> {new_w}x{new_h}")
                     images.append(img)
                 except Exception as load_err:
-                    print(f"❌ 无法加载图片 {path}: {load_err}")
+                    logger.info(f"❌ 无法加载图片 {path}: {load_err}")
                     continue
             
             total_images = len(images) * num_images_per
@@ -175,12 +178,12 @@ class ImageGenerator:
                 try:
                     from diffusers import StableDiffusionInpaintPipeline
                     if not hasattr(self.tab, '_inpaint_pipe'):
-                        print("📦 首次加载 Inpaint 模型（额外内存占用）...")
+                        logger.info(f"📦 首次加载 Inpaint 模型（额外内存占用）...")
                         StableDiffusionInpaintPipeline.from_pretrained(
                             "runwayml/stable-diffusion-inpainting",
                             torch_dtype=torch.float32
                         )
-                        print("✅ Inpaint 模型下载/缓存完成！")
+                        logger.info(f"✅ Inpaint 模型下载/缓存完成！")
                         self.tab._inpaint_pipe = StableDiffusionInpaintPipeline(
                             vae=pipe.vae,
                             text_encoder=pipe.text_encoder,
@@ -191,15 +194,15 @@ class ImageGenerator:
                             feature_extractor=None,
                             requires_safety_checker=False
                         )
-                        print("✅ Inpaint 模型从现有管道拼接成功！")
+                        logger.info(f"✅ Inpaint 模型从现有管道拼接成功！")
                     
                     pipe = self.tab._inpaint_pipe
                     pipe, steps, current_strength = fix_euler_scheduler_for_img2img(pipe, steps, current_strength)
                     mask_tensor = mask_image.convert("L")
-                    print(f"🖌️ 启用局部重绘，遮罩已加载")
+                    logger.info(f"🖌️ 启用局部重绘，遮罩已加载")
                     
                 except Exception as e:
-                    print(f"⚠️ 启用局部重绘失败，回退到普通图生图: {e}")
+                    logger.info(f"⚠️ 启用局部重绘失败，回退到普通图生图: {e}")
                     use_inpaint = False
             
             # 精简提示词
@@ -247,7 +250,7 @@ class ImageGenerator:
                             face_ratio = face_area / image_area
                             if face_ratio > 0.15:
                                 strength = min(strength, 0.3)
-                                print(f"   🧑 检测到头像 (人脸占比 {face_ratio:.1%})，强度自动调整为: {strength:.2f}")
+                                logger.info(f"   🧑 检测到头像 (人脸占比 {face_ratio:.1%})，强度自动调整为: {strength:.2f}")
                 except Exception as e:
                     pass
                 
@@ -381,7 +384,7 @@ class ImageGenerator:
         new_h = min(max_cpu_h, new_h)
         
         if new_w != original_w or new_h != original_h:
-            print(f"   📐 图片尺寸调整: {original_w}x{original_h} -> {new_w}x{new_h}")
+            logger.info(f"   📐 图片尺寸调整: {original_w}x{original_h} -> {new_w}x{new_h}")
             return image.resize((new_w, new_h), Image.Resampling.LANCZOS)
         
         return image

@@ -11,6 +11,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 def resolve_path(path: str, base_dir: str = None) -> str:
     """
     将相对路径解析为绝对路径
@@ -364,9 +367,9 @@ class AppConfig:
                 with open(config_path, 'r', encoding='utf-8') as f:
                     user_config = json.load(f)
                 default_config = cls._merge_config(default_config, user_config)
-                print(f"✅ 已加载配置: {config_path}")
+                logger.info(f"✅ 已加载配置: {config_path}")
             except Exception as e:
-                print(f"⚠️ 加载配置失败: {e}，使用默认配置")
+                logger.info(f"⚠️ 加载配置失败: {e}，使用默认配置")
         
         return cls(
             paths=PathsConfig.from_dict(default_config.get("paths", {})),
@@ -380,14 +383,14 @@ class AppConfig:
     @classmethod
     def reload(cls):
         """重新加载配置文件"""
-        print("🔄 尝试重新加载 gui_config.json ...")
+        logger.info(f"🔄 尝试重新加载 gui_config.json ...")
         cls._instance = None  # 销毁单例实例
         cls._instance = cls.load()  # 重新加载
         
         # ✅ 【修复】从字典中读取 default，而不是读取不存在的 default_steps
         # 同时，为了防止报错，这里改为读取我们新加的 default 值
         current_steps = cls._instance.generation.steps["default"]
-        print(f"✅ 配置已重新加载！当前步数: {current_steps}")
+        logger.info(f"✅ 配置已重新加载！当前步数: {current_steps}")
         
     @classmethod
     def _get_default_dict(cls) -> dict:
@@ -477,8 +480,8 @@ class AppConfig:
 app_config = AppConfig.get_instance()
 
 # 打印解析后的路径（方便调试）
-print("\n📁 解析后的路径:")
-print(f"   Janus 1B: {app_config.janus.get_resolved_1b_path()}")
-print(f"   Janus 7B: {app_config.janus.get_resolved_7b_path()}")
-print(f"   输出目录: {app_config.paths.get_resolved_output_dir()}")
+logger.info(f"\n📁 解析后的路径:")
+logger.info(f"   Janus 1B: {app_config.janus.get_resolved_1b_path()}")
+logger.info(f"   Janus 7B: {app_config.janus.get_resolved_7b_path()}")
+logger.info(f"   输出目录: {app_config.paths.get_resolved_output_dir()}")
 print()

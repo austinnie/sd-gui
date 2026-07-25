@@ -14,6 +14,9 @@ from diffusers import ControlNetModel, StableDiffusionControlNetPipeline, EulerD
 import cv2
 import numpy as np
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 # ✅ 在文件顶部添加（导入部分）
 from services.cache_config import HF_HUB_CACHE
 
@@ -147,10 +150,10 @@ def is_controlnet_available():
         import controlnet_aux
         return True
     except ImportError:
-        print("⚠️ controlnet_aux 未安装，ControlNet 功能不可用")
+        logger.info(f"⚠️ controlnet_aux 未安装，ControlNet 功能不可用")
         return False
     except Exception as e:
-        print(f"⚠️ 检查 ControlNet 可用性失败: {e}")
+        logger.info(f"⚠️ 检查 ControlNet 可用性失败: {e}")
         return False
 
 def get_controlnet_types():
@@ -196,7 +199,7 @@ def preprocess_image_for_controlnet(image_path, controlnet_type="openpose", outp
             DWposeDetector,
         )
     except ImportError:
-        print("⚠️ controlnet_aux 未安装，请运行: pip install controlnet-aux")
+        logger.info(f"⚠️ controlnet_aux 未安装，请运行: pip install controlnet-aux")
         return None
     
     # 读取图片
@@ -238,10 +241,10 @@ def preprocess_image_for_controlnet(image_path, controlnet_type="openpose", outp
                         image_resolution=max_dim,
                         max_people=1
                     )
-                    print("   ✅ DWPose 使用 max_people=1")
+                    logger.info(f"   ✅ DWPose 使用 max_people=1")
                 except TypeError:
                     # 版本不支持 max_people，去掉该参数重试
-                    print("   ℹ️ DWPose 版本不支持 max_people，使用默认行为")
+                    logger.info(f"   ℹ️ DWPose 版本不支持 max_people，使用默认行为")
                     result = detector(
                         image, 
                         output_type="pil",
@@ -253,7 +256,7 @@ def preprocess_image_for_controlnet(image_path, controlnet_type="openpose", outp
                     result = result.resize((target_w, target_h), Image.Resampling.LANCZOS)
                     
             except Exception as e:
-                print(f"   ⚠️ DWPose 失败: {e}，回退到 OpenPose")
+                logger.info(f"   ⚠️ DWPose 失败: {e}，回退到 OpenPose")
                 from controlnet_aux import OpenposeDetector
                 detector = OpenposeDetector.from_pretrained("lllyasviel/ControlNet")
                 result = detector(image, output_type="pil", include_hands=False, include_face=False)
@@ -274,22 +277,22 @@ def preprocess_image_for_controlnet(image_path, controlnet_type="openpose", outp
                 local_model_path = Path(cache_dir) / "controlnet_aux" / "ControlNetHED.pth"
                 
                 if local_model_path.exists():
-                    print(f"   📁 使用本地 HED 模型: {local_model_path}")
+                    logger.info(f"   📁 使用本地 HED 模型: {local_model_path}")
                     # 直接使用 HEDdetector，它会在缓存目录中查找
                     # 但需要确保文件名正确
                     detector = HEDdetector()
                     # 或者尝试用 from_pretrained 指定本地路径
                     # detector = HEDdetector.from_pretrained(str(local_model_path.parent))
                 else:
-                    print("   ⚠️ 本地 HED 模型不存在，尝试下载...")
+                    logger.info(f"   ⚠️ 本地 HED 模型不存在，尝试下载...")
                     detector = HEDdetector.from_pretrained("lllyasviel/ControlNet")
                 
                 result = detector(image, output_type="pil")
                 
             except Exception as e:
-                print(f"   ⚠️ HED 预处理失败: {e}")
+                logger.info(f"   ⚠️ HED 预处理失败: {e}")
                 # 备用方案：使用 Canny 替代
-                print("   🔄 使用 Canny 作为替代...")
+                logger.info(f"   🔄 使用 Canny 作为替代...")
                 from controlnet_aux import CannyDetector
                 detector = CannyDetector()
                 result = detector(image, output_type="pil")
@@ -303,20 +306,20 @@ def preprocess_image_for_controlnet(image_path, controlnet_type="openpose", outp
                 local_model_path = Path(cache_dir) / "controlnet_aux" / "sk_model.pth"
                 
                 if local_model_path.exists():
-                    print(f"   📁 使用本地 Lineart 模型: {local_model_path}")
+                    logger.info(f"   📁 使用本地 Lineart 模型: {local_model_path}")
                     # 尝试直接使用 LineartDetector
                     try:
                         # 有些版本支持直接传入模型路径
                         detector = LineartDetector()
                         result = detector(image, output_type="pil")
                     except Exception as e2:
-                        print(f"   ⚠️ Lineart 加载失败: {e2}")
-                        print("   🔄 使用 Canny 作为替代...")
+                        logger.info(f"   ⚠️ Lineart 加载失败: {e2}")
+                        logger.info(f"   🔄 使用 Canny 作为替代...")
                         from controlnet_aux import CannyDetector
                         detector = CannyDetector()
                         result = detector(image, output_type="pil")
                 else:
-                    print("   ⚠️ 本地 Lineart 模型不存在，尝试下载...")
+                    logger.info(f"   ⚠️ 本地 Lineart 模型不存在，尝试下载...")
                     detector = LineartDetector.from_pretrained("lllyasviel/ControlNet")
                     result = detector(image, output_type="pil")
                 
@@ -324,8 +327,8 @@ def preprocess_image_for_controlnet(image_path, controlnet_type="openpose", outp
                     result = result.resize(output_size, Image.Resampling.LANCZOS)
                 
             except Exception as e:
-                print(f"   ⚠️ Lineart 预处理失败: {e}")
-                print("   🔄 使用 Canny 作为替代...")
+                logger.info(f"   ⚠️ Lineart 预处理失败: {e}")
+                logger.info(f"   🔄 使用 Canny 作为替代...")
                 from controlnet_aux import CannyDetector
                 detector = CannyDetector()
                 result = detector(image, output_type="pil")
@@ -356,7 +359,7 @@ def preprocess_image_for_controlnet(image_path, controlnet_type="openpose", outp
         return None
         
     except Exception as e:
-        print(f"⚠️ 预处理失败 ({preprocessor}): {e}")
+        logger.info(f"⚠️ 预处理失败 ({preprocessor}): {e}")
         return None
 
 
@@ -369,13 +372,13 @@ def _preprocess_openpose(detector, image, output_size):
     
     if mode == "pil":
         # ===== 模式1: pil 输出（原图 + 骨架叠加）- 推荐 =====
-        print("   📌 OpenPose 模式: PIL (原图+骨架)")
+        logger.info(f"   📌 OpenPose 模式: PIL (原图+骨架)")
         result = detector(image, output_type="pil")
         return result
         
     elif mode == "skeleton":
         # ===== 模式2: 提取纯骨架图（黑白线条）- 【新增多人过滤】 =====
-        print("   📌 OpenPose 模式: Skeleton (纯骨架)")
+        logger.info(f"   📌 OpenPose 模式: Skeleton (纯骨架)")
         try:
             # ✅ 使用 include_hands=False, include_face=False 减少杂散点
             result_pil = detector(image, output_type="pil", include_hands=False, include_face=False)
@@ -407,12 +410,12 @@ def _preprocess_openpose(detector, image, output_size):
             
             debug_path = f"debug_skeleton_{datetime.now().strftime('%H%M%S')}.png"
             Image.fromarray(skeleton).save(debug_path)
-            print(f"   📸 骨架图已保存: {debug_path}")
+            logger.info(f"   📸 骨架图已保存: {debug_path}")
                
             return Image.fromarray(skeleton).convert('RGB')
             
         except Exception as e:
-            print(f"   ⚠️ 骨架提取失败: {e}，回退到 pil 模式")
+            logger.info(f"   ⚠️ 骨架提取失败: {e}，回退到 pil 模式")
             return detector(image, output_type="pil")
     
     # 默认返回 pil 模式
@@ -441,14 +444,14 @@ def get_controlnet_pipeline(model_path, controlnet_type="openpose", controlnet_m
                 torch_dtype=torch.float32,
                 low_cpu_mem_usage=True
             )
-            print(f"📦 加载 ControlNet (本地): {os.path.basename(controlnet_model_path)}")
+            logger.info(f"📦 加载 ControlNet (本地): {os.path.basename(controlnet_model_path)}")
         else:
             controlnet = ControlNetModel.from_pretrained(
                 model_id,
                 torch_dtype=torch.float32,
                 low_cpu_mem_usage=True
             )
-            print(f"📦 加载 ControlNet: {info['name']}")
+            logger.info(f"📦 加载 ControlNet: {info['name']}")
         
         # 2. 加载主模型
         pipe = StableDiffusionControlNetPipeline.from_single_file(
@@ -469,12 +472,12 @@ def get_controlnet_pipeline(model_path, controlnet_type="openpose", controlnet_m
             pipe.vae.enable_tiling()
         pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
         
-        print(f"✅ ControlNet Pipeline 加载完成: {info['name']}")
-        print(f"   📝 {info['description']}")
+        logger.info(f"✅ ControlNet Pipeline 加载完成: {info['name']}")
+        logger.info(f"   📝 {info['description']}")
         return pipe
         
     except Exception as e:
-        print(f"❌ ControlNet Pipeline 加载失败: {e}")
+        logger.info(f"❌ ControlNet Pipeline 加载失败: {e}")
         import traceback
         traceback.print_exc()
         return None
@@ -491,10 +494,10 @@ def process_with_controlnet(selected_images, prompt, negative, steps, cfg, stren
     """
 
     print("=" * 60)
-    print("🔍 [ControlNet 调试] process_with_controlnet 被调用")
-    print(f"   selected_images: {len(selected_images)} 张")
-    print(f"   prompt: {prompt[:50]}...")
-    print(f"   controlnet_type: {controlnet_type}")
+    logger.info(f"🔍 [ControlNet 调试] process_with_controlnet 被调用")
+    logger.info(f"   selected_images: {len(selected_images)} 张")
+    logger.info(f"   prompt: {prompt[:50]}...")
+    logger.info(f"   controlnet_type: {controlnet_type}")
     print("=" * 60)
     
     if not selected_images:
@@ -592,7 +595,7 @@ def process_with_controlnet(selected_images, prompt, negative, steps, cfg, stren
         
         # ===== ✅ 根据类型获取 ControlNet 强度 =====
         conditioning_scale = CONTROLNET_STRENGTH_MAP.get(controlnet_type, 0.80)
-        print(f"   🎛️ ControlNet 强度: {conditioning_scale:.2f} ({controlnet_type})")
+        logger.info(f"   🎛️ ControlNet 强度: {conditioning_scale:.2f} ({controlnet_type})")
         
         status_callback(f"🎨 生成中 {img_idx+1}/{len(selected_images)}...")
         
@@ -685,11 +688,11 @@ def get_multi_controlnet_pipeline(model_path, controlnet_types=None, device="cpu
         
         # 1. 加载多个 ControlNet 模型
         controlnets = []
-        print(f"\n📦 加载多层 ControlNet ({len(controlnet_types)} 层)...")
+        logger.info(f"\n📦 加载多层 ControlNet ({len(controlnet_types)} 层)...")
         
         for ctype in controlnet_types:
             info = get_controlnet_info(ctype)
-            print(f"   📦 {info['name']}...")
+            logger.info(f"   📦 {info['name']}...")
             
             cn = ControlNetModel.from_pretrained(
                 info["model_id"],
@@ -697,10 +700,10 @@ def get_multi_controlnet_pipeline(model_path, controlnet_types=None, device="cpu
                 low_cpu_mem_usage=True
             )
             controlnets.append(cn)
-            print(f"      ✅ 加载完成")
+            logger.info(f"      ✅ 加载完成")
         
         # 2. 加载主模型
-        print(f"   📦 加载主模型...")
+        logger.info(f"   📦 加载主模型...")
         pipe = StableDiffusionControlNetPipeline.from_single_file(
             model_path,
             controlnet=controlnets,  # 传入列表
@@ -719,11 +722,11 @@ def get_multi_controlnet_pipeline(model_path, controlnet_types=None, device="cpu
             pipe.vae.enable_tiling()
         pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
         
-        print(f"   ✅ 多层 ControlNet Pipeline 加载完成")
+        logger.info(f"   ✅ 多层 ControlNet Pipeline 加载完成")
         return pipe, controlnets
         
     except Exception as e:
-        print(f"❌ 多层 ControlNet Pipeline 加载失败: {e}")
+        logger.info(f"❌ 多层 ControlNet Pipeline 加载失败: {e}")
         import traceback
         traceback.print_exc()
         return None, None
@@ -757,10 +760,10 @@ def process_with_multi_controlnet(
             conditioning_scales = [0.5] * len(controlnet_types)
     
     print("=" * 60)
-    print("🔍 [多层 ControlNet 调试] process_with_multi_controlnet 被调用")
-    print(f"   selected_images: {len(selected_images)} 张")
-    print(f"   controlnet_types: {controlnet_types}")
-    print(f"   conditioning_scales: {conditioning_scales}")
+    logger.info(f"🔍 [多层 ControlNet 调试] process_with_multi_controlnet 被调用")
+    logger.info(f"   selected_images: {len(selected_images)} 张")
+    logger.info(f"   controlnet_types: {controlnet_types}")
+    logger.info(f"   conditioning_scales: {conditioning_scales}")
     print("=" * 60)
     
     if not selected_images:
@@ -807,7 +810,7 @@ def process_with_multi_controlnet(
         
         for ctype in controlnet_types:
             info = get_controlnet_info(ctype)
-            print(f"   🎨 生成 {info['name']} 控制图...")
+            logger.info(f"   🎨 生成 {info['name']} 控制图...")
             
             control_img = preprocess_image_for_controlnet(
                 image_path,
@@ -816,9 +819,9 @@ def process_with_multi_controlnet(
             )
             if control_img is not None:
                 control_images.append(control_img)
-                print(f"      ✅ {ctype} 控制图已生成")
+                logger.info(f"      ✅ {ctype} 控制图已生成")
             else:
-                print(f"      ⚠️ {ctype} 控制图生成失败，使用原图")
+                logger.info(f"      ⚠️ {ctype} 控制图生成失败，使用原图")
                 control_images.append(init_image.copy())
         
         if not control_images:
@@ -837,9 +840,9 @@ def process_with_multi_controlnet(
             num_controls = len(control_images)
             
             # 打印调试信息
-            print(f"   🔧 调用多层 ControlNet: {num_controls} 层")
-            print(f"   📷 image 类型: {type([init_image] * num_controls)}")
-            print(f"   🖼️ control_image 类型: {type(control_images)}")
+            logger.info(f"   🔧 调用多层 ControlNet: {num_controls} 层")
+            logger.info(f"   📷 image 类型: {type([init_image] * num_controls)}")
+            logger.info(f"   🖼️ control_image 类型: {type(control_images)}")
             
             # ✅ 始终使用列表格式
             result = pipe(

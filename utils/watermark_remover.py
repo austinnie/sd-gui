@@ -13,6 +13,9 @@ import torch
 from typing import Optional, Tuple, List
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class WatermarkRemover:
     """水印去除器 - 组合多种方法"""
     
@@ -157,10 +160,10 @@ class WatermarkRemover:
             return image
             
         except ImportError:
-            print("⚠️ AI 检测模式需要 transformers 和 torch")
+            logger.info(f"⚠️ AI 检测模式需要 transformers 和 torch")
             return image
         except Exception as e:
-            print(f"⚠️ AI 检测失败: {e}")
+            logger.info(f"⚠️ AI 检测失败: {e}")
             return image
     
     # ==================== 组合方法 ====================
@@ -194,21 +197,21 @@ class WatermarkRemover:
                     result = self._remove_with_inpaint(img_cv.copy())
                     results.append(result)
                 except Exception as e:
-                    print(f"⚠️ Inpaint 方法失败: {e}")
+                    logger.info(f"⚠️ Inpaint 方法失败: {e}")
             
             elif method == "opencv_blur":
                 try:
                     result = self._remove_with_blur(img_cv.copy())
                     results.append(result)
                 except Exception as e:
-                    print(f"⚠️ Blur 方法失败: {e}")
+                    logger.info(f"⚠️ Blur 方法失败: {e}")
             
             elif method == "ai_detection":
                 try:
                     result = self._remove_with_ai(img_cv.copy())
                     results.append(result)
                 except Exception as e:
-                    print(f"⚠️ AI 方法失败: {e}")
+                    logger.info(f"⚠️ AI 方法失败: {e}")
         
         if results:
             best = self._select_best_result(results)
@@ -306,11 +309,11 @@ def remove_watermark_from_file(
             output_path = f"{base}_clean{ext}"
         
         result.save(output_path, quality=95)
-        print(f"✅ 水印已去除: {output_path}")
+        logger.info(f"✅ 水印已去除: {output_path}")
         return output_path
         
     except Exception as e:
-        print(f"❌ 水印去除失败: {e}")
+        logger.info(f"❌ 水印去除失败: {e}")
         return filepath
 
 

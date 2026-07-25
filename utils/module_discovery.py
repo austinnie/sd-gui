@@ -9,6 +9,9 @@ import time
 from typing import List, Set, Dict, Optional, Any
 from datetime import datetime
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 # 注意：不要在这里导入项目内部模块，避免循环依赖
 # 所有导入都在方法内部进行
 
@@ -60,7 +63,7 @@ class ModuleDiscovery:
                 return cls._cached_modules
         
         # 重新扫描
-        print("   🔍 扫描模块文件...")
+        logger.info(f"   🔍 扫描模块文件...")
         modules = cls._scan_all_modules()
         
         # 更新缓存

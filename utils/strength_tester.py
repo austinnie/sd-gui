@@ -16,6 +16,9 @@ import torch
 from diffusers import StableDiffusionImg2ImgPipeline, EulerDiscreteScheduler
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class StrengthTester:
     """重绘强度批量测试器"""
     
@@ -116,7 +119,7 @@ class StrengthTester:
             return max(0.15, min(0.70, base_strength))
             
         except Exception as e:
-            print(f"⚠️ 自动检测强度失败: {e}")
+            logger.info(f"⚠️ 自动检测强度失败: {e}")
             return 0.35
     
     def run_test(self, image_path: str, prompt: str, negative: str = "",
@@ -143,18 +146,18 @@ class StrengthTester:
         # 自动检测基础强度
         if base_strength is None:
             base_strength = self.auto_detect_strength(image_path, prompt)
-            print(f"📊 自动检测基础强度: {base_strength:.2f}")
+            logger.info(f"📊 自动检测基础强度: {base_strength:.2f}")
         
         # 生成测试配置
         configs = self.generate_test_configs(base_strength)
         total = len(configs)
         
-        print(f"\n{'='*60}")
-        print(f"🧪 批量强度测试")
-        print(f"   图片: {os.path.basename(image_path)}")
-        print(f"   基础强度: {base_strength:.2f}")
-        print(f"   测试数量: {total}")
-        print(f"{'='*60}\n")
+        logger.info(f"\n{'='*60}")
+        logger.info(f"🧪 批量强度测试")
+        logger.info(f"   图片: {os.path.basename(image_path)}")
+        logger.info(f"   基础强度: {base_strength:.2f}")
+        logger.info(f"   测试数量: {total}")
+        logger.info(f"{'='*60}\n")
         
         # 创建输出目录
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -169,13 +172,13 @@ class StrengthTester:
         
         for idx, config in enumerate(configs):
             if self.cancel:
-                print("⏹️ 已取消")
+                logger.info(f"⏹️ 已取消")
                 break
             
             if progress_callback:
                 progress_callback(idx + 1, total, config["description"])
             
-            print(f"\n[{idx+1}/{total}] 测试: {config['description']}")
+            logger.info(f"\n[{idx+1}/{total}] 测试: {config['description']}")
             
             result = self._test_single(
                 image_path=image_path,
@@ -197,10 +200,10 @@ class StrengthTester:
         report = self._generate_report(test_dir, elapsed)
         
         print("\n" + "="*60)
-        print(f"✅ 测试完成！")
-        print(f"   耗时: {elapsed:.1f}秒")
-        print(f"   测试数: {len(self.results)}")
-        print(f"   输出目录: {test_dir}")
+        logger.info(f"✅ 测试完成！")
+        logger.info(f"   耗时: {elapsed:.1f}秒")
+        logger.info(f"   测试数: {len(self.results)}")
+        logger.info(f"   输出目录: {test_dir}")
         print("="*60)
         
         return {
@@ -272,7 +275,7 @@ class StrengthTester:
             }
             
         except Exception as e:
-            print(f"   ❌ 失败: {e}")
+            logger.info(f"   ❌ 失败: {e}")
             return {
                 "config": config,
                 "success": False,
@@ -423,7 +426,7 @@ class StrengthTester:
         with open(html_path, 'w', encoding='utf-8') as f:
             f.write(html)
         
-        print(f"   📄 HTML 报告: {html_path}")
+        logger.info(f"   📄 HTML 报告: {html_path}")
     
     def cancel_test(self):
         """取消测试"""

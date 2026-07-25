@@ -9,6 +9,9 @@ from PIL import Image
 import json
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class StepStatus(Enum):
     PENDING = "pending"
     RUNNING = "running"
@@ -94,6 +97,6 @@ class PipelineStep(ABC):
     def _check_cancelled(self, context: StepContext) -> bool:
         """检查是否已取消"""
         if context.is_cancelled():
-            print(f"   ⏹️ 步骤 '{self.name}' 被取消")
+            logger.info(f"   ⏹️ 步骤 '{self.name}' 被取消")
             return True
         return False

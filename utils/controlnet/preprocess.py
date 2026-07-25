@@ -12,6 +12,9 @@ from .types import get_controlnet_info
 from .config import CONTROLNET_PREPROCESS_MODE
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 def preprocess_image_for_controlnet(
     image_path: str,
     controlnet_type: str = "openpose",
@@ -34,7 +37,7 @@ def preprocess_image_for_controlnet(
             DWposeDetector,
         )
     except ImportError:
-        print("⚠️ controlnet_aux 未安装，请运行: pip install controlnet-aux")
+        logger.info(f"⚠️ controlnet_aux 未安装，请运行: pip install controlnet-aux")
         return None
     
     # 读取图片
@@ -92,7 +95,7 @@ def preprocess_image_for_controlnet(
         return result
         
     except Exception as e:
-        print(f"⚠️ 预处理失败 ({preprocessor}): {e}")
+        logger.info(f"⚠️ 预处理失败 ({preprocessor}): {e}")
         return None
 
 
@@ -101,11 +104,11 @@ def _preprocess_openpose(detector, image, output_size):
     mode = CONTROLNET_PREPROCESS_MODE
     
     if mode == "pil":
-        print("   📌 OpenPose 模式: PIL (原图+骨架)")
+        logger.info(f"   📌 OpenPose 模式: PIL (原图+骨架)")
         return detector(image, output_type="pil")
     
     elif mode == "skeleton":
-        print("   📌 OpenPose 模式: Skeleton (纯骨架)")
+        logger.info(f"   📌 OpenPose 模式: Skeleton (纯骨架)")
         try:
             result_pil = detector(image, output_type="pil", include_hands=False, include_face=False)
             result_np = np.array(result_pil)
@@ -132,7 +135,7 @@ def _preprocess_openpose(detector, image, output_size):
             return Image.fromarray(skeleton).convert('RGB')
             
         except Exception as e:
-            print(f"   ⚠️ 骨架提取失败: {e}，回退到 pil 模式")
+            logger.info(f"   ⚠️ 骨架提取失败: {e}，回退到 pil 模式")
             return detector(image, output_type="pil")
     
     return detector(image, output_type="pil")
@@ -156,9 +159,9 @@ def _preprocess_dwpose(image, output_size):
                 image_resolution=max_dim,
                 max_people=1
             )
-            print("   ✅ DWPose 使用 max_people=1")
+            logger.info(f"   ✅ DWPose 使用 max_people=1")
         except TypeError:
-            print("   ℹ️ DWPose 版本不支持 max_people，使用默认行为")
+            logger.info(f"   ℹ️ DWPose 版本不支持 max_people，使用默认行为")
             result = detector(
                 image,
                 output_type="pil",
@@ -171,7 +174,7 @@ def _preprocess_dwpose(image, output_size):
         return result
         
     except Exception as e:
-        print(f"   ⚠️ DWPose 失败: {e}，回退到 OpenPose")
+        logger.info(f"   ⚠️ DWPose 失败: {e}，回退到 OpenPose")
         from controlnet_aux import OpenposeDetector
         detector = OpenposeDetector.from_pretrained("lllyasviel/ControlNet")
         result = detector(image, output_type="pil", include_hands=False, include_face=False)
@@ -191,10 +194,10 @@ def _preprocess_hed(image, output_size):
         local_model_path = Path(cache_dir) / "controlnet_aux" / "ControlNetHED.pth"
         
         if local_model_path.exists():
-            print(f"   📁 使用本地 HED 模型: {local_model_path}")
+            logger.info(f"   📁 使用本地 HED 模型: {local_model_path}")
             detector = HEDdetector()
         else:
-            print("   ⚠️ 本地 HED 模型不存在，尝试下载...")
+            logger.info(f"   ⚠️ 本地 HED 模型不存在，尝试下载...")
             detector = HEDdetector.from_pretrained("lllyasviel/ControlNet")
         
         result = detector(image, output_type="pil")
@@ -203,7 +206,7 @@ def _preprocess_hed(image, output_size):
         return result
         
     except Exception as e:
-        print(f"   ⚠️ HED 预处理失败: {e}，使用 Canny 替代")
+        logger.info(f"   ⚠️ HED 预处理失败: {e}，使用 Canny 替代")
         from controlnet_aux import CannyDetector
         detector = CannyDetector()
         result = detector(image, output_type="pil")
@@ -223,17 +226,17 @@ def _preprocess_lineart(image, output_size):
         local_model_path = Path(cache_dir) / "controlnet_aux" / "sk_model.pth"
         
         if local_model_path.exists():
-            print(f"   📁 使用本地 Lineart 模型: {local_model_path}")
+            logger.info(f"   📁 使用本地 Lineart 模型: {local_model_path}")
             try:
                 detector = LineartDetector()
                 result = detector(image, output_type="pil")
             except Exception as e2:
-                print(f"   ⚠️ Lineart 加载失败: {e2}，使用 Canny 替代")
+                logger.info(f"   ⚠️ Lineart 加载失败: {e2}，使用 Canny 替代")
                 from controlnet_aux import CannyDetector
                 detector = CannyDetector()
                 result = detector(image, output_type="pil")
         else:
-            print("   ⚠️ 本地 Lineart 模型不存在，尝试下载...")
+            logger.info(f"   ⚠️ 本地 Lineart 模型不存在，尝试下载...")
             detector = LineartDetector.from_pretrained("lllyasviel/ControlNet")
             result = detector(image, output_type="pil")
         
@@ -242,7 +245,7 @@ def _preprocess_lineart(image, output_size):
         return result
         
     except Exception as e:
-        print(f"   ⚠️ Lineart 预处理失败: {e}，使用 Canny 替代")
+        logger.info(f"   ⚠️ Lineart 预处理失败: {e}，使用 Canny 替代")
         from controlnet_aux import CannyDetector
         detector = CannyDetector()
         result = detector(image, output_type="pil")

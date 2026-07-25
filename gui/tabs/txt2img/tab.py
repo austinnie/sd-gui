@@ -23,6 +23,9 @@ from config.nsfw_config import nsfw_config
 from utils.pipeline_pool import pipeline_pool
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class Txt2ImgTab(BaseTab):
     """文生图标签页 - 完整版"""
     
@@ -159,7 +162,7 @@ class Txt2ImgTab(BaseTab):
         if nsfw_config.enabled:
             has_nsfw, matched = nsfw_filter.detect_nsfw(prompt)
             if has_nsfw:
-                print(f"🔞 检测到 NSFW 关键词: {matched}")
+                logger.info(f"🔞 检测到 NSFW 关键词: {matched}")
             prompt, negative = nsfw_filter.filter_prompt(prompt, negative)
         
         self.cancel_generation = False
@@ -174,11 +177,11 @@ class Txt2ImgTab(BaseTab):
         num_images = params["num_images"]
         
         smart_w, smart_h, size_msg = get_smart_size(width, height, prompt)
-        print(f"📐 {size_msg}")
+        logger.info(f"📐 {size_msg}")
         
         smart_steps, smart_cfg, _, param_msg = get_smart_params(prompt, steps, cfg, None)
         if smart_steps != steps or smart_cfg != cfg:
-            print(f"⚙️ {param_msg}")
+            logger.info(f"⚙️ {param_msg}")
         
         self.update_status("🚀 开始文生图...")
         self.generate_btn.config(state=tk.DISABLED)

@@ -8,6 +8,9 @@ from PIL import Image
 from .base_handler import BaseHandler
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class ImageToImageHandler(BaseHandler):
     """图生图处理器"""
     
@@ -208,7 +211,7 @@ class ImageToImageHandler(BaseHandler):
                 "is_realistic": True,
             }
         except Exception as e:
-            print(f"⚠️ 分析图片失败: {e}")
+            logger.info(f"⚠️ 分析图片失败: {e}")
             return {}
 
     def _optimize_parameters(self, prompt: str, image_features: dict = None) -> dict:

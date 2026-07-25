@@ -14,6 +14,9 @@ from PIL import Image
 from typing import Optional, Literal, List
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 # ============================================================
 # 方法1: 重新保存 PNG（清除 tEXt 块）
 # ============================================================
@@ -35,7 +38,7 @@ def clean_png_metadata(input_path: str, output_path: Optional[str] = None) -> st
     img = Image.open(input_path)
     # 重新保存，不保留任何元数据
     img.save(output_path, format='PNG', optimize=True)
-    print(f"✅ [方法1] PNG 元数据已清除: {output_path}")
+    logger.info(f"✅ [方法1] PNG 元数据已清除: {output_path}")
     return output_path
 
 
@@ -60,7 +63,7 @@ def convert_to_jpg(input_path: str, output_path: Optional[str] = None, quality: 
     
     img = Image.open(input_path).convert('RGB')
     img.save(output_path, format='JPEG', quality=quality, optimize=True)
-    print(f"✅ [方法2] 已转换为 JPG，元数据已清除: {output_path}")
+    logger.info(f"✅ [方法2] 已转换为 JPG，元数据已清除: {output_path}")
     return output_path
 
 
@@ -92,7 +95,7 @@ def remove_with_exiftool(input_path: str, output_path: Optional[str] = None) -> 
             timeout=5
         )
         if result.returncode != 0:
-            print("⚠️ ExifTool 未安装，降级到方法1")
+            logger.info(f"⚠️ ExifTool 未安装，降级到方法1")
             return clean_png_metadata(input_path, output_path)
         
         # 删除所有元数据
@@ -103,14 +106,14 @@ def remove_with_exiftool(input_path: str, output_path: Optional[str] = None) -> 
         if output_path != input_path:
             shutil.copy2(input_path, output_path)
         
-        print(f"✅ [方法3] ExifTool 已清除元数据: {output_path}")
+        logger.info(f"✅ [方法3] ExifTool 已清除元数据: {output_path}")
         return output_path
         
     except subprocess.TimeoutExpired:
-        print("⚠️ ExifTool 超时，降级到方法1")
+        logger.info(f"⚠️ ExifTool 超时，降级到方法1")
         return clean_png_metadata(input_path, output_path)
     except Exception as e:
-        print(f"⚠️ ExifTool 失败: {e}，降级到方法1")
+        logger.info(f"⚠️ ExifTool 失败: {e}，降级到方法1")
         return clean_png_metadata(input_path, output_path)
 
 
@@ -228,9 +231,9 @@ def batch_clean_images(
             result = smart_clean_image(input_path, output_path, method)
             cleaned_files.append(result)
         except Exception as e:
-            print(f"❌ 清理失败: {filename} - {e}")
+            logger.info(f"❌ 清理失败: {filename} - {e}")
     
-    print(f"✅ 批量清理完成: {len(cleaned_files)} 个文件")
+    logger.info(f"✅ 批量清理完成: {len(cleaned_files)} 个文件")
     return cleaned_files
 
 

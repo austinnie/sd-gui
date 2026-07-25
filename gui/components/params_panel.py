@@ -8,6 +8,9 @@ import tkinter as tk
 from tkinter import ttk
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class ParamsPanel:
     """共享参数面板 - 单例模式，所有 Tab 共享同一组参数"""
     
@@ -375,7 +378,7 @@ class ParamsPanel:
         if hasattr(self, 'scheduler_desc_label'):
             self.scheduler_desc_label.config(text=f"💡 {description}")
         
-        print(f"🔄 切换到 {scheduler}，推荐步数: {recommended}，{description}")
+        logger.info(f"🔄 切换到 {scheduler}，推荐步数: {recommended}，{description}")
         
     def get_scheduler_type(self) -> str:
         """获取当前选择的调度器类型"""

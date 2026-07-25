@@ -3,6 +3,9 @@
 
 import os
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 # ===== 缓存根目录 =====
 CACHE_ROOT = r"E:\hf_cache\.cache"
 os.makedirs(CACHE_ROOT, exist_ok=True)
@@ -28,8 +31,8 @@ for path in [HF_HUB_CACHE, U2NET_HOME, DEEPFACE_HOME]:
 
 # ===== 打印状态（只在首次加载时） =====
 if not hasattr(os.environ, "_CACHE_CONFIG_LOADED"):
-    print(f"📁 缓存目录: {CACHE_ROOT}")
-    print(f"   HF_HUB_CACHE: {HF_HUB_CACHE}")
-    print(f"   U2NET_HOME: {U2NET_HOME}")
-    print(f"   DEEPFACE_HOME: {DEEPFACE_HOME}")
+    logger.info(f"📁 缓存目录: {CACHE_ROOT}")
+    logger.info(f"   HF_HUB_CACHE: {HF_HUB_CACHE}")
+    logger.info(f"   U2NET_HOME: {U2NET_HOME}")
+    logger.info(f"   DEEPFACE_HOME: {DEEPFACE_HOME}")
     os.environ["_CACHE_CONFIG_LOADED"] = "1"

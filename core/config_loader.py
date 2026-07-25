@@ -9,6 +9,9 @@ import os
 from typing import Dict, List, Any, Optional
 
 
+from utils.logger import get_logger, info, warning, error, debug
+
+logger = get_logger(__name__)
 class ConfigLoader:
     """配置加载器 - 单例模式"""
     
@@ -46,10 +49,10 @@ class ConfigLoader:
                     self._configs[config_name] = json.load(f)
                 return self._configs[config_name]
             except Exception as e:
-                print(f"❌ 加载配置失败 {config_name}: {e}")
+                logger.info(f"❌ 加载配置失败 {config_name}: {e}")
                 return {}
         else:
-            print(f"⚠️ 配置文件不存在: {file_path}")
+            logger.info(f"⚠️ 配置文件不存在: {file_path}")
             return {}
     
     def get_category(self, config_name: str, category: str) -> dict:
