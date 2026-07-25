@@ -145,6 +145,11 @@ class ControlNetMixin:
         controlnet_type = config.get("controlnet_type", "canny")
         controlnet_strength = config.get("controlnet_strength", 0.6)
         
+        # ✅ 添加日志，查看是否重复加载
+        import traceback
+        logger.info(f"   🔍 _setup_controlnet 被调用: {controlnet_type}")
+        logger.info(f"   📍 调用栈: {traceback.format_stack()[-3][:100]}")        
+        
         pipe = None
         control_image = None
         

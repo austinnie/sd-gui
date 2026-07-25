@@ -330,7 +330,22 @@ class SDApp:
     def _reload_modules(self):
         """热重载模块"""
         self.reloader.reload_all()
-    
+
+    def _force_reload_modules(self):
+        """强制热重载模块（先清理资源）"""
+        if messagebox.askyesno(
+            "强制重载",
+            "💥 强制重载将执行以下操作：\n\n"
+            "1. 取消所有正在运行的任务\n"
+            "2. 清理 Pipeline 池\n"
+            "3. 清理图片缓存\n"
+            "4. 卸载当前模型\n"
+            "5. 释放内存\n"
+            "6. 重新加载所有模块\n\n"
+            "确定继续吗？"
+        ):
+            self.reloader.reload_all(force=True)
+        
     # ==================== 工具方法 ====================
     
     def _get_model_path(self, display_name: str) -> str:

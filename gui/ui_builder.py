@@ -93,6 +93,9 @@ class UIBuilder:
         
         return status_frame
     
+
+    # gui/ui_builder.py
+
     def build_model_selector(self, parent: ttk.Frame) -> ttk.Frame:
         """构建模型选择器"""
         model_frame = ttk.Frame(parent)
@@ -115,12 +118,21 @@ class UIBuilder:
         )
         self.app.load_btn.pack(side=tk.LEFT, padx=2)
         
+        # ✅ 普通重载按钮
         self.app.reload_btn = ttk.Button(
             model_frame,
             text="🔄 重载模块",
             command=self.app._reload_modules
         )
         self.app.reload_btn.pack(side=tk.LEFT, padx=2)
+        
+        # ✅ 强制重载按钮（带清理）
+        self.app.force_reload_btn = ttk.Button(
+            model_frame,
+            text="💥 强制重载",
+            command=self.app._force_reload_modules
+        )
+        self.app.force_reload_btn.pack(side=tk.LEFT, padx=2)
         
         return model_frame
     

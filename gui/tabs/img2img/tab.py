@@ -61,7 +61,7 @@ class Img2ImgTab(BaseTab):
         self.is_generating = False
         
         self.use_inpaint_var = tk.BooleanVar(value=False)
-        self.use_controlnet_var = tk.BooleanVar(value=True)
+        self.use_controlnet_var = tk.BooleanVar(value=False)
         self.controlnet_combo_var = tk.StringVar(value="姿态+边缘+深度")
         self.mask_image = None
         

@@ -67,23 +67,33 @@ class PipelineRunner:
             return {"success": False, "error": "无法获取 Pipeline"}
         
         try:
+            # ✅ 从流水线步骤配置中读取 ControlNet 状态
             # 检查是否启用 ControlNet
             use_controlnet = False
             controlnet_pipe = None
-            controlnet_type = "openpose"
+            controlnet_strength = 0.6
             
-            if hasattr(self.app, 'img2img_tab') and hasattr(self.app.img2img_tab, 'use_controlnet_var'):
-                use_controlnet = self.app.img2img_tab.use_controlnet_var.get()
-                if use_controlnet and hasattr(self.app.img2img_tab, 'controlnet_type_var'):
-                    selected_type = self.app.img2img_tab.controlnet_type_var.get()
-                    controlnet_type = selected_type.split(" ")[0] if " " in selected_type else "openpose"
+            steps = pipeline_config.get("steps", [])
+            for step in steps:
+                step_config = step.get("config", {})
+                if step_config.get("use_controlnet", False):
+                    use_controlnet = True
+                    controlnet_type = step_config.get("controlnet_type", "canny")
+                    controlnet_strength = step_config.get("controlnet_strength", 0.6)
+                    break
             
-            # 加载 ControlNet
+            # ✅ 如果步骤中没有启用 ControlNet，就不加载
             if use_controlnet:
+                logger.info(f"🧠 步骤中启用 ControlNet: {controlnet_type} (强度: {controlnet_strength})")
                 controlnet_pipe = self._setup_controlnet(pipe, controlnet_type)
                 if controlnet_pipe:
-                    logger.info(f"🧠 ControlNet 已加载: {controlnet_type}")
+                    logger.info(f"✅ ControlNet 已加载: {controlnet_type}")
                     pipe = controlnet_pipe
+                else:
+                    logger.info(f"⚠️ ControlNet 加载失败，使用普通模式")
+                    use_controlnet = False
+            else:
+                logger.info(f"ℹ️ ControlNet 未在步骤中启用，使用普通模式")
             
             # 创建流水线
             pipeline = PipelineRegistry.create_pipeline_from_config(pipeline_config)
@@ -109,10 +119,11 @@ class PipelineRunner:
                     "pipe": pipe,
                     "lora_path": lora_path,
                     "lora_weight": lora_weight,
-                    "use_controlnet": use_controlnet,
-                    "controlnet_pipe": controlnet_pipe,
-                    "controlnet_type": controlnet_type,
-                    "cancel_flag": cancel_flag,  # ✅ 传递到 global_config
+                    "use_controlnet": use_controlnet,# ✅ 使用从步骤读取的值
+                    "controlnet_pipe": controlnet_pipe if use_controlnet else None,
+                    "controlnet_type": controlnet_type if use_controlnet else None,
+                    "cancel_flag": cancel_flag,
+                    "params_panel": self.app.params_panel,
                 },
                 cancel_flag=cancel_flag  # ✅ 直接传递
             )

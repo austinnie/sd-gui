@@ -11,11 +11,13 @@ import os
 import tkinter as tk
 from tkinter import messagebox
 from typing import List, Optional
-
+import gc
+import time  # ✅ 添加这行
 
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
+
 class Reloader:
     """热重载器"""
     
@@ -141,16 +143,46 @@ class Reloader:
     
     def __init__(self, app):
         self.app = app
+        self._is_reloading = False
     
-    def reload_all(self):
-        """执行完整热重载"""
+    # ============================================================
+    # ✅ 新增：检查任务 + 强制重载入口
+    # ============================================================
+    
+    def reload_all(self, force: bool = False):
+        """
+        执行完整热重载
+        
+        参数:
+            force: 是否强制重载（会先清理资源）
+        """
+        if self._is_reloading:
+            self.app.update_status("⏳ 正在重载中，请等待...")
+            return
+        
+        # ✅ 检查是否有任务正在运行
+        if not force and self._has_running_tasks():
+            if not messagebox.askyesno(
+                "任务正在运行",
+                "检测到有生成任务正在运行，重载可能会导致任务中断。\n\n"
+                "是否继续？"
+            ):
+                return
+        
+        self._is_reloading = True
+        
+        # ✅ 如果是强制重载，先清理资源
+        if force:
+            self._cleanup_before_reload()
+        
         self.app.update_status("🔄 正在重载模块...")
         print("\n" + "=" * 70)
-        logger.info(f"🔄 开始热重载模块 (自举 + 两步重载法)")
+        logger.info(f"🔄 开始{'强制' if force else ''}热重载模块")
         print("=" * 70)
         
         # 第一步：重载配置模块
         if not self._reload_config_modules():
+            self._is_reloading = False
             return
         
         # 第二步：自举 - 重载 ModuleDiscovery
@@ -159,6 +191,7 @@ class Reloader:
         # 第三步：发现所有模块
         modules_to_reload = self._discover_modules()
         if not modules_to_reload:
+            self._is_reloading = False
             return
         
         # 第四步：重载业务模块
@@ -168,8 +201,286 @@ class Reloader:
         self._rebuild_ui()
         
         # 显示结果
-        self._show_reload_result(reloaded, failed)
+        self._show_reload_result(reloaded, failed, force)
+        
+        # ✅ 如果是强制重载，最终清理
+        if force:
+            self._final_cleanup()
+        
+        self._is_reloading = False
+
+    # ============================================================
+    # ✅ 新增：检查任务
+    # ============================================================
     
+    def _has_running_tasks(self) -> bool:
+        """检查是否有任务正在运行"""
+        # 检查文生图
+        if hasattr(self.app, 'txt2img_tab') and self.app.txt2img_tab:
+            if hasattr(self.app.txt2img_tab, 'is_generating') and self.app.txt2img_tab.is_generating:
+                return True
+        
+        # 检查图生图
+        if hasattr(self.app, 'img2img_tab') and self.app.img2img_tab:
+            if hasattr(self.app.img2img_tab, 'is_generating') and self.app.img2img_tab.is_generating:
+                return True
+        
+        # 检查流水线
+        if hasattr(self.app, 'pipeline_tab') and self.app.pipeline_tab:
+            if hasattr(self.app.pipeline_tab, 'is_running') and self.app.pipeline_tab.is_running:
+                return True
+        
+        # 检查 Janus
+        if hasattr(self.app, 'janus_tab') and self.app.janus_tab:
+            if hasattr(self.app.janus_tab, 'is_generating') and self.app.janus_tab.is_generating:
+                return True
+        
+        # 检查聊天
+        if hasattr(self.app, 'chat_tab') and self.app.chat_tab:
+            if hasattr(self.app.chat_tab, 'is_generating') and self.app.chat_tab.is_generating:
+                return True
+        
+        # 检查网格测试
+        if hasattr(self.app, 'grid_test_tab') and self.app.grid_test_tab:
+            if hasattr(self.app.grid_test_tab, 'is_running') and self.app.grid_test_tab.is_running:
+                return True
+        
+        return False
+
+
+    # ============================================================
+    # ✅ 新增：强制重载清理
+    # ============================================================
+    
+    def _cleanup_before_reload(self):
+        """重载前清理资源（强制重载使用）"""
+        logger.info("🧹 强制重载：开始清理资源...")
+        
+        # 1. 取消所有正在运行的任务
+        self._cancel_all_tasks()
+        
+        # 2. 等待任务完全停止
+        time.sleep(1)
+        
+        # 3. 清理 Pipeline 池
+        try:
+            from utils.pipeline_pool import pipeline_pool
+            status = pipeline_pool.get_status()
+            if status.get('active_count', 0) > 0:
+                logger.info(f"   🗑️ 清理 Pipeline 池 ({status['active_count']} 个实例)")
+                for key, data in list(pipeline_pool._pipelines.items()):
+                    pipe = data.get('pipe')
+                    if pipe is not None:
+                        try:
+                            if hasattr(pipe, 'to'):
+                                pipe.to("cpu")
+                            del pipe
+                        except:
+                            pass
+                pipeline_pool._pipelines.clear()
+                logger.info("   ✅ Pipeline 池已清空")
+        except Exception as e:
+            logger.debug(f"   ⚠️ Pipeline 池清理失败: {e}")
+        
+        # 4. 清理图片缓存
+        try:
+            from utils.image_cache import image_cache
+            cache_size = len(image_cache._cache)
+            if cache_size > 0:
+                logger.info(f"   🗑️ 清理图片缓存 ({cache_size} 张)")
+                image_cache.clear()
+        except Exception as e:
+            logger.debug(f"   ⚠️ 图片缓存清理失败: {e}")
+        
+        # 5. 卸载当前模型
+        if hasattr(self.app, 'model_manager'):
+            if self.app.model_manager.is_sd_loaded:
+                logger.info("   🗑️ 卸载 SD 模型")
+                self.app.model_manager.unload_sd()
+            elif self.app.model_manager.is_janus_loaded:
+                logger.info("   🗑️ 卸载 Janus 模型")
+                self.app.model_manager.unload_janus()
+        
+        # 6. 垃圾回收
+        for _ in range(5):
+            gc.collect()
+        
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                torch.cuda.synchronize()
+        except:
+            pass
+        
+        gc.collect()
+        
+        from gui.components.memory_monitor import get_memory_usage
+        logger.info(f"   ✅ 资源清理完成，当前内存: {get_memory_usage():.1f} GB")
+    
+
+    def _cancel_all_tasks(self):
+        """取消所有正在运行的任务"""
+        logger.info("   ⏹️ 取消所有正在运行的任务...")
+        
+        # ===== 1. 取消文生图 =====
+        if hasattr(self.app, 'txt2img_tab') and self.app.txt2img_tab:
+            try:
+                self.app.txt2img_tab.cancel_generation = True
+                self.app.txt2img_tab.is_generating = False
+                self.app.txt2img_tab.batch_running = False
+                logger.info("      ✅ 文生图已取消")
+            except Exception as e:
+                logger.debug(f"      ⚠️ 文生图取消失败: {e}")
+        
+        # ===== 2. 取消图生图 =====
+        if hasattr(self.app, 'img2img_tab') and self.app.img2img_tab:
+            try:
+                self.app.img2img_tab.cancel_generation = True
+                self.app.img2img_tab.is_generating = False
+                logger.info("      ✅ 图生图已取消")
+            except Exception as e:
+                logger.debug(f"      ⚠️ 图生图取消失败: {e}")
+        
+        # ===== 3. 取消流水线 =====
+        if hasattr(self.app, 'pipeline_tab') and self.app.pipeline_tab:
+            try:
+                self.app.pipeline_tab.cancel_flag = True
+                self.app.pipeline_tab.is_running = False
+                logger.info("      ✅ 流水线已取消")
+            except Exception as e:
+                logger.debug(f"      ⚠️ 流水线取消失败: {e}")
+        
+        # ===== 4. 取消 Janus =====
+        if hasattr(self.app, 'janus_tab') and self.app.janus_tab:
+            try:
+                if hasattr(self.app.janus_tab, 'cancel_generation'):
+                    self.app.janus_tab.cancel_generation = True
+                    self.app.janus_tab.is_generating = False
+                    logger.info("      ✅ Janus 已取消")
+            except Exception as e:
+                logger.debug(f"      ⚠️ Janus 取消失败: {e}")
+        
+        # ===== 5. 取消聊天 =====
+        if hasattr(self.app, 'chat_tab') and self.app.chat_tab:
+            try:
+                if hasattr(self.app.chat_tab, 'cancel_generation'):
+                    self.app.chat_tab.cancel_generation = True
+                    self.app.chat_tab.is_generating = False
+                    logger.info("      ✅ 聊天已取消")
+            except Exception as e:
+                logger.debug(f"      ⚠️ 聊天取消失败: {e}")
+        
+        # ===== 6. 取消网格测试 =====
+        if hasattr(self.app, 'grid_test_tab') and self.app.grid_test_tab:
+            try:
+                if hasattr(self.app.grid_test_tab, 'is_running') and self.app.grid_test_tab.is_running:
+                    if hasattr(self.app.grid_test_tab, 'runner'):
+                        self.app.grid_test_tab.runner.cancel_run()
+                    self.app.grid_test_tab.is_running = False
+                    logger.info("      ✅ 网格测试已取消")
+            except Exception as e:
+                logger.debug(f"      ⚠️ 网格测试取消失败: {e}")
+        
+        # ===== 7. 取消通用生成器 =====
+        if hasattr(self.app, 'universal_tab') and self.app.universal_tab:
+            try:
+                if hasattr(self.app.universal_tab, 'cancel_generation'):
+                    self.app.universal_tab.cancel_generation = True
+                    self.app.universal_tab.is_generating = False
+                    logger.info("      ✅ 通用生成器已取消")
+            except Exception as e:
+                logger.debug(f"      ⚠️ 通用生成器取消失败: {e}")
+        
+        # ===== 8. 取消场景生成 =====
+        if hasattr(self.app, 'scene_tab') and self.app.scene_tab:
+            try:
+                if hasattr(self.app.scene_tab, 'cancel_generation'):
+                    self.app.scene_tab.cancel_generation = True
+                    self.app.scene_tab.is_generating = False
+                    logger.info("      ✅ 场景生成已取消")
+            except Exception as e:
+                logger.debug(f"      ⚠️ 场景生成取消失败: {e}")
+        
+        # ===== 9. 强制等待任务停止 =====
+        time.sleep(0.5)
+        
+        # ===== 10. 二次确认：强制重置所有生成状态 =====
+        try:
+            # 重置所有 Tab 的生成状态
+            for tab_name in ['txt2img_tab', 'img2img_tab', 'pipeline_tab', 
+                             'janus_tab', 'chat_tab', 'grid_test_tab',
+                             'universal_tab', 'scene_tab']:
+                if hasattr(self.app, tab_name):
+                    tab = getattr(self.app, tab_name)
+                    if tab:
+                        if hasattr(tab, 'is_generating'):
+                            tab.is_generating = False
+                        if hasattr(tab, 'cancel_generation'):
+                            tab.cancel_generation = True
+                        if hasattr(tab, 'is_running'):
+                            tab.is_running = False
+        except Exception as e:
+            logger.debug(f"      ⚠️ 重置状态失败: {e}")
+        
+        logger.info("   ✅ 所有任务已取消")
+    
+    def _final_cleanup(self):
+        """强制重载后的最终清理"""
+        logger.info("🧹 强制重载完成，执行最终清理...")
+        
+        for _ in range(3):
+            gc.collect()
+        
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except:
+            pass
+        
+        from gui.components.memory_monitor import get_memory_usage
+        logger.info(f"   ✅ 最终清理完成，当前内存: {get_memory_usage():.1f} GB")
+    
+    # ============================================================
+    # ✅ 修改：显示重载结果（支持 force 参数）
+    # ============================================================
+    
+    def _show_reload_result(self, reloaded: List[str], failed: List[str], force: bool = False):
+        """显示重载结果"""
+        print("\n" + "=" * 70)
+        logger.info(f"📊 {'强制' if force else ''}热重载结果统计:")
+        logger.info(f"   ✅ 成功: {len(reloaded)} 个模块")
+        if failed:
+            logger.info(f"   ❌ 失败: {len(failed)} 个模块")
+            logger.info(f"      {', '.join(failed[:5])}{'...' if len(failed) > 5 else ''}")
+        print("=" * 70)
+        
+        status_msg = f"✅ {'强制' if force else ''}热重载完成！已重载 {len(reloaded)} 个模块"
+        if failed:
+            status_msg += f" (⚠️ {len(failed)} 个失败)"
+        self.app.update_status(status_msg)
+        
+        if failed:
+            messagebox.showwarning(
+                "部分模块重载失败",
+                f"有 {len(failed)} 个模块重载失败:\n\n"
+                f"{', '.join(failed[:10])}\n\n"
+                f"请查看控制台输出获取详细信息。"
+            )
+        else:
+            # ✅ 非强制重载时自动重载模型
+            if not force:
+                self._auto_reload_model_after_reload()
+    
+    # ============================================================
+    # ✅ 兼容旧接口
+    # ============================================================
+    
+    def reload(self):
+        """兼容旧接口 - 普通重载"""
+        self.reload_all(force=False)
+        
     def _reload_config_modules(self) -> bool:
         """重载配置模块"""
         logger.info(f"\n📦 第一步: 重载配置模块")
@@ -516,7 +827,5 @@ class Reloader:
         threading.Thread(target=load_thread, daemon=True).start()
     
         
-    def _reload_modules(self):
-        """热重载模块"""
-        self.reloader.reload_all()
+
   
