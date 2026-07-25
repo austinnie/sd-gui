@@ -130,6 +130,16 @@ class UniversalTab(BaseTab):
             command=self._generate_single).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="💑 生成双人提示词", 
             command=self._generate_couple).pack(side=tk.LEFT, padx=5)
+            
+        # ✅ 添加取消按钮
+        self.cancel_btn = ttk.Button(
+            btn_frame, 
+            text="⏹️ 取消", 
+            command=self._cancel_generation,
+            state=tk.DISABLED
+        )
+        self.cancel_btn.pack(side=tk.LEFT, padx=5)
+            
         row += 1
         
         # ===== 结果显示 =====

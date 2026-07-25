@@ -41,11 +41,50 @@ class JanusTab(BaseTab):
         self.mode_var = tk.StringVar(value="understand")
         self.image_path_var = tk.StringVar(value="")
         self.default_question = "请描述这张图片中的人物，包括：性别、年龄、发型、服装、表情、背景、光线、氛围。用中文回答。"
+        
         self.cancel_generation = False
         self.is_generating = False
         self.temperature_var = tk.DoubleVar(value=0.8)
         self.max_tokens_var = tk.IntVar(value=512)
+
+        # ✅ 新增：取消回调（用于中断模型执行）
+        self._cancel_callbacks = []
+        
+
+    # ============================================================
+    # ✅ 新增：注册取消回调
+    # ============================================================
+    def register_cancel_callback(self, callback):
+        """注册取消回调函数"""
+        if callback not in self._cancel_callbacks:
+            self._cancel_callbacks.append(callback)
     
+    def _trigger_cancel_callbacks(self):
+        """触发所有取消回调"""
+        for cb in self._cancel_callbacks:
+            try:
+                cb()
+            except Exception as e:
+                print(f"⚠️ 取消回调执行失败: {e}")
+
+    # ============================================================
+    # ✅ 修改：取消命令
+    # ============================================================
+    def cancel_generation_cmd(self):
+        """取消生成"""
+        self.cancel_generation = True
+        self.is_generating = False
+        self.status_label.config(text="⏹️ 已取消")
+        self.cancel_btn.config(state=tk.DISABLED)
+        
+        # ✅ 触发取消回调（中断模型执行）
+        self._trigger_cancel_callbacks()
+        
+        # ✅ 如果有模型正在执行，尝试中断
+        import core.janus_analyzer
+        if hasattr(core.janus_analyzer, 'janus_analyzer'):
+            core.janus_analyzer.janus_analyzer._cancel = True
+            
     def setup_ui(self):
         # 创建滚动容器
         canvas = tk.Canvas(self.frame, highlightthickness=0)
@@ -551,7 +590,11 @@ class JanusTab(BaseTab):
         try:
             def progress_cb(value, msg):
                 self.app.root.after(0, lambda: self._update_progress(value, msg))
-            
+
+                # ✅ 检查取消
+                if self.cancel_generation:
+                    raise Exception("用户取消")       
+                    
             result = janus_analyzer.analyze(
                 image_path=self._image_path,
                 question=self.question_text.get("1.0", tk.END).strip(),
@@ -559,12 +602,38 @@ class JanusTab(BaseTab):
                 max_tokens=self.max_tokens_var.get(),
                 progress_callback=progress_cb
             )
-            
+
+            # ✅ 检查取消
+            if self.cancel_generation:
+                raise Exception("用户取消")
+                
             self.app.root.after(0, lambda: self._on_operation_complete(result))
         except Exception as e:
-            import traceback
-            traceback.print_exc()
-            self.app.root.after(0, lambda: self._on_operation_error(str(e)))
+            error_msg = str(e)
+            if "取消" in error_msg or "cancelled" in error_msg.lower():
+                self.app.root.after(0, lambda: self._on_operation_cancelled())
+            else:
+                import traceback
+                traceback.print_exc()
+                self.app.root.after(0, lambda: self._on_operation_error(error_msg))
+
+    # ============================================================
+    # ✅ 新增：取消完成处理
+    # ============================================================
+    def _on_operation_cancelled(self):
+        """操作被取消"""
+        self.is_generating = False
+        self.action_btn.config(state=tk.NORMAL)
+        self.cancel_btn.config(state=tk.DISABLED)
+        self.progress_var.set(0)
+        self.status_label.config(text="⏹️ 已取消")
+
+        # 清理取消回调
+        self._cancel_callbacks.clear()
+        
+        if hasattr(self, 'result_text'):
+            self.result_text.delete("1.0", tk.END)
+            self.result_text.insert("1.0", "⏹️ 操作已取消")
     
     def _execute_generate(self):
         prompt = self.gen_prompt_text.get("1.0", tk.END).strip()
@@ -575,10 +644,16 @@ class JanusTab(BaseTab):
         negative = self.gen_neg_text.get("1.0", tk.END).strip()
         self._start_operation("🎨 生成图片...")
         threading.Thread(target=self._run_generate, args=(prompt, negative), daemon=True).start()
-    
+
+    # ============================================================
+    # ✅ 修改：生成模式 - 添加取消检查
+    # ============================================================    
     def _run_generate(self, prompt: str, negative: str):
         try:
             def progress_cb(value, msg):
+                # ✅ 检查取消
+                if self.cancel_generation:
+                    raise Exception("用户取消")
                 self.app.root.after(0, lambda: self._update_progress(value, msg))
             
             image, metadata = janus_generator.generate(
@@ -588,7 +663,11 @@ class JanusTab(BaseTab):
                 max_new_tokens=self.max_tokens_var.get(),
                 progress_callback=progress_cb
             )
-            
+
+            # ✅ 检查取消
+            if self.cancel_generation:
+                raise Exception("用户取消")
+                
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"{timestamp}_janus_gen.png"
             output_dir = app_config.paths.output_dir
@@ -618,9 +697,13 @@ class JanusTab(BaseTab):
                 f"✅ 图片已生成\n📁 保存到: {filepath}\n⏱️ 耗时: {metadata.get('elapsed', 0):.1f}秒\n\n💡 Janus 文生图质量有限，建议使用 SD 文生图获得更好效果。"
             ))
         except Exception as e:
-            import traceback
-            traceback.print_exc()
-            self.app.root.after(0, lambda: self._on_operation_error(str(e)))
+            error_msg = str(e)
+            if "取消" in error_msg or "cancelled" in error_msg.lower():
+                self.app.root.after(0, lambda: self._on_operation_cancelled())
+            else:
+                import traceback
+                traceback.print_exc()
+                self.app.root.after(0, lambda: self._on_operation_error(error_msg))
     
     def _execute_chat(self):
         user_input = self.chat_input.get("1.0", tk.END).strip()
@@ -632,11 +715,17 @@ class JanusTab(BaseTab):
         self.chat_input.delete("1.0", tk.END)
         self._start_operation("💬 思考中...")
         threading.Thread(target=self._run_chat, args=(user_input,), daemon=True).start()
-        
+
+    # ============================================================
+    # ✅ 修改：对话模式 - 添加取消检查
+    # ============================================================        
     def _run_chat(self, user_input: str):
         """后台运行对话 - 使用 janus_chat"""
         try:
             def progress_cb(value, msg):
+                # ✅ 检查取消
+                if self.cancel_generation:
+                    raise Exception("用户取消")
                 self.app.root.after(0, lambda: self._update_progress(value, msg))
             
             # ✅ 使用专门的 janus_chat 模块
@@ -646,16 +735,24 @@ class JanusTab(BaseTab):
                 max_new_tokens=self.max_tokens_var.get(),
                 progress_callback=progress_cb
             )
-            
+
+            # ✅ 检查取消
+            if self.cancel_generation:
+                raise Exception("用户取消")
+                
             self.app.root.after(0, lambda: self._append_chat(f"🤖 Janus: {reply}\n\n"))
             self.app.root.after(0, lambda: self._on_operation_complete("✅ 对话完成"))
             
         except Exception as e:
-            import traceback
-            traceback.print_exc()
-            error_msg = str(e)  # ✅ 保存到变量
-            self.app.root.after(0, lambda: self._append_chat(f"❌ 错误: {str(e)}\n\n"))
-            self.app.root.after(0, lambda: self._on_operation_error(str(e)))
+            error_msg = str(e)
+            if "取消" in error_msg or "cancelled" in error_msg.lower():
+                self.app.root.after(0, lambda: self._append_chat(f"⏹️ 对话已取消\n\n"))
+                self.app.root.after(0, lambda: self._on_operation_cancelled())
+            else:
+                import traceback
+                traceback.print_exc()
+                self.app.root.after(0, lambda: self._append_chat(f"❌ 错误: {error_msg}\n\n"))
+                self.app.root.after(0, lambda: self._on_operation_error(error_msg))
             
     def _append_chat(self, text: str):
         self.chat_text.config(state=tk.NORMAL)
@@ -664,8 +761,12 @@ class JanusTab(BaseTab):
         self.chat_text.config(state=tk.DISABLED)
     
     # ===== 通用方法 =====
+    # ============================================================
+    # ✅ 修改：启动操作时重置取消标志
+    # ============================================================    
     def _start_operation(self, status: str):
-        self.cancel_generation = False
+        self.cancel_generation = False  # ✅ 重置取消标志
+        self._cancel_callbacks.clear()  # ✅ 清空取消回调
         self.is_generating = True
         self.action_btn.config(state=tk.DISABLED)
         self.cancel_btn.config(state=tk.NORMAL)
@@ -675,13 +776,19 @@ class JanusTab(BaseTab):
     def _update_progress(self, value, msg):
         self.progress_var.set(value * 100)
         self.status_label.config(text=msg)
-    
+
+    # ============================================================
+    # ✅ 修改：操作完成 - 清理取消回调
+    # ============================================================    
     def _on_operation_complete(self, result: str):
         self.is_generating = False
         self.action_btn.config(state=tk.NORMAL if self.model_manager.is_janus_loaded else tk.DISABLED)
         self.cancel_btn.config(state=tk.DISABLED)
         self.progress_var.set(100)
         self.status_label.config(text="✅ 完成")
+        
+        # 清理取消回调
+        self._cancel_callbacks.clear()
         
         # ✅ 安全检查 result_text 是否存在且有效
         try:
@@ -690,13 +797,19 @@ class JanusTab(BaseTab):
                 self.result_text.insert("1.0", result)
         except Exception as e:
             print(f"⚠️ 更新结果文本框失败: {e}")
-    
+
+    # ============================================================
+    # ✅ 修改：操作错误 - 清理取消回调
+    # ============================================================    
     def _on_operation_error(self, error: str):
         self.is_generating = False
         self.action_btn.config(state=tk.NORMAL if self.model_manager.is_janus_loaded else tk.DISABLED)
         self.cancel_btn.config(state=tk.DISABLED)
         self.progress_var.set(0)
         self.status_label.config(text=f"❌ 错误: {error}")
+
+        # 清理取消回调
+        self._cancel_callbacks.clear()
         
         # ✅ 安全检查 result_text 是否存在且有效
         try:
