@@ -1,0 +1,42 @@
+{
+  "version": "2.0",
+  "created": "2026-07-25T09:31:57.565309",
+  "description": "提示词模板分类",
+  "categories": [
+    {
+      "id": "beauty",
+      "name": "美女",
+      "icon": "👩",
+      "priority": 1,
+      "file": "beauty.json"
+    },
+    {
+      "id": "handsome",
+      "name": "帅哥",
+      "icon": "👨",
+      "priority": 2,
+      "file": "handsome.json"
+    },
+    {
+      "id": "landscape",
+      "name": "风景",
+      "icon": "🌄",
+      "priority": 3,
+      "file": "landscape.json"
+    },
+    {
+      "id": "animal",
+      "name": "动物",
+      "icon": "🐱",
+      "priority": 4,
+      "file": "animal.json"
+    },
+    {
+      "id": "plant",
+      "name": "植物",
+      "icon": "🌺",
+      "priority": 5,
+      "file": "plant.json"
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "name": "风景",
+  "icon": "🌄",
+  "priority": 3,
+  "templates": [
+    {
+      "name": "山水画",
+      "prompt": "masterpiece, best quality, 8k, breathtaking landscape, majestic mountains, misty peaks, flowing river, ancient pine trees, traditional Chinese painting style, ink wash, artistic composition, serene atmosphere, high quality, detailed",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, modern buildings, pollution"
+    },
+    {
+      "name": "海边日落",
+      "prompt": "masterpiece, best quality, 8k, stunning beach sunset, golden sun sinking into the ocean, warm orange and pink sky, gentle waves, palm trees silhouette, tropical paradise, romantic atmosphere, high quality, photorealistic, detailed",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, cloudy, rainy, dark"
+    },
+    {
+      "name": "森林秘境",
+      "prompt": "masterpiece, best quality, 8k, magical forest, sunlight filtering through dense canopy, green moss, ancient trees, wild flowers, mysterious atmosphere, ethereal lighting, fantasy forest, high quality, detailed, nature photography",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, deforested, barren"
+    },
+    {
+      "name": "城市夜景",
+      "prompt": "masterpiece, best quality, 8k, beautiful city night view, skyscrapers with bright lights, neon signs, bustling streets, starry sky, long exposure photography, vibrant nightlife, high quality, detailed, urban atmosphere",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, daytime, dull"
+    },
+    {
+      "name": "樱花大道",
+      "prompt": "masterpiece, best quality, 8k, beautiful cherry blossom avenue, pink petals falling like snow, sunlight filtering through blossoms, Japanese scenery, spring atmosphere, romantic, high quality, photorealistic, detailed, dreamy",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, autumn, winter"
+    },
+    {
+      "name": "极光之夜",
+      "prompt": "masterpiece, best quality, 8k, stunning aurora borealis, colorful northern lights dancing in the sky, starry night, snow-covered landscape, magical atmosphere, high quality, photorealistic, detailed, breathtaking",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, cloudy, daytime"
+    },
+    {
+      "name": "雪山之巅",
+      "prompt": "masterpiece, best quality, 8k, majestic snow-capped mountains, pristine white peaks, clear blue sky, alpine scenery, dramatic clouds, high altitude atmosphere, breathtaking view, high quality, photorealistic, detailed",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, pollution, urban"
+    },
+    {
+      "name": "田园风光",
+      "prompt": "masterpiece, best quality, 8k, beautiful countryside, rolling green hills, golden wheat fields, charming farmhouse, wildflowers, peaceful rural landscape, warm sunlight, high quality, photorealistic, detailed, serene",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, urban, industrial"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "name": "动物",
+  "icon": "🐱",
+  "priority": 4,
+  "templates": [
+    {
+      "name": "可爱猫咪",
+      "prompt": "masterpiece, best quality, 8k, adorable cat, fluffy fur, big bright eyes, cute expression, soft lighting, close-up portrait, high quality, detailed, pet photography, warm atmosphere",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, scary, angry"
+    },
+    {
+      "name": "威风狗狗",
+      "prompt": "masterpiece, best quality, 8k, majestic dog, handsome breed, shiny coat, intelligent eyes, loyal expression, outdoor setting, natural lighting, high quality, detailed, pet photography, energetic",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, sick, sad"
+    },
+    {
+      "name": "优雅白马",
+      "prompt": "masterpiece, best quality, 8k, beautiful white horse, flowing mane, graceful posture, running in a meadow, golden sunset, majestic, ethereal, high quality, detailed, animal photography, freedom",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, ugly, sick"
+    },
+    {
+      "name": "蝴蝶花卉",
+      "prompt": "masterpiece, best quality, 8k, colorful butterflies on blooming flowers, vibrant wings, macro photography, morning dew, garden setting, high quality, detailed, nature photography, delicate",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, dead, wilted"
+    },
+    {
+      "name": "森林狐狸",
+      "prompt": "masterpiece, best quality, 8k, beautiful red fox, clever eyes, thick fur, standing in a forest, autumn leaves, natural lighting, wildlife photography, high quality, detailed, wild animal",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, captive, zoo"
+    },
+    {
+      "name": "雪地狼",
+      "prompt": "masterpiece, best quality, 8k, majestic wolf, thick white or grey fur, piercing yellow eyes, standing in snowy forest, winter atmosphere, powerful presence, wildlife photography, high quality, detailed",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, domestic, dog"
+    }
+  ]
+}

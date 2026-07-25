@@ -1,0 +1,37 @@
+{
+  "name": "植物",
+  "icon": "🌺",
+  "priority": 5,
+  "templates": [
+    {
+      "name": "玫瑰花海",
+      "prompt": "masterpiece, best quality, 8k, vast rose garden, blooming red roses, morning dew on petals, soft sunlight, romantic atmosphere, high quality, detailed, nature photography, beautiful flowers",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, dead, wilted"
+    },
+    {
+      "name": "雨后荷花",
+      "prompt": "masterpiece, best quality, 8k, lotus flowers after rain, water droplets on pink petals, peaceful pond, green lily pads, soft misty atmosphere, Chinese painting style, high quality, detailed, serene",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, polluted water"
+    },
+    {
+      "name": "日本枫叶",
+      "prompt": "masterpiece, best quality, 8k, beautiful autumn leaves, vibrant red and orange maple leaves, sunlight filtering through, Japanese garden, peaceful atmosphere, high quality, detailed, nature photography, fall season",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, spring, summer"
+    },
+    {
+      "name": "梦幻薰衣草",
+      "prompt": "masterpiece, best quality, 8k, endless lavender fields, purple flowers stretching to the horizon, soft lighting, Provence atmosphere, romantic, high quality, photorealistic, detailed, dreamy landscape",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, winter, bare"
+    },
+    {
+      "name": "樱花满开",
+      "prompt": "masterpiece, best quality, 8k, cherry blossoms in full bloom, pink flowers covering branches, soft petals falling, spring atmosphere, Japanese scenery, beautiful nature, high quality, photorealistic, detailed",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, autumn, winter"
+    },
+    {
+      "name": "竹林幽径",
+      "prompt": "masterpiece, best quality, 8k, serene bamboo forest, tall green bamboo stalks, sunlight filtering through leaves, peaceful path, traditional Asian atmosphere, high quality, detailed, nature photography, tranquil",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, urban, noisy"
+    }
+  ]
+}

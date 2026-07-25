@@ -1,0 +1,57 @@
+{
+  "name": "帅哥",
+  "icon": "👨",
+  "priority": 2,
+  "templates": [
+    {
+      "name": "阳光型男",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a handsome young man, sunny smile, bright eyes, clean-cut, athletic build, wearing casual white t-shirt and jeans, standing in a park, natural sunlight, full body shot, friendly expression, high quality",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, beard, unshaven, dark"
+    },
+    {
+      "name": "成熟绅士",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a distinguished mature gentleman, sophisticated, wearing a tailored suit, confident posture, salt and pepper hair, piercing eyes, in a luxury setting, dramatic lighting, half body shot, elegant, refined",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, casual, young"
+    },
+    {
+      "name": "肌肉猛男",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a muscular man, ripped body, huge biceps, six-pack abs, defined chest, gym lighting, sweating, intense look, full body shot, powerful physique, bodybuilding, high quality",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, fat, skinny, weak"
+    },
+    {
+      "name": "韩系欧巴",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a handsome Korean man, flawless skin, stylish haircut, wearing fashionable Korean clothing, city street background, soft lighting, full body shot, cool expression, trendy, high quality",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, unfashionable"
+    },
+    {
+      "name": "日系盐系",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a handsome Japanese man, clean and fresh look, natural style, casual clothes, soft lighting, urban background, gentle smile, high quality, detailed face",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, heavy makeup, flashy"
+    },
+    {
+      "name": "欧美硬汉",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a rugged Western man, strong jaw, stubble, intense blue eyes, muscular build, wearing leather jacket, urban night background, dramatic lighting, masculine, high quality, detailed face",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, clean-shaven, soft"
+    },
+    {
+      "name": "古风侠客",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a handsome Chinese swordsman, wearing traditional Hanfu, long hair tied up, holding a sword, standing on a mountain peak, misty background, heroic aura, cinematic lighting, full body shot, high quality",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, modern clothes"
+    },
+    {
+      "name": "职场精英",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a handsome professional man, wearing tailored suit, tie, confident posture, modern office background, city view, professional atmosphere, half body shot, successful, high quality",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, casual, messy"
+    },
+    {
+      "name": "运动型男",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a handsome athletic man, sporty, wearing jersey, sweating, action pose, basketball court or gym background, energetic, dynamic lighting, full body shot, high quality",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, lazy, unmotivated"
+    },
+    {
+      "name": "文艺青年",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a handsome artistic man, intellectual, wearing vintage glasses, sweater, holding a book or guitar, cozy cafe or library background, soft lighting, thoughtful expression, high quality",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, jock, uneducated"
+    }
+  ]
+}
