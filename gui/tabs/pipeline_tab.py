@@ -182,6 +182,14 @@ class PipelineTab(BaseTab):
         self.is_running = False
         self.run_btn.config(state=tk.NORMAL)
         self.cancel_btn.config(state=tk.DISABLED)
+
+        # ✅ 检查是否被取消
+        if result.get("cancelled"):
+            self.progress_var.set(0)
+            self.progress_text_var.set("⏹️ 流水线已取消")
+            self._append_log("⏹️ 流水线已取消")
+            self.update_status("⏹️ 流水线已取消")
+            return
         
         if result.get("success"):
             results = result.get("results", {})

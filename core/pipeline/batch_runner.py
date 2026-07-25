@@ -50,6 +50,7 @@ class BatchPipelineRunner:
         results = []
         
         for idx, image_path in enumerate(images):
+            # ✅ 检查取消
             if cancel_flag and cancel_flag():
                 break
             
@@ -76,6 +77,7 @@ class BatchPipelineRunner:
             
             try:
                 # 运行单个流水线
+                # ✅ 传递取消标志到单个运行
                 result = self.runner.run(
                     image_path=image_path,
                     pipeline_config=pipeline_config,
@@ -83,7 +85,13 @@ class BatchPipelineRunner:
                     cancel_flag=cancel_flag,
                     task_id=f"{task_id}_{idx}"
                 )
-                
+
+                if result.get("cancelled"):
+                    # ✅ 如果被取消，停止批量
+                    failed_count += 1
+                    results.append(result)
+                    break
+                    
                 if result.get("success"):
                     success_count += 1
                 else:
@@ -104,7 +112,8 @@ class BatchPipelineRunner:
             "skipped_count": skipped_count,
             "failed_count": failed_count,
             "results": results,
-            "task_id": task_id
+            "task_id": task_id,
+            "cancelled": cancel_flag and cancel_flag()
         }
     
     def _get_images(self, directory: str) -> List[str]:

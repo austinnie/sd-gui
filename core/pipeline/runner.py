@@ -96,7 +96,7 @@ class PipelineRunner:
             # 加载图片
             image = Image.open(image_path).convert('RGB')
             
-            # 创建上下文
+            # 创建上下文 - ✅ 传递取消标志
             context = StepContext(
                 input_image=image,
                 input_path=image_path,
@@ -109,11 +109,23 @@ class PipelineRunner:
                     "use_controlnet": use_controlnet,
                     "controlnet_pipe": controlnet_pipe,
                     "controlnet_type": controlnet_type,
-                }
+                    "cancel_flag": cancel_flag,  # ✅ 传递到 global_config
+                },
+                cancel_flag=cancel_flag  # ✅ 直接传递
             )
             
             # 运行流水线
             results = pipeline.run(context)
+            
+            # 检查是否被取消
+            if context.is_cancelled():
+                return {
+                    "success": False,
+                    "error": "用户取消",
+                    "results": results,
+                    "output_dir": output_dir,
+                    "cancelled": True
+                }
             
             # 后处理
             self._post_process_results(results)
@@ -125,7 +137,15 @@ class PipelineRunner:
             }
             
         except Exception as e:
-            return {"success": False, "error": str(e)}
+            error_msg = str(e)
+            if "用户取消" in error_msg or "cancelled" in error_msg.lower():
+                return {
+                    "success": False,
+                    "error": "用户取消",
+                    "output_dir": output_dir,
+                    "cancelled": True
+                }
+            return {"success": False, "error": error_msg}
         finally:
             pipeline_pool.release_pipeline(model_path, lora_path, task_id)
     

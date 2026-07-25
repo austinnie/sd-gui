@@ -40,6 +40,8 @@ class StepContext:
     global_config: Dict[str, Any] = field(default_factory=dict)
     step_results: Dict[str, StepResult] = field(default_factory=dict)
     current_step_index: int = 0
+    # ✅ 新增：取消标志
+    cancel_flag: Optional[Callable[[], bool]] = None
     
     def get_previous_result(self, step_name: str) -> Optional[StepResult]:
         """获取之前步骤的结果"""
@@ -49,6 +51,12 @@ class StepContext:
         """获取之前步骤的输出图片"""
         result = self.get_previous_result(step_name)
         return result.output_image if result else None
+    
+    def is_cancelled(self) -> bool:
+        """检查是否已取消"""
+        if self.cancel_flag:
+            return self.cancel_flag()
+        return False
 
 
 class PipelineStep(ABC):
@@ -82,3 +90,10 @@ class PipelineStep(ABC):
             "config": self._config,
             "type": self.__class__.__name__
         }
+    
+    def _check_cancelled(self, context: StepContext) -> bool:
+        """检查是否已取消"""
+        if context.is_cancelled():
+            print(f"   ⏹️ 步骤 '{self.name}' 被取消")
+            return True
+        return False

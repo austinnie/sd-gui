@@ -187,8 +187,41 @@ class MarbleStep(PipelineStep, ControlNetMixin):
             
             generator = torch.Generator("cpu").manual_seed(42)
             success_count = 0
+
+            # ✅ 获取取消标志
+            cancel_flag = context.cancel_flag
             
             for idx, job in enumerate(jobs):
+                # ✅ 检查取消
+                if context.is_cancelled():
+                    print(f"   ⏹️ 用户取消，已生成 {idx}/{4} 张")
+                    return StepResult(
+                        status=StepStatus.FAILED,
+                        error="用户取消",
+                        output_path=output_dir,
+                        metadata={
+                            "output_count": idx,
+                            "output_dir": output_dir,
+                            "success_count": success_count,
+                            "cancelled": True,
+                        }
+                    )
+
+                # ✅ 在每次循环开始前检查取消
+                if cancel_flag and cancel_flag():
+                    print(f"   ⏹️ 用户取消，已生成 {idx}/{len(jobs)} 张")
+                    return StepResult(
+                        status=StepStatus.FAILED,
+                        error="用户取消",
+                        output_path=output_dir,
+                        metadata={
+                            "output_count": idx,
+                            "output_dir": output_dir,
+                            "success_count": success_count,
+                            "cancelled": True,
+                        }
+                    )
+                    
                 print(f"   [{idx+1}/{len(jobs)}] {job.get('name', 'unknown')}")
                 
                 try:
@@ -216,6 +249,20 @@ class MarbleStep(PipelineStep, ControlNetMixin):
                     print(f"      ✅ 已保存: {os.path.basename(output_path)}")
                     
                 except Exception as e:
+                    error_msg = str(e)
+                    if "取消" in error_msg or "cancelled" in error_msg.lower():
+                        print(f"      ⏹️ 生成被取消")
+                        return StepResult(
+                            status=StepStatus.FAILED,
+                            error="用户取消",
+                            output_path=output_dir,
+                            metadata={
+                                "output_count": idx,
+                                "output_dir": output_dir,
+                                "success_count": success_count,
+                                "cancelled": True,
+                            }
+                        )
                     print(f"      ❌ 失败: {e}")
                     import traceback
                     traceback.print_exc()

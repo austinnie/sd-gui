@@ -133,6 +133,20 @@ class WeddingStep(PipelineStep, ControlNetMixin):
             success_count = 0
             
             for idx, job in enumerate(prompts):
+                # ✅ 检查取消
+                if context.is_cancelled():
+                    print(f"   ⏹️ 用户取消，已生成 {idx}/{7} 张")
+                    return StepResult(
+                        status=StepStatus.FAILED,
+                        error="用户取消",
+                        output_path=output_dir,
+                        metadata={
+                            "output_count": idx,
+                            "output_dir": output_dir,
+                            "success_count": success_count,
+                            "cancelled": True,
+                        }
+                    )
                 print(f"   [{idx+1}/{len(prompts)}] {job.get('name', 'unknown')}")
                 
                 gen_kwargs = {
@@ -170,9 +184,21 @@ class WeddingStep(PipelineStep, ControlNetMixin):
             )
                     
         except Exception as e:
+            error_msg = str(e)
+            if "取消" in error_msg or "cancelled" in error_msg.lower():
+                print(f"      ⏹️ 生成被取消")
+                return StepResult(
+                    status=StepStatus.FAILED,
+                    error="用户取消",
+                    output_path=output_dir,
+                    metadata={
+                        "output_count": idx,
+                        "output_dir": output_dir,
+                        "success_count": success_count,
+                        "cancelled": True,
+                    }
+                )
+            print(f"      ❌ 失败: {error_var}")
             import traceback
             traceback.print_exc()
-            return StepResult(
-                status=StepStatus.FAILED,
-                error=str(e)
-            )
+            continue

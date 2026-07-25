@@ -31,24 +31,46 @@ class Pipeline:
         total = len(self.steps)
         
         for idx, step in enumerate(self.steps):
+            # ✅ 在每一步开始前检查取消
+            if context.is_cancelled():
+                print(f"⏹️ 流水线在步骤 '{step.name}' 前被取消")
+                self.results[step.name] = StepResult(
+                    status=StepStatus.FAILED,
+                    error="用户取消"
+                )
+                break
+            
             self.current_index = idx
             
             if self._on_progress:
                 self._on_progress(idx + 1, total, f"正在执行: {step.name}")
             
             try:
+                # ✅ 如果步骤内部没有取消，这里可以保护
+                if context.is_cancelled():
+                    break
+                    
                 result = step.execute(context)
                 self.results[step.name] = result
                 context.step_results[step.name] = result
                 
                 if not result.success:
+                    # 检查是否是取消导致的失败
+                    if result.error and ("取消" in result.error or "cancelled" in result.error.lower()):
+                        print(f"⏹️ 步骤 '{step.name}' 因取消而停止")
                     break
                     
             except Exception as e:
+                error_msg = str(e)
+                is_cancelled = "取消" in error_msg or "cancelled" in error_msg.lower()
+                
                 self.results[step.name] = StepResult(
                     status=StepStatus.FAILED,
-                    error=str(e)
+                    error=error_msg
                 )
+                
+                if is_cancelled:
+                    print(f"⏹️ 流水线在步骤 '{step.name}' 被取消")
                 break
         
         return self.results

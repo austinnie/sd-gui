@@ -165,8 +165,24 @@ class SketchStep(PipelineStep, ControlNetMixin):  # ✅ 继承 ControlNetMixin
             return pipe
             
         except Exception as e:
-            print(f"   ⚠️ ControlNet 加载失败: {e}，回退到普通模式")
-            return None
+            error_msg = str(e)
+            if "取消" in error_msg or "cancelled" in error_msg.lower():
+                print(f"      ⏹️ 生成被取消")
+                return StepResult(
+                    status=StepStatus.FAILED,
+                    error="用户取消",
+                    output_path=output_dir,
+                    metadata={
+                        "output_count": idx,
+                        "output_dir": output_dir,
+                        "success_count": success_count,
+                        "cancelled": True,
+                    }
+                )
+            print(f"      ❌ 失败: {error_var}")
+            import traceback
+            traceback.print_exc()
+            continue
     
     def _preprocess_for_controlnet(self, image_path: str, controlnet_type: str = "canny", 
                                     target_size: tuple = None):
@@ -179,8 +195,24 @@ class SketchStep(PipelineStep, ControlNetMixin):  # ✅ 继承 ControlNetMixin
                 output_size=target_size
             )
         except Exception as e:
-            print(f"   ⚠️ ControlNet 预处理失败: {e}")
-            return None
+            error_msg = str(e)
+            if "取消" in error_msg or "cancelled" in error_msg.lower():
+                print(f"      ⏹️ 生成被取消")
+                return StepResult(
+                    status=StepStatus.FAILED,
+                    error="用户取消",
+                    output_path=output_dir,
+                    metadata={
+                        "output_count": idx,
+                        "output_dir": output_dir,
+                        "success_count": success_count,
+                        "cancelled": True,
+                    }
+                )
+            print(f"      ❌ 失败: {error_var}")
+            import traceback
+            traceback.print_exc()
+            continue
     
     def execute(self, context: StepContext) -> StepResult:
         """执行素描风格转换 - 支持 ControlNet"""
@@ -278,6 +310,20 @@ class SketchStep(PipelineStep, ControlNetMixin):  # ✅ 继承 ControlNetMixin
             
             # ===== 执行生成 =====
             for idx, job in enumerate(prompts):
+                # ✅ 检查取消
+                if context.is_cancelled():
+                    print(f"   ⏹️ 用户取消，已生成 {idx}/{7} 张")
+                    return StepResult(
+                        status=StepStatus.FAILED,
+                        error="用户取消",
+                        output_path=output_dir,
+                        metadata={
+                            "output_count": idx,
+                            "output_dir": output_dir,
+                            "success_count": success_count,
+                            "cancelled": True,
+                        }
+                    )
                 print(f"   [{idx+1}/{len(prompts)}] {job.get('name', 'unknown')}")
                 
                 gen_kwargs = {
@@ -315,9 +361,21 @@ class SketchStep(PipelineStep, ControlNetMixin):  # ✅ 继承 ControlNetMixin
             )
                     
         except Exception as e:
+            error_msg = str(e)
+            if "取消" in error_msg or "cancelled" in error_msg.lower():
+                print(f"      ⏹️ 生成被取消")
+                return StepResult(
+                    status=StepStatus.FAILED,
+                    error="用户取消",
+                    output_path=output_dir,
+                    metadata={
+                        "output_count": idx,
+                        "output_dir": output_dir,
+                        "success_count": success_count,
+                        "cancelled": True,
+                    }
+                )
+            print(f"      ❌ 失败: {error_var}")
             import traceback
             traceback.print_exc()
-            return StepResult(
-                status=StepStatus.FAILED,
-                error=str(e)
-            )
+            continue
