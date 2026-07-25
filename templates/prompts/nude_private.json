@@ -1,0 +1,52 @@
+{
+  "name": "私密部位",
+  "icon": "🌙",
+  "priority": 99,
+  "templates": [
+    {
+      "name": "私处特写（艺术）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, artistic nude photography, close-up of a woman's intimate area, lower body, soft natural lighting, delicate skin texture, fine art composition, elegant pose, tasteful nudity, feminine beauty, high quality, detailed, soft focus background",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, extreme closeup, gore, blood, injury, medical, surgery, disease, infection, shaved, completely bald"
+    },
+    {
+      "name": "私处特写（自然）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, beautiful woman's private parts, natural pubic hair, intimate photography, soft warm lighting, artistic nude, feminine area, natural beauty, peaceful atmosphere, high quality, detailed, tasteful, elegant composition",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, extreme closeup, shaved, completely bald, gore, blood, injury, medical, surgery, disease, infection"
+    },
+    {
+      "name": "私处特写（唯美）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, artistic intimate photography, woman's lower body, soft focus, beautiful lighting, feminine curves, tasteful nude, delicate skin, intimate atmosphere, high quality, detailed, fine art, elegant",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, extreme closeup, gore, blood, injury, medical, surgery, disease, infection, shaved"
+    },
+    {
+      "name": "私处特写（花丛）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, beautiful woman's intimate area surrounded by flowers, artistic composition, soft natural lighting, flower petals, feminine beauty, tasteful nude, fine art photography, high quality, detailed, dreamy atmosphere, romantic",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, extreme closeup, gore, blood, injury, medical, surgery, disease, infection"
+    },
+    {
+      "name": "私处特写（森林）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, artistic nude in nature, woman's intimate area, forest background, dappled sunlight, natural beauty, feminine area, tasteful, high quality, detailed, serene atmosphere, connection with nature",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, extreme closeup, gore, blood, injury, medical, surgery, disease, infection"
+    },
+    {
+      "name": "私处特写（浴光）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, intimate photography of woman's lower body, soft window light, warm golden tones, artistic nude, delicate skin, feminine beauty, elegant pose, high quality, detailed, tasteful, peaceful atmosphere",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, extreme closeup, gore, blood, injury, medical, surgery, disease, infection"
+    },
+    {
+      "name": "私处特写",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, close-up shot of a beautiful woman's private area, lower body, intimate photography, soft lighting, natural skin texture, high detail, artistic nude, fine art photography, soft focus background, intimate atmosphere, high quality, detailed",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, extreme closeup, gore, blood, injury, medical, surgery, disease, infection"
+    },
+    {
+      "name": "私处特写（花园）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, artistic close-up of a woman's intimate area, pubic region, beautiful composition, soft natural lighting, delicate skin texture, fine art nude photography, peaceful atmosphere, gentle shadows, high quality, detailed, tasteful",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, extreme closeup, gore, blood, injury, medical, surgery, disease, infection, shaved, completely bald"
+    },
+    {
+      "name": "私处特写（艺术）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, artistic nude photography, close-up of a woman's lower body, intimate area, soft focus, beautiful lighting, elegant composition, fine art, tasteful nudity, high quality, detailed, natural beauty, gentle curves",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, extreme closeup, gore, blood, injury, medical, surgery, disease, infection, shaved"
+    }
+  ]
+}

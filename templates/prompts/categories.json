@@ -100,6 +100,34 @@
       "icon": "📁",
       "priority": 99,
       "file": "beauty_other.json"
+    },
+    {
+      "id": "nude_art",
+      "name": "艺术裸体",
+      "icon": "🎨",
+      "priority": 99,
+      "file": "nude_art.json"
+    },
+    {
+      "id": "nude_private",
+      "name": "私密部位",
+      "icon": "🌙",
+      "priority": 99,
+      "file": "nude_private.json"
+    },
+    {
+      "id": "nude_couple",
+      "name": "情侣裸体",
+      "icon": "💑",
+      "priority": 99,
+      "file": "nude_couple.json"
+    },
+    {
+      "id": "nude_other",
+      "name": "nude_other",
+      "icon": "📁",
+      "priority": 99,
+      "file": "nude_other.json"
     }
   ]
 }

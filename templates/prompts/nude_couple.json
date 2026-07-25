@@ -1,0 +1,22 @@
+{
+  "name": "情侣裸体",
+  "icon": "💑",
+  "priority": 99,
+  "templates": [
+    {
+      "name": "古典躺卧裸体",
+      "prompt": "masterpiece, best quality, oil painting, classical art, a beautiful European woman, reclining nude, soft warm lighting, elegant pose, luxurious fabrics, classical background, fine art, high quality, detailed, masterpiece, venus style, timeless beauty",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, cartoon, anime, modern, photography, photorealistic, 3d render, explicit, pornographic"
+    },
+    {
+      "name": "情侣拥抱（裸）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a man and woman embracing, naked, intimate hug, passionate embrace, nude couple, soft romantic lighting, bedroom setting, high quality, detailed, sensual yet artistic",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "情侣躺卧（裸）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a man and woman lying together, naked, intimate cuddling, nude couple, soft morning light, cozy bed, sensual yet artistic, high quality, detailed",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar"
+    }
+  ]
+}

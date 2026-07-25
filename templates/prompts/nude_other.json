@@ -1,0 +1,172 @@
+{
+  "name": "nude_other",
+  "icon": "📁",
+  "priority": 99,
+  "templates": [
+    {
+      "name": "纯白大理石艺术裸体",
+      "prompt": "masterpiece, best quality, 8k, a beautiful woman as a pure white marble nude statue, classical sculpture, artistic nude, flawless white stone, elegant pose, museum display, dramatic lighting, monochrome white, intricate carving details, high quality, photorealistic, fine art",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, color, skin tone, warm tones, beige, yellow, gray, painting, cartoon, 3d render, shiny, glossy, wet, oil, plastic, wax, explicit, pornographic"
+    },
+    {
+      "name": "文艺复兴裸体",
+      "prompt": "masterpiece, best quality, oil painting, renaissance style, a beautiful European woman, classical nude, soft lighting, warm skin tones, rich colors, elegant pose, velvet drapery, renaissance background, fine art, high quality, detailed, timeless beauty, classical painting style",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, cartoon, anime, modern, photography, photorealistic, 3d render, explicit, pornographic"
+    },
+    {
+      "name": "古典油画裸体",
+      "prompt": "masterpiece, best quality, oil painting, classical art, a beautiful European woman, nude, soft warm lighting, rich golden tones, elegant reclining pose, luxurious fabrics, classical background, baroque style, fine art, high quality, detailed, masterpiece painting",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, cartoon, anime, modern, photography, photorealistic, 3d render, explicit, pornographic"
+    },
+    {
+      "name": "巴洛克裸体",
+      "prompt": "masterpiece, best quality, oil painting, baroque style, a beautiful European woman, classical nude, dramatic chiaroscuro lighting, rich dark background, elegant pose, luxurious fabrics, fine art, high quality, detailed, masterpiece, old masters style",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, cartoon, anime, modern, photography, photorealistic, 3d render, explicit, pornographic"
+    },
+    {
+      "name": "洛可可裸体",
+      "prompt": "masterpiece, best quality, oil painting, rococo style, a beautiful European woman, classical nude, soft pastel colors, elegant pose, luxurious boudoir, ornate background, fine art, high quality, detailed, masterpiece, feminine beauty, 18th century style",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, cartoon, anime, modern, photography, photorealistic, 3d render, explicit, pornographic"
+    },
+    {
+      "name": "新古典主义裸体",
+      "prompt": "masterpiece, best quality, oil painting, neoclassical style, a beautiful European woman, classical nude, soft lighting, marble background, elegant pose, ancient Greek inspiration, fine art, high quality, detailed, masterpiece, timeless beauty",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, cartoon, anime, modern, photography, photorealistic, 3d render, explicit, pornographic"
+    },
+    {
+      "name": "威尼斯画派裸体",
+      "prompt": "masterpiece, best quality, oil painting, venetian school, a beautiful European woman, classical nude, warm golden lighting, rich colors, velvet fabrics, elegant pose, Venetian background, fine art, high quality, detailed, masterpiece, titian style",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, cartoon, anime, modern, photography, photorealistic, 3d render, explicit, pornographic"
+    },
+    {
+      "name": "古典背影裸体",
+      "prompt": "masterpiece, best quality, oil painting, classical art, a beautiful European woman, nude from behind, elegant back view, soft warm lighting, long flowing hair, classical background, fine art, high quality, detailed, masterpiece, timeless beauty, artistic composition",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, cartoon, anime, modern, photography, photorealistic, 3d render, explicit, pornographic"
+    },
+    {
+      "name": "古典侧卧裸体",
+      "prompt": "masterpiece, best quality, oil painting, classical art, a beautiful European woman, side-lying nude, elegant pose, soft warm lighting, luxurious fabrics, classical background, fine art, high quality, detailed, masterpiece, odalisque style, timeless beauty",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, cartoon, anime, modern, photography, photorealistic, 3d render, explicit, pornographic"
+    },
+    {
+      "name": "古典站立裸体",
+      "prompt": "masterpiece, best quality, oil painting, classical art, a beautiful European woman, standing nude, elegant contrapposto pose, soft warm lighting, classical background, fine art, high quality, detailed, masterpiece, timeless beauty, venus pudica style",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, cartoon, anime, modern, photography, photorealistic, 3d render, explicit, pornographic"
+    },
+    {
+      "name": "人体彩绘艺术",
+      "prompt": "masterpiece, best quality, 8k, a beautiful woman with artistic body painting, colorful patterns painted on naked body, tribal or abstract designs, elegant pose, studio photography, fine art, high quality, detailed, creative, masterpiece, vibrant colors",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "运动力量裸体",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful athletic woman, naked, defined muscles, powerful pose, gym or training background, natural lighting, high quality, detailed, strength and grace, fitness",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "亚洲大胸裸体",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful young Asian woman with huge natural breasts, big boobs, naked, flawless porcelain skin, elegant pose, soft natural lighting, full body shot, high quality, detailed face, slender body, sensual and artistic",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, flat chest, small chest"
+    },
+    {
+      "name": "中国大胸裸体",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Chinese woman with huge natural breasts, big boobs, naked, flawless fair skin, elegant traditional background, soft golden lighting, full body shot, high quality, detailed face, slender curvy body, sensual and artistic",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, flat chest, small chest"
+    },
+    {
+      "name": "日本大胸裸体",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Japanese woman with huge natural breasts, big boobs, naked, flawless fair skin, elegant Japanese background, soft natural lighting, full body shot, high quality, detailed face, slender curvy body, sensual and artistic",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, flat chest, small chest"
+    },
+    {
+      "name": "韩国大胸裸体",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Korean woman with huge natural breasts, big boobs, naked, flawless porcelain skin, elegant urban background, soft natural lighting, full body shot, high quality, detailed face, curvy body, sensual and artistic",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, flat chest, small chest"
+    },
+    {
+      "name": "俄罗斯大胸裸体",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a stunning Russian woman with huge natural breasts, big boobs, naked, flawless fair skin, elegant Slavic features, soft natural lighting, full body shot, high quality, detailed face, curvy body, sensual and artistic",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, flat chest, small chest"
+    },
+    {
+      "name": "美国大胸裸体",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful American woman with huge natural breasts, big boobs, naked, flawless skin, diverse features, soft natural lighting, full body shot, high quality, detailed face, curvy body, sensual and artistic",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, flat chest, small chest"
+    },
+    {
+      "name": "英国大胸裸体",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful British woman with huge natural breasts, big boobs, naked, flawless fair skin, elegant European features, soft natural lighting, full body shot, high quality, detailed face, curvy body, sensual and artistic",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, flat chest, small chest"
+    },
+    {
+      "name": "法国大胸裸体",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful French woman with huge natural breasts, big boobs, naked, flawless fair skin, elegant European features, soft romantic lighting, full body shot, high quality, detailed face, curvy body, sensual and artistic",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, flat chest, small chest"
+    },
+    {
+      "name": "意大利大胸裸体",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Italian woman with huge natural breasts, big boobs, naked, flawless olive skin, elegant Mediterranean features, soft warm lighting, full body shot, high quality, detailed face, curvy body, sensual and artistic",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, flat chest, small chest"
+    },
+    {
+      "name": "德国大胸裸体",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful German woman with huge natural breasts, big boobs, naked, flawless fair skin, elegant European features, soft natural lighting, full body shot, high quality, detailed face, curvy body, sensual and artistic",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, flat chest, small chest"
+    },
+    {
+      "name": "西班牙大胸裸体",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Spanish woman with huge natural breasts, big boobs, naked, flawless tan skin, elegant Mediterranean features, soft warm lighting, full body shot, high quality, detailed face, curvy body, sensual and artistic",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, flat chest, small chest"
+    },
+    {
+      "name": "巴西大胸裸体",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Brazilian woman with huge natural breasts, big boobs, naked, flawless tan skin, elegant Latin features, soft warm lighting, full body shot, high quality, detailed face, curvy body, sensual and artistic",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, flat chest, small chest"
+    },
+    {
+      "name": "北欧大胸裸体",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Scandinavian woman with huge natural breasts, big boobs, naked, flawless pale skin, elegant Nordic features, soft natural lighting, full body shot, high quality, detailed face, curvy body, sensual and artistic",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, flat chest, small chest"
+    },
+    {
+      "name": "非洲大胸裸体",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful African woman with huge natural breasts, big boobs, naked, flawless dark skin, elegant African features, soft natural lighting, full body shot, high quality, detailed face, curvy body, sensual and artistic",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, flat chest, small chest"
+    },
+    {
+      "name": "巴西美女（裸体）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Brazilian woman, tan skin, curvy body, huge round buttocks, big natural breasts, long dark hair, sensual smile, naked, standing on a tropical beach, ocean waves, golden sunset, full body shot, artistic nude, summer vibe, high quality, detailed face, exotic beauty",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, flat butt, small chest"
+    },
+    {
+      "name": "哥伦比亚美女（裸体）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Colombian woman, golden tan skin, hourglass figure, huge round buttocks, full breasts, dark wavy hair, sensual gaze, naked, Caribbean beach background, warm lighting, full body shot, artistic nude, exotic beauty, high quality, detailed face",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, flat butt, small chest"
+    },
+    {
+      "name": "法国美女（裸体）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful French woman, elegant, sophisticated, pale skin, slim figure, natural breasts, naked, sensual pose, Parisian apartment, soft natural light, intimate atmosphere, high quality, detailed face, timeless elegance, artistic nude",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, heavy makeup, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "意大利美女（裸体）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Italian woman, olive skin, dark hair, sensual curves, full breasts, round buttocks, naked, Mediterranean villa background, warm golden lighting, artistic nude, intimate atmosphere, high quality, detailed face, passionate beauty, timeless elegance",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, heavy makeup, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "日本美女（裸体）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Japanese woman, flawless skin, dark hair, elegant, naked, traditional Japanese garden, cherry blossoms, soft lighting, artistic nude, intimate atmosphere, high quality, detailed face, graceful beauty, serene and sensual",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, heavy makeup, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "韩国美女（裸体）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful Korean woman, flawless skin, perfect body, natural breasts, naked, Seoul city view, modern apartment, soft lighting, artistic nude, high quality, detailed face, elegant and trendy",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, heavy makeup, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "美国美女（裸体）",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a stunning American woman, tan skin, fit body, large breasts, big round buttocks, naked, Miami beach background, golden sunset, full body shot, artistic nude, summer vibe, high quality, detailed face, confident and gorgeous",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, flat butt, small chest"
+    }
+  ]
+}

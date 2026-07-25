@@ -1,0 +1,82 @@
+{
+  "name": "艺术裸体",
+  "icon": "🎨",
+  "priority": 99,
+  "templates": [
+    {
+      "name": "剪影艺术",
+      "prompt": "masterpiece, best quality, 8k, a beautiful woman in dramatic silhouette, backlighting, sunset or golden hour, naked body outlined by light, elegant pose, artistic composition, high contrast, emotional atmosphere, fine art photography, high quality, detailed, breathtaking",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "光影艺术裸体",
+      "prompt": "masterpiece, best quality, 8k, a beautiful woman, artistic nude photography, dramatic shadows and highlights, chiaroscuro lighting, elegant pose, fine art, high contrast, emotional atmosphere, high quality, detailed, masterpiece, sensual and artistic",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "自然融合裸体",
+      "prompt": "masterpiece, best quality, 8k, a beautiful woman merged with nature, naked body covered in flowers and vines, forest background, dappled sunlight, mystical atmosphere, artistic nude photography, high quality, detailed, ethereal, masterpiece, natural beauty",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "水镜倒影裸体",
+      "prompt": "masterpiece, best quality, 8k, a beautiful woman in water, naked body, water reflections, mirror-like surface, serene atmosphere, artistic nude photography, soft lighting, high quality, detailed, ethereal, masterpiece, peaceful beauty",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "布纹艺术裸体",
+      "prompt": "masterpiece, best quality, 8k, a beautiful woman wrapped in flowing fabric, nude body partially covered by silk, elegant drapery, classical sculpture style, soft lighting, fine art photography, high quality, detailed, masterpiece, timeless beauty",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "黑白艺术裸体",
+      "prompt": "masterpiece, best quality, black and white photography, a beautiful woman, artistic nude, high contrast, dramatic shadows, elegant pose, fine art, emotional atmosphere, high quality, detailed, masterpiece, timeless beauty, monochrome",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, color, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "轻纱艺术裸体",
+      "prompt": "masterpiece, best quality, photorealistic, 8k, a beautiful woman in translucent veil, nude body visible through thin fabric, soft romantic lighting, elegant pose, artistic nude photography, dreamy atmosphere, high quality, detailed, masterpiece, sensual and ethereal",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "岩石融合裸体",
+      "prompt": "masterpiece, best quality, 8k, a beautiful woman emerging from or melting into stone, nude body fused with rock texture, surreal atmosphere, artistic fine art photography, dramatic lighting, high quality, detailed, masterpiece, mythical and mysterious",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "火与影裸体",
+      "prompt": "masterpiece, best quality, 8k, a beautiful woman with dramatic fire and shadow, nude body, glowing embers, moody lighting, artistic fine art photography, high contrast, emotional atmosphere, high quality, detailed, masterpiece, intense and passionate",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, fire hazard, burning, flames"
+    },
+    {
+      "name": "超现实漂浮裸体",
+      "prompt": "masterpiece, best quality, 8k, a beautiful woman floating in mid-air, nude body, surreal atmosphere, dreamlike, artistic fine art photography, soft ethereal lighting, high quality, detailed, masterpiece, gravity-defying elegance",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "几何光影裸体",
+      "prompt": "masterpiece, best quality, 8k, a beautiful woman with geometric light patterns on naked body, shadow play, artistic nude photography, modern abstract style, high contrast, fine art, high quality, detailed, masterpiece, creative lighting design",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "浮世绘裸体",
+      "prompt": "masterpiece, best quality, ukiyo-e style, japanese woodblock print, a beautiful Japanese woman, nude, elegant pose, traditional style, high quality, detailed, artistic, classic Japanese art",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "水墨画裸体",
+      "prompt": "masterpiece, best quality, ink wash painting style, traditional Chinese art, a beautiful Asian woman, artistic nude, flowing brush strokes, minimalistic, elegant, high quality, detailed, timeless beauty",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "极简艺术裸体",
+      "prompt": "masterpiece, best quality, minimalism art style, a beautiful woman, artistic nude photography, clean background, simple composition, elegant pose, high quality, detailed, fine art, modern minimalist",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar"
+    },
+    {
+      "name": "表现主义裸体",
+      "prompt": "masterpiece, best quality, expressionism style, a beautiful woman, artistic nude, emotional brushstrokes, vivid colors, dramatic composition, fine art, high quality, detailed, masterpiece, expressive",
+      "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar"
+    }
+  ]
+}
