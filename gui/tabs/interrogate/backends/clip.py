@@ -37,7 +37,7 @@ class ClipBackend(InterrogateBackend):
                 config.clip_model_name = "ViT-L-14/openai"
                 config.device = "cpu"
                 # ✅ 指定缓存目录
-                config.cache_dir = cache_path
+                config.cache_path = cache_path
                 _cli_interrogator = Interrogator(config)
                 print("✅ CLIP Interrogator 加载成功")
                 print(f"   📁 缓存: {cache_path}")
