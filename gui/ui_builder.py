@@ -242,7 +242,7 @@ class UIBuilder:
         notebook = ttk.Notebook(parent)
         notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        from gui.tabs.txt2img_tab import Txt2ImgTab
+        from gui.tabs.txt2img import Txt2ImgTab
         from gui.tabs.img2img_tab import Img2ImgTab
         from gui.tabs.interrogate import InterrogateTab
         from gui.tabs.universal_tab import UniversalTab

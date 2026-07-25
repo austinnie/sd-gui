@@ -3,7 +3,7 @@
 # -*- coding: utf-8 -*-
 
 from .base_tab import BaseTab
-from .txt2img_tab import Txt2ImgTab
+from .txt2img import Txt2ImgTab
 from .img2img_tab import Img2ImgTab
 
 from .universal_tab import UniversalTab
