@@ -11,10 +11,10 @@ _cli_interrogator = None
 from services.llm_service import llm_service
 
 # ✅ 在文件顶部添加
-from services.cache_config import CACHE_ROOT
 import os
+from services.cache_config import CACHE_ROOT
 
-os.environ["CLIP_INTERROGATOR_CACHE"] = os.path.join(CACHE_ROOT, "clip_interrogator")
+_cli_interrogator = None
 
 class ClipBackend(InterrogateBackend):
     """CLIP 详细模式（支持 LLM 降级）"""
@@ -27,14 +27,17 @@ class ClipBackend(InterrogateBackend):
         
         # 尝试加载 CLIP Interrogator
         if _cli_interrogator is None:
+            # ✅ 在 try 外面定义
+            cache_path = os.path.join(CACHE_ROOT, "clip_interrogator")
+            os.makedirs(cache_path, exist_ok=True)
+            
             try:
                 from clip_interrogator import Config, Interrogator
                 config = Config()
                 config.clip_model_name = "ViT-L-14/openai"
                 config.device = "cpu"
                 # ✅ 指定缓存目录
-                config.cache_path = os.path.join(CACHE_ROOT, "clip_interrogator")
-                os.makedirs(config.cache_path, exist_ok=True)
+                config.cache_dir = cache_path
                 _cli_interrogator = Interrogator(config)
                 print("✅ CLIP Interrogator 加载成功")
                 print(f"   📁 缓存: {cache_path}")

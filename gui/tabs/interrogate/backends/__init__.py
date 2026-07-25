@@ -1,12 +1,11 @@
 # gui/tabs/interrogate/backends/__init__.py
-"""反推后端模块"""
 
 from .base import InterrogateBackend
 from .tag import TagBackend
 from .clip import ClipBackend
 from .blip import BlipBackend
 from .combined import CombinedBackend
-from .qwen import QwenBackend
+from .llm import LLMBackend  # ✅ 新增
 
 __all__ = [
     'InterrogateBackend',
@@ -14,5 +13,5 @@ __all__ = [
     'ClipBackend',
     'BlipBackend',
     'CombinedBackend',
-    'QwenBackend',
+    'LLMBackend',  # ✅ 新增
 ]

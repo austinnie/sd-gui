@@ -15,6 +15,7 @@ from .backends import (
     ClipBackend,
     BlipBackend,
     CombinedBackend,
+    LLMBackend,  # ✅ 新增
 )
 
 
@@ -170,6 +171,7 @@ class InterrogateTab(BaseTab):
                 "clip": ClipBackend(self),
                 "blip": BlipBackend(self),
                 "combined": CombinedBackend(self),
+                "llm": LLMBackend(self),  # ✅ 新增
             }
             
             backend = backends.get(backend_name)

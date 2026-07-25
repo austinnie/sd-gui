@@ -71,7 +71,7 @@ class InterrogateUI:
         self.tab.backend_combo = ttk.Combobox(
             parent,
             textvariable=self.tab.backend_var,
-            values=["tag", "clip", "blip", "combined"],
+            values=["tag", "clip", "blip", "combined", "llm"],
             width=8
         )
         self.tab.backend_combo.pack(side=tk.LEFT, padx=5)
