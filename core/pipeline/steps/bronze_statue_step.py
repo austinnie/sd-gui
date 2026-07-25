@@ -226,7 +226,7 @@ class BronzeStatueStep(PipelineStep, ControlNetMixin):
                         "cancelled": True,
                     }
                 )
-            print(f"      ❌ 失败: {error_var}")
+            print(f"      ❌ 失败: {e}")
             import traceback
             traceback.print_exc()
-            continue
+            # continue (已移除，不在循环中)

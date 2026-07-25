@@ -266,7 +266,7 @@ class MarbleStep(PipelineStep, ControlNetMixin):
                     print(f"      ❌ 失败: {e}")
                     import traceback
                     traceback.print_exc()
-                    continue
+                    # continue (已移除，不在循环中)
             
             return StepResult(
                 status=StepStatus.SUCCESS if success_count > 0 else StepStatus.FAILED,

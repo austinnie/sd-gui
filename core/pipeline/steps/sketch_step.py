@@ -179,10 +179,10 @@ class SketchStep(PipelineStep, ControlNetMixin):  # ✅ 继承 ControlNetMixin
                         "cancelled": True,
                     }
                 )
-            print(f"      ❌ 失败: {error_var}")
+            print(f"      ❌ 失败: {e}")
             import traceback
             traceback.print_exc()
-            continue
+            # continue (已移除，不在循环中)
     
     def _preprocess_for_controlnet(self, image_path: str, controlnet_type: str = "canny", 
                                     target_size: tuple = None):
@@ -209,10 +209,10 @@ class SketchStep(PipelineStep, ControlNetMixin):  # ✅ 继承 ControlNetMixin
                         "cancelled": True,
                     }
                 )
-            print(f"      ❌ 失败: {error_var}")
+            print(f"      ❌ 失败: {e}")
             import traceback
             traceback.print_exc()
-            continue
+            # continue (已移除，不在循环中)
     
     def execute(self, context: StepContext) -> StepResult:
         """执行素描风格转换 - 支持 ControlNet"""
@@ -375,7 +375,7 @@ class SketchStep(PipelineStep, ControlNetMixin):  # ✅ 继承 ControlNetMixin
                         "cancelled": True,
                     }
                 )
-            print(f"      ❌ 失败: {error_var}")
+            print(f"      ❌ 失败: {e}")
             import traceback
             traceback.print_exc()
-            continue
+            # continue (已移除，不在循环中)

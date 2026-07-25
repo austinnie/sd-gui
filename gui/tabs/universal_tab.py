@@ -21,7 +21,6 @@ class UniversalTab(BaseTab):
         self._init_vars()
         self.setup_ui()
     
-    
     def _init_vars(self):
         """初始化变量"""
         # 单人生成
@@ -38,14 +37,13 @@ class UniversalTab(BaseTab):
         self.uni_intimacy = tk.StringVar(value="romantic")
         
         # 生成参数
-        # ✅ 使用共享参数面板
         self.params = self.app.params_panel
         
         # 结果
         self.uni_last_prompt = ""
-        self.uni_last_negative = "" 
+        self.uni_last_negative = ""
 
-        # ✅ 添加生成状态
+        # ✅ 添加生成状态和取消标志
         self.is_generating = False
         self.cancel_generation = False
     
@@ -130,8 +128,8 @@ class UniversalTab(BaseTab):
             command=self._generate_single).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="💑 生成双人提示词", 
             command=self._generate_couple).pack(side=tk.LEFT, padx=5)
-            
-        # ✅ 添加取消按钮
+        
+        # ✅ 取消按钮
         self.cancel_btn = ttk.Button(
             btn_frame, 
             text="⏹️ 取消", 
@@ -139,7 +137,7 @@ class UniversalTab(BaseTab):
             state=tk.DISABLED
         )
         self.cancel_btn.pack(side=tk.LEFT, padx=5)
-            
+        
         row += 1
         
         # ===== 结果显示 =====
@@ -164,8 +162,6 @@ class UniversalTab(BaseTab):
             command=self._generate_image).pack(side=tk.LEFT, padx=5)
         ttk.Button(action_frame, text="🗑️ 清空", 
             command=self._clear_result).pack(side=tk.LEFT, padx=5)
-    
-
     
     def _generate_single(self):
         """生成单人提示词"""
@@ -232,18 +228,32 @@ class UniversalTab(BaseTab):
                 messagebox.showwarning("提示", "文生图标签页未初始化")
         else:
             messagebox.showwarning("提示", "请先生成提示词")
-        
+    
+    # ============================================================
+    # ✅ 核心方法：生成图片和取消
+    # ============================================================
+    
     def _generate_image(self):
         """立即生成图片"""
         if not self.uni_last_prompt:
             messagebox.showwarning("提示", "请先生成提示词")
             return
         
+        if self.is_generating:
+            messagebox.showwarning("提示", "正在生成中，请等待完成")
+            return
+        
+        self.cancel_generation = False
+        self.is_generating = True
+        
+        if hasattr(self, 'cancel_btn'):
+            self.cancel_btn.config(state=tk.NORMAL)
+        
         if self.app and hasattr(self.app, 'txt2img_tab'):
             tab = self.app.txt2img_tab
             tab.set_prompt(self.uni_last_prompt, self.uni_last_negative)
             
-            # ✅ 使用共享参数面板
+            # 使用共享参数面板
             params = self.params.get_params()
             tab.set_params(
                 steps=params["steps"],
@@ -254,7 +264,7 @@ class UniversalTab(BaseTab):
                 num_images=params["num_images"]
             )
 
-            # ✅ 获取 ControlNet 状态
+            # 获取 ControlNet 状态
             use_controlnet = False
             if hasattr(self.app, 'img2img_tab') and hasattr(self.app.img2img_tab, 'use_controlnet_var'):
                 use_controlnet = self.app.img2img_tab.use_controlnet_var.get()
@@ -262,8 +272,58 @@ class UniversalTab(BaseTab):
             tab.use_controlnet = use_controlnet
                 
             tab.generate()
+            
+            # ✅ 启动监控线程，检测生成完成
+            import threading
+            def monitor():
+                import time
+                while self.is_generating:
+                    if not tab.is_generating:
+                        self.app.root.after(0, self._on_generation_done)
+                        break
+                    if self.cancel_generation:
+                        tab.cancel_generation = True
+                        tab.is_generating = False
+                        self.app.root.after(0, self._on_cancel_complete)
+                        break
+                    time.sleep(0.5)
+            
+            threading.Thread(target=monitor, daemon=True).start()
         else:
             messagebox.showwarning("提示", "文生图标签页未初始化")
+            self.is_generating = False
+            if hasattr(self, 'cancel_btn'):
+                self.cancel_btn.config(state=tk.DISABLED)
+    
+    def _on_generation_done(self):
+        """生成完成"""
+        self.is_generating = False
+        if hasattr(self, 'cancel_btn'):
+            self.cancel_btn.config(state=tk.DISABLED)
+        self.update_status("✅ 生成完成")
+    
+    def _on_cancel_complete(self):
+        """取消完成"""
+        self.is_generating = False
+        if hasattr(self, 'cancel_btn'):
+            self.cancel_btn.config(state=tk.DISABLED)
+        self.update_status("⏹️ 已取消")
+    
+    def _cancel_generation(self):
+        """取消生成"""
+        self.cancel_generation = True
+        self.is_generating = False
+        self.update_status("⏹️ 正在取消...")
+        
+        if hasattr(self, 'cancel_btn'):
+            self.cancel_btn.config(state=tk.DISABLED)
+        
+        # 也通知文生图取消
+        if hasattr(self.app, 'txt2img_tab'):
+            txt2img = self.app.txt2img_tab
+            if txt2img and txt2img.is_generating:
+                txt2img.cancel_generation = True
+                txt2img.is_generating = False
     
     def _clear_result(self):
         """清空结果"""
@@ -291,18 +351,20 @@ class UniversalTab(BaseTab):
         
         self._run_batch_generation(prompts_list)
     
-    
     def _run_batch_generation(self, prompts_list):
         """运行批量生成"""
         if not prompts_list:
             return
         
         self.is_generating = True
+        self.cancel_generation = False
+        
+        if hasattr(self, 'cancel_btn'):
+            self.cancel_btn.config(state=tk.NORMAL)
         
         params = self.params.get_params()
 
-
-        # ✅ 获取 ControlNet 状态
+        # 获取 ControlNet 状态
         use_controlnet = False
         if hasattr(self.app, 'img2img_tab') and hasattr(self.app.img2img_tab, 'use_controlnet_var'):
             use_controlnet = self.app.img2img_tab.use_controlnet_var.get()
@@ -322,7 +384,7 @@ class UniversalTab(BaseTab):
                     seed = random.randint(1, 2**32 - 1)
                 seed = seed + idx
                 
-                # ✅ 传递 ControlNet 状态
+                # 传递 ControlNet 状态
                 txt2img.use_controlnet = use_controlnet
             
                 txt2img._generate_single_image(
@@ -339,4 +401,10 @@ class UniversalTab(BaseTab):
             time.sleep(0.5)
         
         self.is_generating = False
-        self.update_status("✅ 批量生成完成")
+        if hasattr(self, 'cancel_btn'):
+            self.cancel_btn.config(state=tk.DISABLED)
+        
+        if self.cancel_generation:
+            self.update_status("⏹️ 批量生成已取消")
+        else:
+            self.update_status("✅ 批量生成完成")

@@ -136,7 +136,7 @@ class QipaoStep(PipelineStep, ControlNetMixin):
             for idx, job in enumerate(prompts):
                 # ✅ 检查取消
                 if context.is_cancelled():
-                    print(f"   ⏹️ 用户取消，已生成 {idx}/{7} 张")
+                    print(f"   ⏹️ 用户取消，已生成 {idx}/{len(prompts)} 张")
                     return StepResult(
                         status=StepStatus.FAILED,
                         error="用户取消",
@@ -166,12 +166,34 @@ class QipaoStep(PipelineStep, ControlNetMixin):
                     if idx == 0:
                         print(f"      🎛️ ControlNet 强度: {config.get('controlnet_strength', 0.5)}")
                 
-                result = pipe(**gen_kwargs)
-                
-                output_path = os.path.join(output_dir, f"{idx+1:02d}_{job.get('name', 'qipao')}.png")
-                result.images[0].save(output_path)
-                success_count += 1
-                print(f"      ✅ 已保存: {os.path.basename(output_path)}")
+                try:
+                    result = pipe(**gen_kwargs)
+                    
+                    output_path = os.path.join(output_dir, f"{idx+1:02d}_{job.get('name', 'qipao')}.png")
+                    result.images[0].save(output_path)
+                    success_count += 1
+                    print(f"      ✅ 已保存: {os.path.basename(output_path)}")
+                    
+                except Exception as e:
+                    error_msg = str(e)
+                    if "取消" in error_msg or "cancelled" in error_msg.lower():
+                        print(f"      ⏹️ 生成被取消")
+                        return StepResult(
+                            status=StepStatus.FAILED,
+                            error="用户取消",
+                            output_path=output_dir,
+                            metadata={
+                                "output_count": idx,
+                                "output_dir": output_dir,
+                                "success_count": success_count,
+                                "cancelled": True,
+                            }
+                        )
+                    print(f"      ❌ 失败: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    # ✅ 继续下一个任务
+                    # continue (已移除，不在循环中)
             
             return StepResult(
                 status=StepStatus.SUCCESS if success_count > 0 else StepStatus.FAILED,
@@ -185,21 +207,9 @@ class QipaoStep(PipelineStep, ControlNetMixin):
             )
                     
         except Exception as e:
-            error_msg = str(e)
-            if "取消" in error_msg or "cancelled" in error_msg.lower():
-                print(f"      ⏹️ 生成被取消")
-                return StepResult(
-                    status=StepStatus.FAILED,
-                    error="用户取消",
-                    output_path=output_dir,
-                    metadata={
-                        "output_count": idx,
-                        "output_dir": output_dir,
-                        "success_count": success_count,
-                        "cancelled": True,
-                    }
-                )
-            print(f"      ❌ 失败: {error_var}")
             import traceback
             traceback.print_exc()
-            continue
+            return StepResult(
+                status=StepStatus.FAILED,
+                error=str(e)
+            )
