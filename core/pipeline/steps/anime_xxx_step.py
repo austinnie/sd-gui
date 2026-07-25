@@ -1,18 +1,11 @@
 # core/pipeline/steps/anime_xxx_step.py
-"""动漫爱爱风格转换步骤 - 支持 ControlNet"""
+"""动漫爱爱风格转换步骤 - 使用 BaseStyleStep"""
 
-import os
-import torch
-from PIL import Image
-from datetime import datetime
-from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
-
-from ..step import PipelineStep, StepContext, StepResult, StepStatus
-from .controlnet_mixin import ControlNetMixin
+from ..base_step import BaseStyleStep
 
 
-class AnimeXxxStep(PipelineStep, ControlNetMixin):
-    """动漫爱爱风格转换步骤 - 支持 ControlNet"""
+class AnimeXxxStep(BaseStyleStep):
+    """动漫爱爱风格转换步骤"""
     
     def __init__(self):
         super().__init__("anime_xxx", "转换为动漫爱爱风格")
@@ -26,25 +19,28 @@ class AnimeXxxStep(PipelineStep, ControlNetMixin):
             "controlnet_strength": 0.6,
         }
     
-    def get_config_schema(self):
+    def get_default_config(self) -> dict:
+        return self._config
+    
+    def get_config_schema(self) -> dict:
         return {
             "strength": {"type": "float", "default": 0.45, "min": 0.3, "max": 0.7},
             "cfg": {"type": "float", "default": 7.0, "min": 5, "max": 10},
             "steps": {"type": "int", "default": 30, "min": 20, "max": 50},
             "model_path": {"type": "str", "default": "../models/sd-v1-5/aiiiiii01_v10.safetensors"},
             "use_controlnet": {"type": "bool", "default": False},
-            "controlnet_type": {"type": "str", "default": "openpose", 
-                               "choices": ["openpose", "canny", "hed", "lineart"]},
+            "controlnet_type": {
+                "type": "choice",
+                "default": "openpose",
+                "choices": ["openpose", "canny", "hed", "lineart"]
+            },
             "controlnet_strength": {"type": "float", "default": 0.6, "min": 0.1, "max": 1.0},
         }
-
-    # ============================================================
-    # 动漫爱爱 - 常见场景提示词（扩展版）
-    # ============================================================    
-    def _generate_anime_prompts(self) -> list:
-        """生成动漫爱爱提示词 - 核心场景"""
+    
+    def get_prompts(self) -> list:
+        """生成动漫爱爱场景的 40 种提示词"""
         return [
-            # ===== 单人诱惑 =====
+            # ===== 单人诱惑 (17种) =====
             {
                 "name": "动漫巨乳御姐",
                 "prompt": "masterpiece, best quality, anime style, a beautiful anime woman, huge breasts, massive cleavage, seductive expression, long flowing hair, wearing revealing outfit, dramatic lighting, high quality, detailed, vibrant colors, anime art style, sensual pose, big boobs, perfect curves, bedroom setting, intimate atmosphere",
@@ -135,8 +131,7 @@ class AnimeXxxStep(PipelineStep, ControlNetMixin):
                 "prompt": "masterpiece, best quality, anime style, a beautiful anime office lady, huge breasts, tight blouse, short skirt, stockings, glasses, seductive expression, office background, dramatic lighting, high quality, detailed, vibrant colors, big boobs, office romance",
                 "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, small chest, flat chest"
             },
-            
-            # ===== 性爱场景 =====
+            # ===== 性爱场景 (14种) =====
             {
                 "name": "动漫传教士体位",
                 "prompt": "masterpiece, best quality, anime style, a man and woman having sex in missionary position, huge breasts, man on top, woman lying down, intimate lovemaking, passionate, romantic atmosphere, soft lighting, bedroom setting, both bodies visible, sensual, high quality, detailed, vibrant colors, hentai, erotic",
@@ -207,6 +202,7 @@ class AnimeXxxStep(PipelineStep, ControlNetMixin):
                 "prompt": "masterpiece, best quality, anime style, two handsome anime men making love, intimate embrace, passionate kiss, sensual pose, soft romantic lighting, bedroom setting, high quality, detailed, vibrant colors, yaoi, boys love, erotic and artistic, gay",
                 "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, women, heterosexual"
             },
+            # ===== 场景性爱 (9种) =====
             {
                 "name": "动漫浴室性爱",
                 "prompt": "masterpiece, best quality, anime style, a man and woman having sex in bathroom, huge breasts, wet bodies, steam, passionate, intimate, high quality, detailed, vibrant colors, hentai, erotic, shower sex",
@@ -247,201 +243,9 @@ class AnimeXxxStep(PipelineStep, ControlNetMixin):
                 "prompt": "masterpiece, best quality, anime style, a man and woman having sex in car, huge breasts, passionate, intimate, cramped space, both bodies visible, high quality, detailed, vibrant colors, hentai, erotic, car sex",
                 "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, gore, blood, injury"
             },
-            
-            # ===== 特写 =====
             {
-                "name": "动漫巨乳特写",
+                "name": "动漫特写_巨乳",
                 "prompt": "masterpiece, best quality, anime style, close-up of huge anime breasts, massive cleavage, big boobs, detailed, vibrant colors, high quality, seductive, perfect curves, anime art style, erotic, hentai",
                 "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, small chest, flat chest"
-            },
-            {
-                "name": "动漫臀部特写",
-                "prompt": "masterpiece, best quality, anime style, close-up of perfect anime buttocks, huge round peach-shaped butt, curvy body, from behind, detailed, vibrant colors, high quality, sensual, perfect curves, anime art style, hentai",
-                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, flat butt, saggy"
-            },
-            {
-                "name": "动漫私处特写",
-                "prompt": "masterpiece, best quality, anime style, close-up of anime woman's intimate area, detailed, artistic, hentai, erotic, high quality, vibrant colors, perfect anatomy",
-                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, extreme closeup, gore, blood, injury"
-            },
-            {
-                "name": "动漫性器插入特写",
-                "prompt": "masterpiece, best quality, anime style, close-up penetration, visible insertion, intimate, hentai, erotic, high quality, detailed, vibrant colors, perfect anatomy",
-                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, extreme closeup, gore, blood, injury"
-            },
-            
-            # ===== 幻想/异世界 =====
-            {
-                "name": "动漫淫魔",
-                "prompt": "masterpiece, best quality, anime style, a beautiful succubus, huge breasts, demon wings, tail, revealing outfit, seductive expression, hellfire background, dramatic lighting, high quality, detailed, vibrant colors, big boobs, dark fantasy, hentai, erotic",
-                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, small chest, flat chest"
-            },
-            {
-                "name": "动漫魅魔",
-                "prompt": "masterpiece, best quality, anime style, a beautiful dark elf, huge breasts, dark skin, silver hair, wearing revealing armor, seductive expression, fantasy dungeon background, dramatic lighting, high quality, detailed, vibrant colors, big boobs, dark fantasy, hentai",
-                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, small chest, flat chest"
-            },
-            {
-                "name": "动漫兽娘",
-                "prompt": "masterpiece, best quality, anime style, a beautiful beast girl, huge breasts, animal ears and tail, wearing revealing outfit, seductive expression, fantasy forest background, dramatic lighting, high quality, detailed, vibrant colors, big boobs, kemonomimi, hentai",
-                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, small chest, flat chest"
-            },
-            {
-                "name": "动漫人鱼",
-                "prompt": "masterpiece, best quality, anime style, a beautiful mermaid, huge breasts, fish tail, revealing seashell bra, underwater setting, seductive expression, high quality, detailed, vibrant colors, big boobs, fantasy, hentai, erotic",
-                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, small chest, flat chest"
-            },
-            {
-                "name": "动漫女骑士",
-                "prompt": "masterpiece, best quality, anime style, a beautiful female knight, huge breasts, revealing armor, holding a sword, seductive expression, castle background, dramatic lighting, high quality, detailed, vibrant colors, big boobs, fantasy, hentai, erotic",
-                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, small chest, flat chest"
-            },
-            {
-                "name": "动漫女忍",
-                "prompt": "masterpiece, best quality, anime style, a beautiful kunoichi, huge breasts, revealing ninja outfit, holding kunai, seductive expression, moonlit night background, dramatic lighting, high quality, detailed, vibrant colors, big boobs, ninja, hentai, erotic",
-                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, small chest, flat chest"
-            },
-            {
-                "name": "动漫女仆咖啡厅",
-                "prompt": "masterpiece, best quality, anime style, a beautiful cafe maid, huge breasts, cute maid outfit, playful expression, cafe background, soft lighting, high quality, detailed, vibrant colors, big boobs, moe, hentai, erotic",
-                "negative": "worst quality, low quality, ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra digits, watermark, text, signature, explicit, pornographic, vulgar, small chest, flat chest"
             }
-        ]       
-    
-    def execute(self, context: StepContext) -> StepResult:
-        """执行动漫爱爱转换 - 支持 ControlNet"""
-        config = self._config
-        image_path = context.input_path
-        
-        if not os.path.exists(image_path):
-            return StepResult(
-                status=StepStatus.FAILED,
-                error=f"图片不存在: {image_path}"
-            )
-        
-        output_dir = os.path.join(context.output_dir, "anime_xxx")
-        os.makedirs(output_dir, exist_ok=True)
-        
-        try:
-            pipe = context.global_config.get('pipe')
-            model_path = context.global_config.get('model_path')
-            
-            init_image = Image.open(image_path).convert('RGB')
-            w, h = init_image.size
-            width = ((w + 31) // 64) * 64
-            height = ((h + 31) // 64) * 64
-            if w != width or h != height:
-                init_image = init_image.resize((width, height), Image.Resampling.LANCZOS)
-            
-            # ===== 设置 ControlNet =====
-            controlnet_pipe, control_image, use_controlnet = self._setup_controlnet(config, model_path, image_path, init_image, context)
-            
-            if controlnet_pipe is not None:
-                pipe = controlnet_pipe
-            
-            if pipe is None and model_path:
-                common_args = {
-                    "torch_dtype": torch.float32,
-                    "safety_checker": None,
-                    "requires_safety_checker": False,
-                    "use_safetensors": True,
-                    "low_cpu_mem_usage": True,
-                }
-                pipe = StableDiffusionPipeline.from_single_file(model_path, **common_args)
-                pipe.to("cpu")
-                pipe.enable_vae_slicing()
-                pipe.enable_attention_slicing()
-                pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
-            
-            if pipe is None:
-                return StepResult(
-                    status=StepStatus.FAILED,
-                    error="无法获取 Pipeline"
-                )
-            
-            # ===== 场景数限制 =====
-            max_scenes = self._get_scene_limit(config)
-            all_prompts = self._generate_anime_prompts()
-            if max_scenes is not None and max_scenes > 0:
-                prompts = self._limit_prompts(all_prompts, max_scenes)
-                print(f"   📊 场景限制: 只生成前 {len(prompts)}/{len(all_prompts)} 个场景")
-            else:
-                prompts = all_prompts
-    
-            strength = config.get("strength", 0.45)
-            steps = config.get("steps", 20)
-            cfg = config.get("cfg", 7.0)
-            
-            generator = torch.Generator("cpu").manual_seed(42)
-            success_count = 0
-            
-            for idx, job in enumerate(prompts):
-                # ✅ 检查取消
-                if context.is_cancelled():
-                    print(f"   ⏹️ 用户取消，已生成 {idx}/{7} 张")
-                    return StepResult(
-                        status=StepStatus.FAILED,
-                        error="用户取消",
-                        output_path=output_dir,
-                        metadata={
-                            "output_count": idx,
-                            "output_dir": output_dir,
-                            "success_count": success_count,
-                            "cancelled": True,
-                        }
-                    )
-                print(f"   [{idx+1}/{len(prompts)}] {job.get('name', 'unknown')}")
-                
-                gen_kwargs = {
-                    "prompt": job.get("prompt", ""),
-                    "negative_prompt": job.get("negative", ""),
-                    "image": init_image,
-                    "strength": strength,
-                    "num_inference_steps": steps,
-                    "guidance_scale": cfg,
-                    "generator": generator,
-                }
-                
-                if control_image is not None and controlnet_pipe is not None:
-                    gen_kwargs["control_image"] = control_image
-                    gen_kwargs["controlnet_conditioning_scale"] = config.get("controlnet_strength", 0.6)
-                    if idx == 0:
-                        print(f"      🎛️ ControlNet 强度: {config.get('controlnet_strength', 0.6)}")
-                
-                result = pipe(**gen_kwargs)
-                
-                output_path = os.path.join(output_dir, f"{idx+1:02d}_{job.get('name', 'anime')}.png")
-                result.images[0].save(output_path)
-                success_count += 1
-                print(f"      ✅ 已保存: {os.path.basename(output_path)}")
-            
-            return StepResult(
-                status=StepStatus.SUCCESS if success_count > 0 else StepStatus.FAILED,
-                output_path=output_dir,
-                metadata={
-                    "output_count": len(prompts),
-                    "output_dir": output_dir,
-                    "success_count": success_count,
-                    "controlnet_used": control_image is not None,
-                }
-            )
-                    
-        except Exception as e:
-            error_msg = str(e)
-            if "取消" in error_msg or "cancelled" in error_msg.lower():
-                print(f"      ⏹️ 生成被取消")
-                return StepResult(
-                    status=StepStatus.FAILED,
-                    error="用户取消",
-                    output_path=output_dir,
-                    metadata={
-                        "output_count": idx,
-                        "output_dir": output_dir,
-                        "success_count": success_count,
-                        "cancelled": True,
-                    }
-                )
-            print(f"      ❌ 失败: {e}")
-            import traceback
-            traceback.print_exc()
-            # continue (已移除，不在循环中)
+        ]
