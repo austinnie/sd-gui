@@ -15,7 +15,6 @@ from .backends import (
     ClipBackend,
     BlipBackend,
     CombinedBackend,
-    QwenBackend,
 )
 
 

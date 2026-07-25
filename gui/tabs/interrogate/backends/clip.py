@@ -7,6 +7,8 @@ from .base import InterrogateBackend
 
 _cli_interrogator = None
 
+# ✅ 添加导入
+from services.llm_service import llm_service
 
 class ClipBackend(InterrogateBackend):
     """CLIP 详细模式（支持 LLM 降级）"""
@@ -68,12 +70,10 @@ class ClipBackend(InterrogateBackend):
         if self.tab.cancel_interrogate:
             return "已取消"
         
-        # 2. 如果有 LLM，增强描述
-        if hasattr(self.tab.app, 'chat_tab') and self.tab.app.chat_tab:
-            llm_client = self.tab.app.chat_tab.llm_client
-            if llm_client and llm_client.is_available():
-                print("🧠 使用 LLM 增强描述...")
-                prompt = f"""请将以下图片描述转换为 Stable Diffusion 提示词格式（英文，用逗号分隔）：
+        # 2. ✅ 直接使用 llm_service
+        if llm_service.is_available():
+            print("🧠 使用 LLM 增强描述...")
+            prompt = f"""请将以下图片描述转换为 Stable Diffusion 提示词格式（英文，用逗号分隔）：
 
 原始描述：{caption}
 
@@ -83,16 +83,14 @@ class ClipBackend(InterrogateBackend):
 3. 用英文，逗号分隔
 
 正面提示词："""
-                
-                llm_result = llm_client.generate(prompt, timeout=30, max_tokens=200)
-                if llm_result:
-                    # 提取提示词
-                    import re
-                    match = re.search(r'正面提示词[：:]\s*(.+?)(?=\n|$)', llm_result, re.IGNORECASE)
-                    if match:
-                        return match.group(1).strip()
-                    # 如果格式不对，直接使用 LLM 结果
-                    return llm_result.strip()
+            
+            llm_result = llm_service.generate(prompt, timeout=30, max_tokens=200)
+            if llm_result:
+                import re
+                match = re.search(r'正面提示词[：:]\s*(.+?)(?=\n|$)', llm_result, re.IGNORECASE)
+                if match:
+                    return match.group(1).strip()
+                return llm_result.strip()
         
         # 3. 没有 LLM，直接使用 BLIP 结果
         return caption

@@ -104,6 +104,10 @@ class Reloader:
         "utils.pipeline_pool",
         "utils.vae_utils",
         "utils.controlnet_helper",
+
+        # ✅ 新增
+        "services.llm_service",
+        "services.ollama_service",        
     ]
     
     def __init__(self, app):

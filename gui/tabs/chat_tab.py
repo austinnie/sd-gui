@@ -23,6 +23,8 @@ from gui.chat.ollama_manager import OllamaManager
 from gui.chat.handlers import TextToImageHandler, ImageToImageHandler, CoupleHandler, ChatHandler
 from gui.chat.ui import ChatUI
 from gui.chat.utils import PromptCleaner, ParamEstimator, ImageAnalyzer, SafetyChecker
+# ✅ 添加
+from services.llm_service import llm_service
 
 # ===== Hugging Face 缓存配置 =====
 CACHE_ROOT = r"E:\hf_cache\.cache"
@@ -48,14 +50,14 @@ class ChatTab(BaseTab):
 
         # ===== 初始化模块 =====
         self.intent_analyzer = IntentAnalyzer()
-        self.llm_client = LLMClient()
+        self.llm_client = llm_service
         self.prompt_builder = PromptBuilder()
         self.context_manager = ContextManager()
         
         # ===== 初始化管理器 =====
         self.lora_manager = LoraManager(self)
         self.controlnet_manager = ControlNetManager(self)
-        self.ollama_manager = OllamaManager(self)
+        self.ollama_manager = llm_service
 
         # ===== 初始化变量 =====
         self._init_vars()
