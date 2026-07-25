@@ -2,12 +2,12 @@
 """文生图标签页主类"""
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog, simpledialog
 import threading
 import random
 import time
 from datetime import datetime
-from tkinter import simpledialog
+
 import json
 import os
 
