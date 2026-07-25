@@ -14,6 +14,7 @@ DEFAULT_SCENE_COUNTS = {
     "cyberpunk": 3,
     "vaporwave": 3,
     "three_d_render": 3,
+    "aesthetic": 16,
     
     # 场景/主题类
     "beach": 4,
@@ -62,19 +63,26 @@ def get_step_scene_count(step_type: str, config: dict) -> Optional[int]:
     返回:
         场景数量，如果无法确定则返回 None
     """
-    # 首先检查配置中是否指定了场景数
+    # 1. 配置覆盖（用户指定的场景数）
     if "scenes" in config:
         try:
             return int(config["scenes"])
         except (ValueError, TypeError):
             pass
-    if "scene_count" in config:
-        try:
-            return int(config["scene_count"])
-        except (ValueError, TypeError):
-            pass
     
-    # 根据步骤类型返回默认场景数
+    # 2. 动态获取（从步骤类读取实际场景数）
+    try:
+        from core.pipeline import PipelineRegistry
+        step_class = PipelineRegistry.get_step(step_type)
+        if step_class:
+            step_instance = step_class()
+            if hasattr(step_instance, 'get_prompts'):
+                prompts = step_instance.get_prompts()
+                return len(prompts)
+    except Exception:
+        pass
+    
+    # 3. 默认硬编码（降级方案）
     return DEFAULT_SCENE_COUNTS.get(step_type)
 
 
