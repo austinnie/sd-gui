@@ -187,23 +187,52 @@ class PipelineRunner:
             logger.info(f"⚠️ ControlNet 加载失败: {e}")
             return None
     
+    # core/pipeline/runner.py
     def _post_process_results(self, results: dict):
-        """对结果进行后处理"""
+        """对结果进行后处理 - 支持水印去除 + 元数据清理 + EXIF注入 + 照片真实化"""
         from utils.image_post_processor import post_process_image
+        from utils.watermark_remover import WatermarkRemover
+        from PIL import Image
+        import os
         
         for name, result in results.items():
             if result.success and result.output_path and os.path.exists(result.output_path):
                 try:
+                    # ===== 1. 水印去除（在后期处理之前） =====
+                    if self.app.params_panel.remove_watermark_var.get():
+                        try:
+                            remover = WatermarkRemover()
+                            img = Image.open(result.output_path)
+                            
+                            # 确定使用的方法
+                            methods = ["opencv_inpaint", "opencv_blur"]
+                            strength = self.app.params_panel.watermark_strength_var.get()
+                            auto_detect = self.app.params_panel.watermark_auto_detect_var.get()
+                            
+                            cleaned = remover.remove_watermark(
+                                img,
+                                methods=methods,
+                                strength=strength,
+                                auto_detect=auto_detect
+                            )
+                            cleaned.save(result.output_path, quality=95)
+                            logger.info(f"   🚫 [{name}] 水印已去除")
+                        except Exception as e:
+                            logger.info(f"   ⚠️ [{name}] 水印去除失败: {e}")
+                    
+                    # ===== 2. 图片后期处理（元数据清理 + EXIF注入 + 照片真实化） =====
                     final_path = post_process_image(
                         result.output_path,
                         self.app.params_panel,
                         log_prefix=f"[流水线-{name}]"
                     )
+                    
                     if final_path != result.output_path:
                         try:
                             os.remove(result.output_path)
                         except:
                             pass
                         result.output_path = final_path
+                        
                 except Exception as e:
                     logger.info(f"⚠️ {name}: 后期处理失败 - {e}")
