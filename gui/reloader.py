@@ -31,7 +31,19 @@ class Reloader:
         "gui.tabs.base_tab",
         "gui.tabs.txt2img_tab",
         "gui.tabs.img2img_tab",
-        "gui.tabs.interrogate_tab",
+
+        # ✅ 新代码
+        "gui.tabs.interrogate",
+        "gui.tabs.interrogate.tab",
+        "gui.tabs.interrogate.ui",
+        "gui.tabs.interrogate.backends",
+        "gui.tabs.interrogate.backends.base",
+        "gui.tabs.interrogate.backends.tag",
+        "gui.tabs.interrogate.backends.clip",
+        "gui.tabs.interrogate.backends.blip",
+        "gui.tabs.interrogate.backends.combined",
+        "gui.tabs.interrogate.backends.qwen",
+
         "gui.tabs.universal_tab",
         "gui.tabs.scene_tab",
         "gui.tabs.janus_tab",

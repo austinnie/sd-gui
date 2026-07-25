@@ -244,7 +244,7 @@ class UIBuilder:
         
         from gui.tabs.txt2img_tab import Txt2ImgTab
         from gui.tabs.img2img_tab import Img2ImgTab
-        from gui.tabs.interrogate_tab import InterrogateTab
+        from gui.tabs.interrogate import InterrogateTab
         from gui.tabs.universal_tab import UniversalTab
         from gui.tabs.scene_tab import SceneTab
         from gui.tabs.janus_tab import JanusTab
