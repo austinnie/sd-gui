@@ -13,6 +13,10 @@ import gc
 from datetime import datetime
 import threading
 
+ ✅ 添加 logger 导入
+from utils.logger import get_logger
+
+logger = get_logger(__name__)  # ✅ 添加这行
 
 def get_memory_usage():
     """获取当前进程内存使用量 (GB)"""
