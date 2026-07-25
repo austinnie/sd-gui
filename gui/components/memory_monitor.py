@@ -38,28 +38,63 @@ def get_system_memory_percent():
         return 0
 
 
+# gui/components/memory_monitor.py
+
 def force_memory_cleanup(threshold_gb: float = 12.0):
-    """强制执行内存清理"""
+    """强制执行内存清理 - 增强版"""
     import gc
     
     before = get_memory_usage()
-    print(f"   🔧 内存清理前: {before:.1f} GB")
+    logger.info(f"   🔧 内存清理前: {before:.1f} GB")
     
-    gc.collect()
+    # ===== ✅ 1. 清理 Pipeline 池 =====
+    try:
+        from utils.pipeline_pool import pipeline_pool
+        status = pipeline_pool.get_status()
+        if status.get('active_count', 0) > 0:
+            logger.info(f"   🗑️ 清理 Pipeline 池 ({status['active_count']} 个实例)...")
+            # 强制释放所有 Pipeline
+            for key, data in list(pipeline_pool._pipelines.items()):
+                if data.get('ref_count', 0) <= 0:
+                    pipe = data.get('pipe')
+                    if pipe is not None:
+                        del pipe
+                    del pipeline_pool._pipelines[key]
+    except Exception as e:
+        logger.debug(f"   ⚠️ Pipeline 池清理失败: {e}")
+    
+    # ===== ✅ 2. 清理图片缓存 =====
+    try:
+        from utils.image_cache import image_cache
+        cache_size = len(image_cache._cache)
+        if cache_size > 0:
+            logger.info(f"   🗑️ 清理图片缓存 ({cache_size} 张)...")
+            image_cache.clear()
+    except Exception as e:
+        logger.debug(f"   ⚠️ 图片缓存清理失败: {e}")
+    
+    # ===== ✅ 3. 多次垃圾回收 =====
+    for i in range(5):  # 增加到 5 次
+        gc.collect()
+    
+    # ===== ✅ 4. 清理 CUDA 缓存 =====
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
         torch.cuda.synchronize()
     
-    # 强制 gc 多次
-    for _ in range(3):
-        gc.collect()
+    # ===== ✅ 5. 再回收一次 =====
+    gc.collect()
     
     after = get_memory_usage()
     freed = before - after
-    print(f"   ✅ 内存清理完成，释放: {freed:.2f} GB，当前: {after:.1f} GB")
+    
+    if freed < 0:
+        logger.info(f"   ⚠️ 内存统计异常 (释放: {freed:.2f} GB)")
+        freed = 0
+    
+    logger.info(f"   ✅ 内存清理完成，释放: {freed:.2f} GB，当前: {after:.1f} GB")
     return freed
-
-
+    
 class MemoryMonitor:
     """内存监控器 - 带自动清理"""
     

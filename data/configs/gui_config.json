@@ -53,7 +53,7 @@
     },
     "memory": {
         "cleanup_interval": 4,
-        "threshold_gb": 12,
+        "threshold_gb": 12.0,
         "rest_time": 0.5,
         "use_half_precision": false,
         "enable_cpu_offload": false,

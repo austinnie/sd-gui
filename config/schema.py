@@ -165,6 +165,7 @@ class ConfigValidator:
             "str": str,
             "int": int,
             "float": float,
+            "number": (int, float), 
             "bool": bool,
             "list": list,
             "dict": dict,

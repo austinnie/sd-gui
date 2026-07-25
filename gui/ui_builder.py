@@ -79,7 +79,17 @@ class UIBuilder:
         
         # 内存监控
         if hasattr(self.app, 'memory_monitor'):
-            self.app.memory_monitor.create_widget(status_frame).pack(side=tk.RIGHT, padx=5)
+            mem_widget = self.app.memory_monitor.create_widget(status_frame)
+            mem_widget.pack(side=tk.RIGHT, padx=5)
+            
+            # ✅ 新增：强制清理按钮
+            cleanup_btn = ttk.Button(
+                mem_widget,
+                text="🧹",
+                width=3,
+                command=self.app._force_cleanup
+            )
+            cleanup_btn.pack(side=tk.RIGHT, padx=2)
         
         return status_frame
     

@@ -454,10 +454,15 @@ class ModelManager:
 
     # ==================== 卸载方法 ====================
 
+    # gui/model_manager.py
     def _unload_sd_internal(self):
-        """内部卸载 SD"""
+        """内部卸载 SD - 确保彻底释放"""
         if self._sd_pipe is not None:
             try:
+                # ✅ 先移到 CPU
+                if hasattr(self._sd_pipe, 'to'):
+                    self._sd_pipe.to("cpu")
+                # ✅ 删除
                 del self._sd_pipe
             except:
                 pass
@@ -465,8 +470,18 @@ class ModelManager:
         self._sd_model_name = None
         if self._current_type == ModelType.SD:
             self._current_type = ModelType.NONE
-        force_memory_cleanup()
-
+        
+        # ✅ 强制多次垃圾回收
+        import gc
+        for _ in range(3):
+            gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()
+        
+        from gui.components.memory_monitor import get_memory_usage
+        logger.info(f"   🧹 SD 模型已卸载，当前内存: {get_memory_usage():.1f} GB")
+    
     def _unload_janus_internal(self):
         """内部卸载 Janus"""
         if self._janus_loaded:

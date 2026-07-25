@@ -473,18 +473,17 @@ class Reloader:
         self._auto_reload_model_after_reload()
         
 
+    # gui/reloader.py
     def _auto_reload_model_after_reload(self):
-        """热重载后自动重新加载模型"""
+        """热重载后自动重新加载模型 - 先清理再加载"""
         if not hasattr(self.app, 'model_manager'):
             return
         
-        # 从 UI 获取当前选择的模型
         if not hasattr(self.app, 'model_var'):
             return
         
         model_name = self.app.model_var.get()
         if not model_name or model_name not in self.app.checkpoint_paths:
-            # 没有选择模型，尝试使用 _last_model_path
             if hasattr(self.app, '_last_model_path') and self.app._last_model_path:
                 model_name = os.path.basename(self.app._last_model_path)
                 model_path = self.app._last_model_path
@@ -497,6 +496,10 @@ class Reloader:
         
         import threading
         def load_thread():
+            # ✅ 先强制清理内存
+            from gui.components.memory_monitor import force_memory_cleanup
+            force_memory_cleanup()
+            
             def progress_cb(value, msg):
                 self.app.root.after(0, lambda: self.app.update_progress(value, msg))
             

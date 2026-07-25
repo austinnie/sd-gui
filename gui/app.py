@@ -383,6 +383,68 @@ class SDApp:
         """运行应用"""
         self.root.mainloop()
 
+    # gui/app.py
+
+    def _force_cleanup(self):
+        """强制清理内存 - 增强版"""
+        from gui.components.memory_monitor import get_memory_usage
+        import gc
+        
+        before = get_memory_usage()
+        self.update_status(f"🧹 开始清理内存 (当前: {before:.1f} GB)...")
+        
+        # 1. 清理 Pipeline 池
+        try:
+            from utils.pipeline_pool import pipeline_pool
+            status = pipeline_pool.get_status()
+            if status.get('active_count', 0) > 0:
+                logger.info(f"   🗑️ 清理 Pipeline 池 ({status['active_count']} 个实例)")
+                # 强制释放所有引用计数为 0 的 Pipeline
+                for key, data in list(pipeline_pool._pipelines.items()):
+                    if data.get('ref_count', 0) <= 0:
+                        pipe = data.get('pipe')
+                        if pipe is not None:
+                            del pipe
+                        del pipeline_pool._pipelines[key]
+        except Exception as e:
+            logger.debug(f"   ⚠️ Pipeline 池清理失败: {e}")
+        
+        # 2. 清理图片缓存
+        try:
+            from utils.image_cache import image_cache
+            cache_size = len(image_cache._cache)
+            if cache_size > 0:
+                logger.info(f"   🗑️ 清理图片缓存 ({cache_size} 张)")
+                image_cache.clear()
+        except Exception as e:
+            logger.debug(f"   ⚠️ 图片缓存清理失败: {e}")
+        
+        # 3. 垃圾回收
+        for _ in range(3):
+            gc.collect()
+        
+        # 4. CUDA 清理
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                torch.cuda.synchronize()
+        except:
+            pass
+        
+        # 5. 最终回收
+        gc.collect()
+        
+        after = get_memory_usage()
+        freed = before - after
+        if freed < 0:
+            freed = 0
+        
+        self.update_status(f"✅ 内存清理完成，释放 {freed:.2f} GB，当前 {after:.1f} GB")
+        
+        # 如果内存仍然过高，提示用户
+        if after > 12:
+            self.update_status(f"⚠️ 内存仍较高 ({after:.1f} GB)，建议重启程序")
 
 def main():
     """主入口"""

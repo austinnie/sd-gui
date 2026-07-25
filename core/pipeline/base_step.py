@@ -4,6 +4,7 @@
 """
 
 import os
+import gc
 import torch
 from abc import abstractmethod
 from typing import List, Dict, Any, Optional
@@ -17,6 +18,7 @@ from .steps.controlnet_mixin import ControlNetMixin
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
+
 class BaseStyleStep(PipelineStep, ControlNetMixin):
     """
     风格转换步骤基类
@@ -31,6 +33,10 @@ class BaseStyleStep(PipelineStep, ControlNetMixin):
     def __init__(self, name: str, description: str = ""):
         super().__init__(name, description)
         self._config = self.get_default_config()
+        # ✅ 缓存 ControlNet 相关对象，避免重复创建
+        self._cached_controlnet_pipe = None
+        self._cached_control_image = None
+        self._cached_controlnet_config = None
     
     def get_default_config(self) -> Dict[str, Any]:
         """默认配置 - 子类可重写"""
@@ -76,7 +82,29 @@ class BaseStyleStep(PipelineStep, ControlNetMixin):
     def get_output_dir_name(self) -> str:
         """获取输出子目录名称 - 默认使用 step name"""
         return self.name
+
+    # ============================================================
+    # ✅ 新增：内存检查工具
+    # ============================================================
+    def _check_memory(self, threshold_gb: float = 8.0) -> bool:
+        """检查内存是否超过阈值"""
+        try:
+            import psutil
+            mem = psutil.Process().memory_info().rss / 1024 / 1024 / 1024
+            if mem > threshold_gb:
+                logger.info(f"   🧹 内存 {mem:.1f}GB 超过阈值 {threshold_gb:.1f}GB，执行清理...")
+                return True
+            return False
+        except:
+            return False
     
+    def _force_cleanup(self):
+        """强制内存清理"""
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()
+            
     def execute(self, context: StepContext) -> StepResult:
         """执行风格转换 - 通用逻辑"""
         config = self._config
@@ -91,6 +119,9 @@ class BaseStyleStep(PipelineStep, ControlNetMixin):
         output_dir = os.path.join(context.output_dir, self.get_output_dir_name())
         os.makedirs(output_dir, exist_ok=True)
         
+        # ✅ 用于跟踪成功数量
+        success_count = 0
+        
         try:
             pipe = context.global_config.get('pipe')
             model_path = context.global_config.get('model_path')
@@ -102,12 +133,39 @@ class BaseStyleStep(PipelineStep, ControlNetMixin):
             if w != width or h != height:
                 init_image = init_image.resize((width, height), Image.Resampling.LANCZOS)
             
-            # 设置 ControlNet
-            controlnet_pipe, control_image, _ = self._setup_controlnet(
-                config, model_path, image_path, init_image, context
-            )
-            if controlnet_pipe is not None:
-                pipe = controlnet_pipe
+            # ============================================================
+            # ✅ 修改：ControlNet 只加载一次（在循环之前）
+            # ============================================================
+            controlnet_pipe = None
+            control_image = None
+            use_controlnet = config.get("use_controlnet", False)
+            
+            if use_controlnet and model_path:
+                # ✅ 检查缓存，避免重复加载
+                cache_key = f"{model_path}_{config.get('controlnet_type', 'canny')}"
+                
+                if (self._cached_controlnet_pipe is not None and 
+                    self._cached_controlnet_config == cache_key):
+                    # 使用缓存的 ControlNet
+                    controlnet_pipe = self._cached_controlnet_pipe
+                    control_image = self._cached_control_image
+                    logger.info(f"   🧠 复用已缓存的 ControlNet")
+                else:
+                    # 加载新的 ControlNet
+                    logger.info(f"   📦 加载 ControlNet (首次)...")
+                    controlnet_pipe, control_image, _ = self._setup_controlnet(
+                        config, model_path, image_path, init_image, context
+                    )
+                    # 缓存
+                    if controlnet_pipe is not None and control_image is not None:
+                        self._cached_controlnet_pipe = controlnet_pipe
+                        self._cached_control_image = control_image
+                        self._cached_controlnet_config = cache_key
+                        logger.info(f"   ✅ ControlNet 已缓存")
+                
+                if controlnet_pipe is not None:
+                    pipe = controlnet_pipe
+                    logger.info(f"   🧠 使用 ControlNet: {config.get('controlnet_type', 'canny')} (强度: {config.get('controlnet_strength', 0.6)})")
             
             # 如果没有 pipe，加载模型
             if pipe is None and model_path:
@@ -144,8 +202,13 @@ class BaseStyleStep(PipelineStep, ControlNetMixin):
             cfg = config.get("cfg", 7.5)
             
             generator = torch.Generator("cpu").manual_seed(42)
-            success_count = 0
             
+            # ✅ 进度日志：每 5 张输出一次内存状态
+            last_memory_log = 0
+            
+            # ============================================================
+            # ✅ 循环生成
+            # ============================================================
             for idx, job in enumerate(prompts):
                 # 检查取消
                 if context.is_cancelled():
@@ -174,6 +237,7 @@ class BaseStyleStep(PipelineStep, ControlNetMixin):
                     "generator": generator,
                 }
                 
+                # ✅ 复用 ControlNet（已在外层加载）
                 if control_image is not None and controlnet_pipe is not None:
                     gen_kwargs["control_image"] = control_image
                     gen_kwargs["controlnet_conditioning_scale"] = config.get("controlnet_strength", 0.6)
@@ -190,6 +254,24 @@ class BaseStyleStep(PipelineStep, ControlNetMixin):
                     result.images[0].save(output_path)
                     success_count += 1
                     logger.info(f"      ✅ 已保存: {os.path.basename(output_path)}")
+                    
+                    # ✅ 立即释放 result
+                    del result
+                    
+                    # ✅ 每生成 2 张图片后检查内存
+                    if (idx + 1) % 2 == 0:
+                        if self._check_memory(threshold_gb=8.0):
+                            self._force_cleanup()
+                            logger.info(f"      🧹 内存已清理")
+                    
+                    # ✅ 每 5 张图片输出内存状态
+                    if (idx + 1) % 5 == 0:
+                        try:
+                            import psutil
+                            mem = psutil.Process().memory_info().rss / 1024 / 1024 / 1024
+                            logger.info(f"      📊 当前内存: {mem:.1f} GB")
+                        except:
+                            pass
                     
                 except Exception as e:
                     error_msg = str(e)
@@ -209,6 +291,9 @@ class BaseStyleStep(PipelineStep, ControlNetMixin):
                     logger.info(f"      ❌ 失败: {e}")
                     import traceback
                     traceback.print_exc()
+            
+            # ✅ 最终清理
+            self._force_cleanup()
             
             return StepResult(
                 status=StepStatus.SUCCESS if success_count > 0 else StepStatus.FAILED,
