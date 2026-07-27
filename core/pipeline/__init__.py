@@ -69,7 +69,32 @@ def register_all_steps():
     PipelineRegistry.register_step("bronze_statue", BronzeStatueStep)
     PipelineRegistry.register_step("aesthetic", AestheticStep)
 
-
+    PipelineRegistry.register_step("golden_buddha", GoldenBuddhaStep)
+    PipelineRegistry.register_step("tang_sancai", TangSancaiStep)
+    PipelineRegistry.register_step("dunhuang_fresco", DunhuangFrescoStep)
+    PipelineRegistry.register_step("ceramic", CeramicStep)
+    PipelineRegistry.register_step("terracotta_warrior", TerracottaWarriorStep)
+    PipelineRegistry.register_step("daoist_immortal", DaoistImmortalStep)
+    PipelineRegistry.register_step("immortal_ink_wash", ImmortalInkWashStep)
+    PipelineRegistry.register_step("divine_immortal", DivineImmortalStep)  
+    PipelineRegistry.register_step("olympian_gods", OlympianGodsStep)
+    PipelineRegistry.register_step("greek_hero", GreekHeroStep)
+    PipelineRegistry.register_step("greek_temple", GreekTempleStep)   
+    PipelineRegistry.register_step("western_god", WesternGodStep)
+    PipelineRegistry.register_step("angel", AngelStep)
+    PipelineRegistry.register_step("allah", AllahStep)
+    PipelineRegistry.register_step("ancient_china_myth", AncientChinaMythStep)
+    PipelineRegistry.register_step("folk_myth", FolkMythStep)
+    PipelineRegistry.register_step("egyptian_myth", EgyptianMythStep)
+    PipelineRegistry.register_step("norse_myth", NorseMythStep)
+    PipelineRegistry.register_step("roman_empire", RomanEmpireStep)
+    PipelineRegistry.register_step("medieval_knight", MedievalKnightStep)
+    PipelineRegistry.register_step("samurai", SamuraiStep)    
+    PipelineRegistry.register_step("hindu_gods", HinduGodsStep)
+    PipelineRegistry.register_step("hindu_epic", HinduEpicStep)
+    PipelineRegistry.register_step("hindu_temple", HinduTempleStep)
+    PipelineRegistry.register_step("hindu_lingam", HinduLingamStep)
+    
 __all__ = [
     'PipelineStep', 'StepResult', 'StepContext', 'StepStatus',
     'Pipeline', 'PipelineRegistry',

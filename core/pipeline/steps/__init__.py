@@ -50,6 +50,32 @@ from .bronze_statue_step import BronzeStatueStep
 
 from .aesthetic_step import AestheticStep
 
+from .golden_buddha_step import GoldenBuddhaStep
+from .tang_sancai_step import TangSancaiStep
+from .dunhuang_fresco_step import DunhuangFrescoStep
+from .ceramic_step import CeramicStep
+from .terracotta_warrior_step import TerracottaWarriorStep
+from .daoist_immortal_step import DaoistImmortalStep
+from .immortal_ink_wash_step import ImmortalInkWashStep
+from .divine_immortal_step import DivineImmortalStep
+from .olympian_gods_step import OlympianGodsStep
+from .greek_hero_step import GreekHeroStep
+from .greek_temple_step import GreekTempleStep
+from .western_god_step import WesternGodStep
+from .angel_step import AngelStep
+from .allah_step import AllahStep
+from .ancient_china_myth_step import AncientChinaMythStep
+from .folk_myth_step import FolkMythStep
+from .egyptian_myth_step import EgyptianMythStep
+from .norse_myth_step import NorseMythStep
+from .roman_empire_step import RomanEmpireStep
+from .medieval_knight_step import MedievalKnightStep
+from .samurai_step import SamuraiStep
+from .hindu_gods_step import HinduGodsStep
+from .hindu_epic_step import HinduEpicStep
+from .hindu_temple_step import HinduTempleStep
+from .hindu_lingam_step import HinduLingamStep
+
 __all__ = [
     'ControlNetMixin',  # ✅ 新增
     'MarbleStep',
@@ -76,4 +102,30 @@ __all__ = [
     'BronzeStatueStep',    
     
     'AestheticStep',
+
+    'GoldenBuddhaStep',
+    'TangSancaiStep',
+    'DunhuangFrescoStep',
+    'CeramicStep',    
+    'TerracottaWarriorStep',
+    'DaoistImmortalStep',
+    'ImmortalInkWashStep',
+    'DivineImmortalStep',   
+    'OlympianGodsStep',
+    'GreekHeroStep',
+    'GreekTempleStep',
+    'WesternGodStep',
+    'AngelStep',
+    'AllahStep',
+    'AncientChinaMythStep',
+    'FolkMythStep',    
+    'EgyptianMythStep', 
+    'NorseMythStep', 
+    'RomanEmpireStep', 
+    'MedievalKnightStep', 
+    'SamuraiStep',   
+    'HinduGodsStep', 
+    'HinduEpicStep', 
+    'HinduTempleStep',
+    'HinduLingamStep'
 ]
