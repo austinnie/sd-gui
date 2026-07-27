@@ -144,7 +144,140 @@ class Reloader:
     def __init__(self, app):
         self.app = app
         self._is_reloading = False
-    
+
+    # ============================================================
+    # ✅ 新增：UI 状态采集与恢复
+    # ============================================================
+    def _capture_ui_state(self) -> dict:
+        """重载前，采集所有 Tab 和主界面参数的状态快照"""
+        snapshot = {}
+        app = self.app
+
+        # 1. 采集主面板共享参数（步数、CFG、尺寸、种子等）
+        if hasattr(app, 'params_panel'):
+            p = app.params_panel
+            snapshot['main_params'] = {
+                'steps': p.steps_var.get(),
+                'cfg': p.cfg_var.get(),
+                'seed': p.seed_var.get(),
+                'width': p.width_var.get(),
+                'height': p.height_var.get(),
+                'num_images': p.num_images_var.get(),
+                'hires_fix': p.hires_fix_var.get(),
+                'hires_scale': p.hires_scale_var.get(),
+                'hires_denoise': p.hires_denoise_var.get(),
+                'scheduler': p.scheduler_var.get(),
+                # 水印与后期处理
+                'remove_watermark': p.remove_watermark_var.get(),
+                'watermark_strength': p.watermark_strength_var.get(),
+                'clear_metadata': p.clear_metadata_var.get(),
+                'inject_exif': p.inject_exif_var.get(),
+                'realistic': p.realistic_var.get(),
+                'camera': p.camera_var.get(),
+            }
+
+        # 2. 采集特定 Tab 的专属参数
+        if hasattr(app, 'chat_tab') and app.chat_tab:
+            snapshot['chat_tab'] = {
+                'quality_mode': app.chat_tab.quality_mode_var.get(),
+                'llm_enabled': app.chat_tab.llm_enabled_var.get(),
+                'safe_mode': app.chat_tab.safe_mode_var.get(),
+            }
+        
+        if hasattr(app, 'img2img_tab') and app.img2img_tab:
+            snapshot['img2img_tab'] = {
+                'strength': app.img2img_tab.strength_var.get(),
+                'per_image': app.img2img_tab.per_image_var.get(),
+                'use_inpaint': app.img2img_tab.use_inpaint_var.get(),
+                'use_controlnet': app.img2img_tab.use_controlnet_var.get(),
+                'controlnet_combo': app.img2img_tab.controlnet_combo_var.get(),
+            }
+        
+        if hasattr(app, 'txt2img_tab') and app.txt2img_tab:
+            snapshot['txt2img_tab'] = {
+                'template_category': app.txt2img_tab.template_category_var.get(),
+                'template_name': app.txt2img_tab.template_var.get(),
+            }
+
+        if hasattr(app, 'pipeline_tab') and app.pipeline_tab:
+            snapshot['pipeline_tab'] = {
+                'pipeline_name': app.pipeline_tab.pipeline_var.get(),
+                'strength': app.pipeline_tab.strength_var.get(),
+                'steps': app.pipeline_tab.steps_var.get(),
+                'cfg': app.pipeline_tab.cfg_var.get(),
+                'scenes_limit': app.pipeline_tab.scenes_limit_var.get(),
+                'use_controlnet': app.pipeline_tab.use_controlnet_var.get(),
+                'controlnet_type': app.pipeline_tab.controlnet_type_var.get(),
+            }
+
+        return snapshot
+
+    def _restore_ui_state(self, snapshot: dict):
+        """重载后，将状态快照注入回新的 UI 组件"""
+        if not snapshot:
+            return
+        app = self.app
+
+        # 1. 恢复主面板参数
+        if 'main_params' in snapshot and hasattr(app, 'params_panel'):
+            p = app.params_panel
+            params = snapshot['main_params']
+            # 使用安全设置，防止参数越界，与你的 app_config 联动
+            p.steps_var.set(params.get('steps', p.steps_var.get()))
+            p.cfg_var.set(params.get('cfg', p.cfg_var.get()))
+            p.seed_var.set(params.get('seed', p.seed_var.get()))
+            p.width_var.set(params.get('width', p.width_var.get()))
+            p.height_var.set(params.get('height', p.height_var.get()))
+            p.num_images_var.set(params.get('num_images', p.num_images_var.get()))
+            p.hires_fix_var.set(params.get('hires_fix', p.hires_fix_var.get()))
+            p.hires_scale_var.set(params.get('hires_scale', p.hires_scale_var.get()))
+            p.hires_denoise_var.set(params.get('hires_denoise', p.hires_denoise_var.get()))
+            p.scheduler_var.set(params.get('scheduler', p.scheduler_var.get()))
+            
+            p.remove_watermark_var.set(params.get('remove_watermark', p.remove_watermark_var.get()))
+            p.watermark_strength_var.set(params.get('watermark_strength', p.watermark_strength_var.get()))
+            p.clear_metadata_var.set(params.get('clear_metadata', p.clear_metadata_var.get()))
+            p.inject_exif_var.set(params.get('inject_exif', p.inject_exif_var.get()))
+            p.realistic_var.set(params.get('realistic', p.realistic_var.get()))
+            p.camera_var.set(params.get('camera', p.camera_var.get()))
+
+        # 2. 恢复 ChatTab 状态
+        if 'chat_tab' in snapshot and hasattr(app, 'chat_tab') and app.chat_tab:
+            params = snapshot['chat_tab']
+            app.chat_tab.quality_mode_var.set(params.get('quality_mode', '快速'))
+            app.chat_tab.llm_enabled_var.set(params.get('llm_enabled', True))
+            app.chat_tab.safe_mode_var.set(params.get('safe_mode', True))
+            # 触发 UI 的联动更新（手动调用 UI 更新方法）
+            if hasattr(app.chat_tab, '_set_quality_mode'):
+                app.chat_tab._set_quality_mode(app.chat_tab.quality_mode_var.get())
+
+        # 3. 恢复 Img2ImgTab 状态
+        if 'img2img_tab' in snapshot and hasattr(app, 'img2img_tab') and app.img2img_tab:
+            params = snapshot['img2img_tab']
+            app.img2img_tab.strength_var.set(params.get('strength', 0.35))
+            app.img2img_tab.per_image_var.set(params.get('per_image', 1))
+            app.img2img_tab.use_inpaint_var.set(params.get('use_inpaint', False))
+            app.img2img_tab.use_controlnet_var.set(params.get('use_controlnet', False))
+            app.img2img_tab.controlnet_combo_var.set(params.get('controlnet_combo', '姿态+边缘+深度'))
+
+        # 4. 恢复 PipelineTab 状态
+        if 'pipeline_tab' in snapshot and hasattr(app, 'pipeline_tab') and app.pipeline_tab:
+            params = snapshot['pipeline_tab']
+            # 因为 combo 的下拉列表需要重新刷新，这里用 after 延迟设置，防止列表未填充
+            def set_pipeline_params():
+                app.pipeline_tab.pipeline_var.set(params.get('pipeline_name', ''))
+                app.pipeline_tab.strength_var.set(params.get('strength', 0.35))
+                app.pipeline_tab.steps_var.set(params.get('steps', 25))
+                app.pipeline_tab.cfg_var.set(params.get('cfg', 7.0))
+                app.pipeline_tab.scenes_limit_var.set(params.get('scenes_limit', '全部'))
+                app.pipeline_tab.use_controlnet_var.set(params.get('use_controlnet', False))
+                app.pipeline_tab.controlnet_type_var.set(params.get('controlnet_type', 'canny'))
+                
+                if hasattr(app.pipeline_tab, '_update_info'):
+                    app.pipeline_tab._update_info()
+                    
+            self.app.root.after(50, set_pipeline_params)
+            
     # ============================================================
     # ✅ 新增：检查任务 + 强制重载入口
     # ============================================================
@@ -159,6 +292,9 @@ class Reloader:
         if self._is_reloading:
             self.app.update_status("⏳ 正在重载中，请等待...")
             return
+
+        # ✅ 1. 重载前：快照保存
+        snapshot = self._capture_ui_state()
         
         # ✅ 检查是否有任务正在运行
         if not force and self._has_running_tasks():
@@ -199,6 +335,9 @@ class Reloader:
         
         # 第五步：重建 UI
         self._rebuild_ui()
+
+        # ✅ 2. 重载后：注入状态恢复
+        self._restore_ui_state(snapshot)
         
         # 显示结果
         self._show_reload_result(reloaded, failed, force)
