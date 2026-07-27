@@ -897,31 +897,7 @@ class Reloader:
         except Exception as e:
             logger.info(f"   ❌ NSFW 面板重建失败: {e}")
     
-    def _show_reload_result(self, reloaded: List[str], failed: List[str]):
-        """显示重载结果"""
-        print("\n" + "=" * 70)
-        logger.info(f"📊 热重载结果统计:")
-        logger.info(f"   ✅ 成功: {len(reloaded)} 个模块")
-        if failed:
-            logger.info(f"   ❌ 失败: {len(failed)} 个模块")
-            logger.info(f"      {', '.join(failed[:5])}{'...' if len(failed) > 5 else ''}")
-        print("=" * 70)
-        
-        status_msg = f"✅ 热重载完成！已重载 {len(reloaded)} 个模块"
-        if failed:
-            status_msg += f" (⚠️ {len(failed)} 个失败)"
-        self.app.update_status(status_msg)
-        
-        if failed:
-            messagebox.showwarning(
-                "部分模块重载失败",
-                f"有 {len(failed)} 个模块重载失败:\n\n"
-                f"{', '.join(failed[:10])}\n\n"
-                f"请查看控制台输出获取详细信息。"
-            )
-        # ✅ 热重载完成后自动重新加载模型
-        self._auto_reload_model_after_reload()
-        
+     
 
     # gui/reloader.py
     def _auto_reload_model_after_reload(self):

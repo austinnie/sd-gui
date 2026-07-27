@@ -88,6 +88,117 @@ BUILTIN_PIPELINES = {
         "description": "转换为电影质感风格",
         "steps": [{"type": "cinematic", "config": {}}]
     },
+
+    # ===== 新增：世界神话、宗教与历史文物系列 =====
+    
+    "道门仙人": {
+        "description": "转换为道教仙人/修仙风格 (5种场景)",
+        "steps": [{"type": "daoist_immortal", "config": {}}]
+    },
+    "画中仙_水墨": {
+        "description": "转换为水墨修仙/画中仙风格 (5种场景)",
+        "steps": [{"type": "immortal_ink_wash", "config": {}}]
+    },
+    "紫气东来_法相": {
+        "description": "转换为紫气金身/神性光辉风格 (5种场景)",
+        "steps": [{"type": "divine_immortal", "config": {}}]
+    },
+    "金身佛像": {
+        "description": "转换为金身佛像风格 (4种场景)",
+        "steps": [{"type": "golden_buddha", "config": {}}]
+    },
+    "唐三彩": {
+        "description": "转换为唐三彩釉陶风格 (4种场景)",
+        "steps": [{"type": "tang_sancai", "config": {}}]
+    },
+    "敦煌壁画_飞天": {
+        "description": "转换为敦煌飞天壁画风格 (4种场景)",
+        "steps": [{"type": "dunhuang_fresco", "config": {}}]
+    },
+    "瓷器_历代名窑": {
+        "description": "转换为历代名窑瓷器风格 (5种场景)",
+        "steps": [{"type": "ceramic", "config": {}}]
+    },
+    "兵马俑": {
+        "description": "转换为秦代兵马俑风格 (5种场景)",
+        "steps": [{"type": "terracotta_warrior", "config": {}}]
+    },
+    
+    # ===== 西方神系 =====
+    "奥林匹斯众神": {
+        "description": "转换为希腊奥林匹斯众神风格 (5种场景)",
+        "steps": [{"type": "olympian_gods", "config": {}}]
+    },
+    "希腊英雄_怪物": {
+        "description": "转换为希腊英雄与怪物风格 (5种场景)",
+        "steps": [{"type": "greek_hero", "config": {}}]
+    },
+    "古希腊神庙": {
+        "description": "转换为古希腊神庙遗迹风格 (5种场景)",
+        "steps": [{"type": "greek_temple", "config": {}}]
+    },
+    "北欧神话_诸神": {
+        "description": "转换为北欧神话诸神风格 (4种场景)",
+        "steps": [{"type": "norse_myth", "config": {}}]
+    },
+    "古罗马帝国": {
+        "description": "转换为古罗马帝国与角斗士风格 (4种场景)",
+        "steps": [{"type": "roman_empire", "config": {}}]
+    },
+    "中世纪骑士": {
+        "description": "转换为中世纪骑士与巨龙风格 (4种场景)",
+        "steps": [{"type": "medieval_knight", "config": {}}]
+    },
+    "日本战国_武士": {
+        "description": "转换为日本战国武士与式神风格 (4种场景)",
+        "steps": [{"type": "samurai", "config": {}}]
+    },
+    
+    # ===== 宗教与神系 =====
+    "上帝_造物主": {
+        "description": "转换为西方上帝/造物主风格 (4种场景)",
+        "steps": [{"type": "western_god", "config": {}}]
+    },
+    "天使_天军": {
+        "description": "转换为天使与天军风格 (5种场景)",
+        "steps": [{"type": "angel", "config": {}}]
+    },
+    "伊斯兰_神圣": {
+        "description": "转换为伊斯兰神圣风格 (5种场景)",
+        "steps": [{"type": "allah", "config": {}}]
+    },
+    "古埃及神话": {
+        "description": "转换为古埃及法老与神明风格 (4种场景)",
+        "steps": [{"type": "egyptian_myth", "config": {}}]
+    },
+    
+    # ===== 印度神话 =====
+    "印度教_三大主神": {
+        "description": "转换为印度教三大主神风格 (4种场景)",
+        "steps": [{"type": "hindu_gods", "config": {}}]
+    },
+    "印度史诗_神猴": {
+        "description": "转换为印度史诗/神猴/天女风格 (4种场景)",
+        "steps": [{"type": "hindu_epic", "config": {}}]
+    },
+    "印度神庙_神兽": {
+        "description": "转换为印度神庙与神兽风格 (4种场景)",
+        "steps": [{"type": "hindu_temple", "config": {}}]
+    },
+    "印度生殖崇拜": {
+        "description": "转换为印度性力/生殖崇拜风格 (4种场景)",
+        "steps": [{"type": "hindu_lingam", "config": {}}]
+    },
+    
+    # ===== 中国上古与民间神话 =====
+    "中国上古神话": {
+        "description": "转换为中国上古/山海经神话风格 (5种场景)",
+        "steps": [{"type": "ancient_china_myth", "config": {}}]
+    },
+    "中国民间神话": {
+        "description": "转换为中国民间/封神榜神话风格 (5种场景)",
+        "steps": [{"type": "folk_myth", "config": {}}]
+    },
     
     # ===== 多人场景类 =====
     "情侣水彩": {

@@ -52,7 +52,7 @@ from .aesthetic_step import AestheticStep
 
 from .golden_buddha_step import GoldenBuddhaStep
 from .tang_sancai_step import TangSancaiStep
-from .dunhuang_fresco_step import DunhuangFrescoStep
+from .dunhuang_mural_step  import DunhuangFrescoStep
 from .ceramic_step import CeramicStep
 from .terracotta_warrior_step import TerracottaWarriorStep
 from .daoist_immortal_step import DaoistImmortalStep

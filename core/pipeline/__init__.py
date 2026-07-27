@@ -24,6 +24,33 @@ from .steps import (
     FriendsStyleStep, GroupPhotoStep, CoupleWeddingStep,
     CyberHanfuStep, MarbleYogaStep, BronzeStatueStep,
     AestheticStep,
+    
+    # ===== 👇 这里开始是你要新增导入的部分 👇 =====
+    DaoistImmortalStep,
+    DivineImmortalStep,
+    ImmortalInkWashStep,
+    AllahStep,
+    AncientChinaMythStep,
+    AngelStep,
+    CeramicStep,
+    DunhuangFrescoStep,
+    EgyptianMythStep,
+    FolkMythStep,
+    GoldenBuddhaStep,
+    GreekHeroStep,
+    GreekTempleStep,
+    HinduEpicStep,
+    HinduGodsStep,
+    HinduLingamStep,
+    HinduTempleStep,
+    MedievalKnightStep,
+    NorseMythStep,
+    OlympianGodsStep,
+    RomanEmpireStep,
+    SamuraiStep,
+    TangSancaiStep,
+    TerracottaWarriorStep,
+    WesternGodStep,    
 )
 
 
