@@ -74,7 +74,7 @@ def generate_style(pipe, init_image, prompt, output_filename, strength):
 
     if SAFE_MODE:
         # ✅ 安全模式：强制穿衣服 + 锁定原图脸部
-        full_prompt = f"masterpiece, best quality, photorealistic, highly detailed, {prompt}, wearing clothes, fully clothed, same person, same face, keep original facial features"
+        full_prompt = f"masterpiece, best quality, photorealistic, highly detailed, {prompt}, wearing clothes, fully clothed, same person, soft natural expression, looking away, candid moment, relaxed atmosphere"
         neg_prompt = (
             "worst quality, low quality, ugly, deformed, blurry, bad anatomy, "
             "nude, naked, no clothes, bare skin, lingerie, underwear, see-through, "
