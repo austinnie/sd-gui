@@ -1,0 +1,18 @@
+STYLE = {
+    "cyber_hanfu_style": {
+        "folder": "2_古风意境_赛博古风",
+        "subjects": [
+            "masterpiece, best quality, photorealistic, 8k, a beautiful woman wearing futuristic hanfu, cyberpunk traditional Chinese clothing, glowing neon patterns on flowing silk robes, holographic embroidery, digital phoenix motifs, neon lights reflecting on silk, cyberpunk city background, rain, holographic elements, high tech traditional fusion, full body shot, dramatic lighting, high quality, detailed",
+            "masterpiece, best quality, photorealistic, 8k, a beautiful woman in cyberpunk hanfu, traditional Chinese robes with LED trim, glowing jade ornaments, digital cloud patterns on silk, futuristic city skyline with Chinese architecture, holographic lanterns, neon signs with Chinese characters, cyberpunk atmosphere, full body shot, high quality, detailed, cinematic lighting",
+            "masterpiece, best quality, photorealistic, 8k, a beautiful woman wearing glowing hanfu in rain, neon reflections on wet silk, cyberpunk traditional dress, holographic lotus patterns, umbrella with LED rim, rain at night, cyberpunk city with Chinese elements, dramatic lighting, full body shot, high quality, detailed, atmospheric",
+            "masterpiece, best quality, photorealistic, 8k, a beautiful woman in futuristic hanfu, digital cherry blossoms falling, glowing silk robes, cyberpunk traditional wear, holographic butterflies, glass and steel pavilion, neon lights, sci-fi ancient fusion, full body shot, high quality, detailed, ethereal, cyberpunk fantasy",
+            "masterpiece, best quality, photorealistic, 8k, a beautiful woman in cyber hanfu, glowing flowing robes, holographic cloud patterns, futuristic Chinese palace floating in sky, neon aurora, cyberpunk traditional aesthetics, full body shot, high quality, detailed, dreamy, cyberpunk fairy tale",
+            "masterpiece, best quality, photorealistic, 8k, a beautiful female swordsman in cyberpunk hanfu, glowing traditional armor, LED sword, holographic cape, cyberpunk city rooftop, neon lights, dramatic pose, full body shot, high quality, detailed, cyberpunk wuxia, powerful, majestic",
+            "masterpiece, best quality, photorealistic, 8k, a beautiful celestial being in cyber hanfu, glowing flowing ribbons, holographic wings, digital star patterns on silk, cyberpunk heavenly palace, neon galaxy background, full body shot, high quality, detailed, ethereal, cyberpunk goddess",
+            "masterpiece, best quality, photorealistic, 8k, a beautiful woman playing a futuristic guqin, wearing cyber hanfu, glowing silk robes, holographic musical notes floating, cyberpunk traditional tea house, neon lights, full body shot, high quality, detailed, artistic, cyberpunk classical fusion",
+            "masterpiece, best quality, photorealistic, 8k, a man and woman in cyberpunk hanfu, traditional Chinese robes with glowing neon trim, standing side by side, cyberpunk city background with Chinese architecture, holographic lanterns, full body shot, high quality, detailed, dramatic lighting, cyberpunk couple, elegant and futuristic",
+            "masterpiece, best quality, photorealistic, 8k, a man and woman in cyber hanfu, traditional fusion attire, glowing silk robes, facing each other intimately, cyberpunk Chinese garden, neon flowers, romantic atmosphere, full body shot, high quality, detailed, dramatic lighting, cyberpunk romance"
+        ],
+        "strength": 0.40
+    }
+}

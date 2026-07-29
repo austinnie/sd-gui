@@ -1,0 +1,121 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+通用生成器：根据提示词库自动出图
+用法：python generate.py <风格名称>
+例如：python generate.py curvy_daily
+"""
+import os
+import sys
+import time
+import torch
+import random
+from PIL import Image
+from datetime import datetime
+from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
+
+# 加载全局配置与提示词库
+from config import SD_MODEL_PATH, STEPS, MAX_LIMIT, INPUT_IMAGE_NAME
+from prompts_config import STYLE_PROMPTS
+
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# ==================== 🛠️ 核心函数 ====================
+
+def find_input_image():
+    for ext in [".jpg", ".jpeg", ".png", ".webp", ".bmp"]:
+        path = os.path.join(CURRENT_DIR, INPUT_IMAGE_NAME + ext)
+        if os.path.exists(path):
+            return path
+    return None
+
+def setup_pipeline():
+    print(f"\n[系统] 正在加载 AI 模型...")
+    pipe = StableDiffusionPipeline.from_single_file(
+        SD_MODEL_PATH,
+        torch_dtype=torch.float32,
+        safety_checker=None,
+        requires_safety_checker=False,
+        use_safetensors=True
+    )
+    pipe.to("cpu")
+    pipe.enable_vae_slicing()
+    pipe.enable_attention_slicing()
+    pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
+    print("[系统] 模型加载完成！")
+    return pipe
+
+def generate_style(pipe, init_image, prompt, output_filename, strength):
+    w, h = init_image.size
+    max_limit = MAX_LIMIT
+    target_w, target_h = w, h
+    if target_w > max_limit or target_h > max_limit:
+        if target_w > target_h:
+            scale = max_limit / target_w
+        else:
+            scale = max_limit / target_h
+        target_w, target_h = int(target_w * scale), int(target_h * scale)
+    target_w, target_h = ((target_w+31)//64)*64, ((target_h+31)//64)*64
+    image = init_image.resize((target_w, target_h), Image.Resampling.LANCZOS)
+
+    full_prompt = f"masterpiece, best quality, photorealistic, highly detailed, {prompt}"
+    neg_prompt = "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, logo, brand"
+    
+    print(f"[生成] {os.path.basename(output_filename)} ({target_w}x{target_h})")
+    generator = torch.Generator("cpu").manual_seed(int(time.time_ns() % 1000000000))
+    
+    result = pipe(
+        prompt=full_prompt, negative_prompt=neg_prompt, image=image,
+        strength=strength, num_inference_steps=STEPS, guidance_scale=7.5,
+        generator=generator, width=target_w, height=target_h
+    )
+    result.images[0].save(output_filename, quality=95)
+
+# ==================== 🚀 主入口 ====================
+
+def main():
+    # 1. 检查命令行参数
+    if len(sys.argv) < 2:
+        print("\n❌ 错误：你没有指定生成风格！")
+        print("👉 用法：python generate.py <风格名称>")
+        print("\n📋 可选风格列表：")
+        for key in STYLE_PROMPTS.keys():
+            print(f"   - {key}")
+        print("\n💡 示例：")
+        print("   python generate.py curvy_daily")
+        print("   python generate.py ancient_chinese")
+        sys.exit(1)  # 直接退出程序
+
+    target_style = sys.argv[1]  # 获取你输入的第一个参数
+
+    if target_style not in STYLE_PROMPTS:
+        print(f"\n❌ 错误：找不到风格 '{target_style}'！")
+        print("📋 可用风格列表：")
+        for key in STYLE_PROMPTS.keys():
+            print(f"   - {key}")
+        sys.exit(1)
+
+    input_path = find_input_image()
+    if not input_path:
+        print(f"\n❌ 没找到图片！请把图片命名为 {INPUT_IMAGE_NAME}.jpg/.png 放在 tools 目录下！")
+        return
+
+    init_image = Image.open(input_path).convert('RGB')
+    pipe = setup_pipeline()
+
+    config = STYLE_PROMPTS[target_style]
+    print(f"\n🎯 正在生成风格: {target_style} -> {config['folder']}")
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_root = os.path.join(CURRENT_DIR, "output", f"{config['folder']}_{timestamp}")
+    os.makedirs(output_root, exist_ok=True)
+
+    # 随机生成 4 张
+    for i, prompt in enumerate(config["subjects"]):
+        prompt = random.choice(config["subjects"])
+        generate_style(pipe, init_image, prompt, os.path.join(output_root, f"{i+1:02d}.png"), config["strength"])
+
+    print(f"\n✅ 全部完成！共 4 张图片，保存在: {output_root}")
+
+if __name__ == "__main__":
+    main()
