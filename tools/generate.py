@@ -75,16 +75,13 @@ def generate_style(pipe, init_image, prompt, output_filename, strength):
 
 def main():
     # 1. 检查命令行参数
-    if len(sys.argv) < 2:
-        print("\n❌ 错误：你没有指定生成风格！")
-        print("👉 用法：python generate.py <风格名称>")
-        print("\n📋 可选风格列表：")
+    # 检查是否只想要查询列表
+    if len(sys.argv) < 2 or sys.argv[1] == "--list" or sys.argv[1] == "-l":
+        print("\n📋 当前支持的风格列表：")
         for key in STYLE_PROMPTS.keys():
             print(f"   - {key}")
-        print("\n💡 示例：")
-        print("   python generate.py curvy_daily")
-        print("   python generate.py ancient_chinese")
-        sys.exit(1)  # 直接退出程序
+        print("\n💡 用法：python generate.py <风格名称>")
+        sys.exit(0)  # 正常退出
 
     target_style = sys.argv[1]  # 获取你输入的第一个参数
 
