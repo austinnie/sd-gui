@@ -20,6 +20,12 @@ from prompts_config import STYLE_PROMPTS
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# ==================== ⚙️ 安全开关 ====================
+# True  = 安全模式（强制穿衣服，防止生成裸体，适合发公众号）
+# False = 自由模式（不干预提示词，适合生成性感、去衣等特殊风格）
+SAFE_MODE = True  
+# =======================================================
+
 # ==================== 🛠️ 核心函数 ====================
 
 def find_input_image():
@@ -31,20 +37,24 @@ def find_input_image():
 
 def setup_pipeline():
     print(f"\n[系统] 正在加载 AI 模型...")
+    model_path = SD_MODEL_PATH
+
+    # 纯本地加载，绝不联网
     pipe = StableDiffusionPipeline.from_single_file(
-        SD_MODEL_PATH,
+        model_path,
         torch_dtype=torch.float32,
         safety_checker=None,
         requires_safety_checker=False,
         use_safetensors=True
     )
+    # 引擎优化
     pipe.to("cpu")
     pipe.enable_vae_slicing()
     pipe.enable_attention_slicing()
     pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
     print("[系统] 模型加载完成！")
     return pipe
-
+    
 def generate_style(pipe, init_image, prompt, output_filename, strength):
     w, h = init_image.size
     max_limit = MAX_LIMIT
@@ -58,8 +68,23 @@ def generate_style(pipe, init_image, prompt, output_filename, strength):
     target_w, target_h = ((target_w+31)//64)*64, ((target_h+31)//64)*64
     image = init_image.resize((target_w, target_h), Image.Resampling.LANCZOS)
 
+    # ==================== 根据开关生成提示词 ====================
     full_prompt = f"masterpiece, best quality, photorealistic, highly detailed, {prompt}"
     neg_prompt = "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, logo, brand"
+
+    if SAFE_MODE:
+        # ✅ 安全模式：强制穿衣服
+        full_prompt = f"masterpiece, best quality, photorealistic, highly detailed, {prompt}, wearing clothes, fully clothed"
+        neg_prompt = (
+            "worst quality, low quality, ugly, deformed, blurry, bad anatomy, "
+            "nude, naked, no clothes, bare skin, lingerie, underwear, see-through, "
+            "watermark, text, signature, logo, brand"
+        )
+        print(f"🛡️ [安全模式已启用] 强制穿衣服")
+    else:
+        # ❌ 自由模式：不加干预
+        print(f"🔓 [自由模式已启用] 不干预内容")
+    # ============================================================
     
     print(f"[生成] {os.path.basename(output_filename)} ({target_w}x{target_h})")
     generator = torch.Generator("cpu").manual_seed(int(time.time_ns() % 1000000000))
