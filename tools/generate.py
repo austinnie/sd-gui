@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-通用生成器：根据提示词库自动出图
+通用生成器：根据提示词库自动出图（支持分层+扁平，全部生成）
 用法：python generate.py <风格名称>
-例如：python generate.py curvy_daily
+例如：python generate.py pure_serene
 """
 import os
 import sys
@@ -21,8 +21,6 @@ from prompts_config import STYLE_PROMPTS
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # ==================== ⚙️ 安全开关 ====================
-# True  = 安全模式（强制穿衣服，防止生成裸体，适合发公众号）
-# False = 自由模式（不干预提示词，适合生成性感、去衣等特殊风格）
 SAFE_MODE = True  
 # =======================================================
 
@@ -39,7 +37,6 @@ def setup_pipeline():
     print(f"\n[系统] 正在加载 AI 模型...")
     model_path = SD_MODEL_PATH
 
-    # 纯本地加载，绝不联网
     pipe = StableDiffusionPipeline.from_single_file(
         model_path,
         torch_dtype=torch.float32,
@@ -47,14 +44,32 @@ def setup_pipeline():
         requires_safety_checker=False,
         use_safetensors=True
     )
-    # 引擎优化
     pipe.to("cpu")
     pipe.enable_vae_slicing()
     pipe.enable_attention_slicing()
     pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
     print("[系统] 模型加载完成！")
     return pipe
-    
+
+def build_prompt(config):
+    """
+    分层构建提示词
+    支持两种格式：
+    1. 分层格式：subjects + styles + moods
+    2. 扁平格式：只有 subjects（兼容旧配置）
+    """
+    # 如果存在分层配置，使用分层组合
+    if "styles" in config and "moods" in config:
+        subject = random.choice(config["subjects"])
+        style = random.choice(config["styles"])
+        mood = random.choice(config["moods"])
+        prompt = f"{subject}, {style}, {mood}"
+        return prompt, "分层"
+    else:
+        # 扁平模式：直接从 subjects 中选
+        prompt = random.choice(config["subjects"])
+        return prompt, "扁平"
+
 def generate_style(pipe, init_image, prompt, output_filename, strength):
     w, h = init_image.size
     max_limit = MAX_LIMIT
@@ -68,28 +83,32 @@ def generate_style(pipe, init_image, prompt, output_filename, strength):
     target_w, target_h = ((target_w+31)//64)*64, ((target_h+31)//64)*64
     image = init_image.resize((target_w, target_h), Image.Resampling.LANCZOS)
 
-    # ==================== 修改这里 ====================
-    # ❌ 删除：原来冗长的提示词构建
-    # ✅ 改为：直接使用传入的prompt，不加额外修饰
-    
-    # 安全模式：只加必要的安全词，不堆砌修饰
+    # ==================== 提示词构建 ====================
     if SAFE_MODE:
-        full_prompt = f"{prompt}, wearing clothes"  # 只加必要的安全词
-        neg_prompt = "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, logo, brand"
+        full_prompt = f"{prompt}, wearing clothes"
+        neg_prompt = "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, logo, brand, bad hands, extra fingers, missing fingers, fused fingers, deformed hands"
         print(f"🛡️ [安全模式已启用]")
     else:
-        full_prompt = prompt  # 直接使用，不加任何额外词
+        full_prompt = prompt
         neg_prompt = "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, logo, brand"
         print(f"🔓 [自由模式已启用]")
-    # ================================================
+    # ====================================================
     
     print(f"[生成] {os.path.basename(output_filename)} ({target_w}x{target_h})")
+    print(f"  提示词: {full_prompt[:80]}...")
+    
     generator = torch.Generator("cpu").manual_seed(int(time.time_ns() % 1000000000))
     
     result = pipe(
-        prompt=full_prompt, negative_prompt=neg_prompt, image=image,
-        strength=strength, num_inference_steps=STEPS, guidance_scale=7.5,
-        generator=generator, width=target_w, height=target_h
+        prompt=full_prompt, 
+        negative_prompt=neg_prompt, 
+        image=image,
+        strength=strength, 
+        num_inference_steps=STEPS, 
+        guidance_scale=7.5,
+        generator=generator, 
+        width=target_w, 
+        height=target_h
     )
     result.images[0].save(output_filename, quality=95)
 
@@ -123,25 +142,39 @@ def main():
 
     config = STYLE_PROMPTS[target_style]
     
-    # ========== 新增：固定生成数量（可配置） ==========
-    # ========== 删除这部分的固定数量限制 ==========
-    # GENERATE_COUNT = 4  # 删除这行
-    # =============================================
-
-    # ========== 改为：全部生成 ==========
-    total_count = len(config["subjects"])  # 获取提示词总数
+    # ========== 全部生成 ==========
+    # 检查是分层还是扁平
+    if "styles" in config and "moods" in config:
+        # 分层模式：全部组合 = subjects × styles × moods
+        # 但为了控制数量，取全部 subjects，每次都随机组合
+        total_count = len(config["subjects"])
+        mode = "分层"
+        combo_info = f" (组合: {len(config['subjects'])}×{len(config['styles'])}×{len(config['moods'])}={len(config['subjects'])*len(config['styles'])*len(config['moods'])}种)"
+    else:
+        # 扁平模式：全部 subjects
+        total_count = len(config["subjects"])
+        mode = "扁平"
+        combo_info = ""
+    
     print(f"\n🎯 正在生成风格: {target_style} -> {config['folder']}")
+    print(f"📊 模式: {mode}{combo_info}")
     print(f"📊 本次共生成 {total_count} 张图片（全部提示词）")
-    # ===================================
+    if mode == "分层":
+        print(f"   ├─ 主体: {len(config['subjects'])} 种")
+        print(f"   ├─ 风格: {len(config['styles'])} 种")
+        print(f"   └─ 情绪: {len(config['moods'])} 种")
+    # =================================
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_root = os.path.join(CURRENT_DIR, "output", f"{config['folder']}_{timestamp}")
     os.makedirs(output_root, exist_ok=True)
 
-    # ========== 改为：遍历所有提示词 ==========
-    for i, prompt in enumerate(config["subjects"]):
-        # 实时进度提示
-        print(f"\n🔄 进度：第 {i+1}/{total_count} 张")
+    # ========== 全部生成循环 ==========
+    for i in range(total_count):
+        # 每次都重新组合（分层模式）或随机选（扁平模式）
+        prompt, mode_used = build_prompt(config)
+        
+        print(f"\n🔄 进度：第 {i+1}/{total_count} 张 [{mode_used}]")
         
         generate_style(
             pipe, 
@@ -150,9 +183,9 @@ def main():
             os.path.join(output_root, f"{i+1:02d}.png"), 
             config["strength"]
         )
-    # ============================================
+    # =================================
 
     print(f"\n✅ 全部完成！共 {total_count} 张图片，保存在: {output_root}")
-    
+
 if __name__ == "__main__":
     main()
