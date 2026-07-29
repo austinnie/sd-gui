@@ -8,7 +8,7 @@ if CURRENT_DIR not in sys.path:
     sys.path.insert(0, CURRENT_DIR)
 
 # 模型根目录
-PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
+PROJECT_ROOT = os.path.dirname(os.path.dirname(CURRENT_DIR))
 
 # 模型路径配置
 SD_MODEL_PATH_1 = os.path.join(PROJECT_ROOT, "models/sd-v1-5/anytimeRealistic_v10.safetensors")
