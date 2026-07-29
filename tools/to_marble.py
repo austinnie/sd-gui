@@ -12,11 +12,10 @@ from datetime import datetime
 from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
 
 # ==================== ⚙️ 配置区 ====================
-INPUT_IMAGE_NAME = "input"
-SD_MODEL_PATH = "../models/sd-v1-5/aiiiiii01_v10.safetensors"
-STRENGTH = 0.45
-STEPS = 30
-MAX_LIMIT = 768
+# ✅ 核心加固：定义当前脚本所在的绝对路径
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+from config import SD_MODEL_PATH, STEPS, MAX_LIMIT, INPUT_IMAGE_NAME, DEFAULT_STRENGTH
 
 POSITIVE_PROMPT = (
     "transform into pure white marble statue, classical sculpture, "
@@ -30,10 +29,11 @@ NEGATIVE_PROMPT = (
     "watermark, text, signature, different person"
 )
 
-# ==================== 通用核心函数 (移植) ====================
+# ==================== 通用核心函数 ====================
 def find_input_image(base_name):
+    """在 CURRENT_DIR (tools目录) 下寻找 input 图片"""
     for ext in [".jpg", ".jpeg", ".png", ".webp", ".bmp"]:
-        path = base_name + ext
+        path = os.path.join(CURRENT_DIR, base_name + ext)
         if os.path.exists(path):
             print(f"✅ 找到输入图片: {path}")
             return path
@@ -99,7 +99,7 @@ def generate_style(pipe, init_image, prompt, output_filename, strength=0.45):
         prompt=full_prompt,
         negative_prompt=negative_prompt,
         image=image,
-        strength=STRENGTH,
+        strength=strength,
         num_inference_steps=STEPS,
         guidance_scale=7.5,
         generator=generator,
@@ -113,12 +113,16 @@ def main():
     if not input_path:
         print(f"❌ 找不到图片！请把图片重命名为 '{INPUT_IMAGE_NAME}.jpg' 或 '{INPUT_IMAGE_NAME}.png' 放到同级目录！")
         return
+
     init_image = check_and_remove_watermark(input_path)
     pipe = setup_pipeline()
     print(f"🎨 正在转换为大理石雕像...")
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = "./output/marble"
+    # ✅ 核心修改：绝对路径拼接到 tools/output/marble
+    output_dir = os.path.join(CURRENT_DIR, "output", "marble")
     os.makedirs(output_dir, exist_ok=True)
+
     output_path = os.path.join(output_dir, f"marble_{timestamp}.png")
     generate_style(pipe, init_image, POSITIVE_PROMPT, output_path, STRENGTH)
     print(f"\n✅ 完成！图片已保存至: {output_path}")

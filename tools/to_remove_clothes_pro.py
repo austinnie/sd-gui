@@ -14,19 +14,16 @@ from datetime import datetime
 from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
 
 # ==================== ⚙️ 配置区 ====================
-INPUT_IMAGE_NAME = "input"   # 原图 (不需要后缀)
-SD_MODEL_PATH = "../models/sd-v1-5/aiiiiii01_v10.safetensors" # 模型路径
+# 👇 修改这行：使用 os.path 动态获取当前脚本绝对路径，保证万能
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# 从 config 导入统一的全局参数
+from config import SD_MODEL_PATH, STEPS, MAX_LIMIT, INPUT_IMAGE_NAME, DEFAULT_STRENGTH
 
 # 👇【核心选择】：去衣力度 (可选 1, 2, 3)
-# 1 = 轻微 (适合比基尼/薄纱 -> 微露)
-# 2 = 标准 (适合紧身瑜伽/泳装 -> 全去，面部不变)
-# 3 = 猛烈 (适合厚夹克/长裙 -> 强去，面部可能微变)
 MODE = 2  
-STEPS = 12
-# 最大输出边长
-MAX_LIMIT = 768
 
-# ==================== 🎯 力度配置预设 ====================
+# 力度配置预设
 SETTINGS = {
     1: {
         "strength": 0.45,
@@ -45,10 +42,10 @@ SETTINGS = {
     }
 }
 
-# ==================== 🔍 图片路径智能识别 + 去水印 (统一移植) ====================
+# ==================== 🔍 图片路径智能识别 ====================
 def find_input_image(base_name):
     for ext in [".jpg", ".jpeg", ".png", ".webp", ".bmp"]:
-        path = base_name + ext
+        path = os.path.join(CURRENT_DIR, base_name + ext)
         if os.path.exists(path):
             print(f"✅ 找到输入图片: {path}")
             return path
@@ -65,7 +62,6 @@ def check_and_remove_watermark(image_path):
     if white_pixel_ratio < 0.01 or white_pixel_ratio > 0.2:
         print("✅ 未检测到明显水印，直接使用原图。")
         return Image.open(image_path).convert('RGB')
-
     print("⚠️ 检测到疑似水印区域！正在使用 OpenCV 算法进行智能修复去除...")
     result = cv2.inpaint(img, mask, 3, cv2.INPAINT_TELEA)
     print("✅ 水印已去除！")
@@ -77,12 +73,9 @@ def detect_and_protect_face(image_pil):
     img = np.array(image_pil.convert('RGB'))
     img_cv = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    
-    # 使用 OpenCV 经典级联分类器找脸
     haar_cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
     face_cascade = cv2.CascadeClassifier(haar_cascade_path)
     faces = face_cascade.detectMultiScale(gray, 1.1, 4)
-    
     if len(faces) > 0:
         print(f"✅ [保护模式] 检测到 {len(faces)} 张人脸，已开启面部锁死功能！")
         return True, faces
@@ -130,7 +123,7 @@ def main():
     h = ((h + 31) // 64) * 64
     image = image.resize((w, h), Image.Resampling.LANCZOS)
 
-    # 4. 智能人脸检测
+    # 4. 智能人脸检测 (如果不想要可以再注释掉)
     has_face, faces = False, None  # 直接跳过人脸检测
     
     # 5. 加载配置
@@ -139,7 +132,6 @@ def main():
 
     # 6. 启动 AI
     pipe = setup_pipeline()
-    
     print(f"⏳ 开始重绘去衣... 大概需要 2~4 分钟（请耐心等待）")
     generator = torch.Generator("cpu").manual_seed(int(time.time_ns() % 1000000000))
     
@@ -157,7 +149,7 @@ def main():
 
     # 7. 保存图片
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = "./output/remove_clothes"
+    output_dir = os.path.join(CURRENT_DIR, "output", "remove_clothes")
     os.makedirs(output_dir, exist_ok=True)
     filename = f"remove_{timestamp}_{MODE}.png"
     output_path = os.path.join(output_dir, filename)

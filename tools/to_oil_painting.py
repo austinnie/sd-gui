@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-独立特效脚本：一键转换为【青铜雕像】风格（支持任意图片格式+自动去水印）
+独立特效脚本：一键转换为【复古油画】风格（支持任意图片格式+自动去水印）
 """
 import os
 import cv2
@@ -12,30 +12,27 @@ from datetime import datetime
 from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
 
 # ==================== ⚙️ 配置区 ====================
-INPUT_IMAGE_NAME = "input"  # 原图文件名（不带后缀）
-SD_MODEL_PATH = "../models/sd-v1-5/aiiiiii01_v10.safetensors"
+# ✅ 核心加固：定义当前脚本所在的绝对路径
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-STRENGTH = 0.45
-STEPS = 20
+from config import SD_MODEL_PATH, STEPS, MAX_LIMIT, INPUT_IMAGE_NAME, DEFAULT_STRENGTH
 
 POSITIVE_PROMPT = (
-    "transform into ancient bronze statue, weathered bronze texture, "
-    "dark metallic finish, aged copper tone, intricate casting details, "
-    "greenish patina, dramatic lighting, museum pedestal, high quality"
+    "masterpiece, best quality, oil painting, renaissance style, "
+    "classical beauty, soft warm lighting, rich colors, elegant pose, "
+    "velvet drapery, fine art, high quality, detailed, timeless beauty"
 )
-
 NEGATIVE_PROMPT = (
-    "color, modern, painting, cartoon, 3d render, shiny, glossy, "
-    "wet, oil, plastic, wax, wood, gold, silver, watermark, text, "
-    "different person"
+    "worst quality, low quality, ugly, deformed, blurry, "
+    "cartoon, anime, modern, photography, photorealistic, 3d render, "
+    "watermark, text, signature, single person"
 )
 
-MAX_LIMIT = 768
-
-# ==================== 通用核心函数 (移植) ====================
+# ==================== 通用核心函数 ====================
 def find_input_image(base_name):
+    """在 CURRENT_DIR (tools目录) 下寻找 input 图片"""
     for ext in [".jpg", ".jpeg", ".png", ".webp", ".bmp"]:
-        path = base_name + ext
+        path = os.path.join(CURRENT_DIR, base_name + ext)
         if os.path.exists(path):
             print(f"✅ 找到输入图片: {path}")
             return path
@@ -52,7 +49,6 @@ def check_and_remove_watermark(image_path):
     if white_pixel_ratio < 0.01 or white_pixel_ratio > 0.2:
         print("✅ 未检测到明显水印，直接使用原图。")
         return Image.open(image_path).convert('RGB')
-
     print("⚠️ 检测到疑似水印区域！正在使用 OpenCV 算法进行智能修复去除...")
     result = cv2.inpaint(img, mask, 3, cv2.INPAINT_TELEA)
     print("✅ 水印已去除！")
@@ -104,7 +100,7 @@ def generate_style(pipe, init_image, prompt, output_filename, strength=0.45):
         image=image,
         strength=strength,
         num_inference_steps=STEPS,
-        guidance_scale=7.0,
+        guidance_scale=7.5,
         generator=generator,
         width=target_w, height=target_h,
     )
@@ -116,13 +112,17 @@ def main():
     if not input_path:
         print(f"❌ 找不到图片！请把图片重命名为 '{INPUT_IMAGE_NAME}.jpg' 或 '{INPUT_IMAGE_NAME}.png' 放到同级目录！")
         return
+
     init_image = check_and_remove_watermark(input_path)
     pipe = setup_pipeline()
-    print(f"🏛️ 正在转换为青铜雕像风格...")
+    print(f"🎨 正在转换为复古油画风格...")
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = "./output/bronze"
+    # ✅ 核心修改：绝对路径拼接到 tools/output
+    output_dir = os.path.join(CURRENT_DIR, "output", "oil_painting")
     os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, f"bronze_{timestamp}.png")
+
+    output_path = os.path.join(output_dir, f"oil_{timestamp}.png")
     generate_style(pipe, init_image, POSITIVE_PROMPT, output_path, STRENGTH)
     print(f"\n✅ 完成！图片已保存至: {output_path}")
 

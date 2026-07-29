@@ -1,41 +1,36 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-独立特效脚本：一键将人物/风景转换为【国风水墨画】风格（支持任意格式+自动去水印）
+独立特效脚本：一键转换为【赛博朋克】风格（支持任意图片格式+自动去水印）
 """
 import os
 import cv2
 import torch
 import time
-import numpy as np
 from PIL import Image
 from datetime import datetime
 from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
 
-# ==================== ⚙️ 配置区 ====================
-INPUT_IMAGE_NAME = "input"
-SD_MODEL_PATH = "../models/sd-v1-5/aiiiiii01_v10.safetensors"
-STRENGTH = 0.40
-STEPS = 35
-MAX_LIMIT = 768
+# ✅ 核心加固：定义当前脚本所在的绝对路径
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+from config import SD_MODEL_PATH, STEPS, MAX_LIMIT, INPUT_IMAGE_NAME, DEFAULT_STRENGTH
 
 POSITIVE_PROMPT = (
-    "ink wash painting style, traditional Chinese painting, "
-    "a beautiful woman in flowing silk robes, delicate brush strokes, "
-    "misty mountain background, splashed ink, wet wash technique, "
-    "black ink on rice paper, oriental art, monochrome, zen atmosphere, "
-    "elegant minimalist style, high quality, masterpiece, fine art"
+    "cyberpunk style, neon lights, futuristic city, rain, "
+    "dark atmosphere, neon glow, reflections on wet street, "
+    "holographic elements, high tech, edgy, cinematic lighting"
 )
 NEGATIVE_PROMPT = (
-    "worst quality, low quality, ugly, deformed, blurry, "
-    "photorealistic, 3d render, oil painting, color, neon, modern, "
-    "watermark, text, signature, red stamp"
+    "vintage, rustic, natural, daylight, sunny, bright, "
+    "plain, simple, boring, old, medieval, watermark, text"
 )
 
-# ==================== 通用核心函数 (移植) ====================
+# ==================== 通用核心函数 ====================
 def find_input_image(base_name):
+    """在 CURRENT_DIR (tools目录) 下寻找 input 图片"""
     for ext in [".jpg", ".jpeg", ".png", ".webp", ".bmp"]:
-        path = base_name + ext
+        path = os.path.join(CURRENT_DIR, base_name + ext)
         if os.path.exists(path):
             print(f"✅ 找到输入图片: {path}")
             return path
@@ -56,17 +51,6 @@ def check_and_remove_watermark(image_path):
     result = cv2.inpaint(img, mask, 3, cv2.INPAINT_TELEA)
     print("✅ 水印已去除！")
     return Image.fromarray(cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
-
-def detect_and_protect_face(image_pil):
-    img = np.array(image_pil.convert('RGB'))
-    img_cv = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-    faces = face_cascade.detectMultiScale(gray, 1.1, 4)
-    if len(faces) > 0:
-        print(f"✅ [保护模式] 检测到 {len(faces)} 张人脸，已开启水墨面部锁死！")
-        return True
-    return False
 
 def setup_pipeline():
     print(f"\n[系统] 正在加载 AI 模型...")
@@ -112,9 +96,9 @@ def generate_style(pipe, init_image, prompt, output_filename, strength=0.45):
         prompt=full_prompt,
         negative_prompt=negative_prompt,
         image=image,
-        strength=STRENGTH,
+        strength=strength,
         num_inference_steps=STEPS,
-        guidance_scale=7.5,
+        guidance_scale=8.0,
         generator=generator,
         width=target_w, height=target_h,
     )
@@ -126,19 +110,19 @@ def main():
     if not input_path:
         print(f"❌ 找不到图片！请把图片重命名为 '{INPUT_IMAGE_NAME}.jpg' 或 '{INPUT_IMAGE_NAME}.png' 放到同级目录！")
         return
+
     init_image = check_and_remove_watermark(input_path)
-    has_face = detect_and_protect_face(init_image)
     pipe = setup_pipeline()
-    print(f"\n🎨 正在转换为国风水墨画 (强度: {STRENGTH}, 步数: {STEPS})...")
+    print(f"🌃 正在转换为赛博朋克夜城风格...")
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = "./output/ink_wash"
+    # ✅ 核心修改：绝对路径拼接到 tools/output/cyberpunk
+    output_dir = os.path.join(CURRENT_DIR, "output", "cyberpunk")
     os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, f"ink_wash_{timestamp}.png")
+
+    output_path = os.path.join(output_dir, f"cyberpunk_{timestamp}.png")
     generate_style(pipe, init_image, POSITIVE_PROMPT, output_path, STRENGTH)
-    print("\n" + "="*50)
-    print("✅ 水墨画生成完成！")
-    print(f"📂 图片已保存至: {output_path}")
-    print("="*50)
+    print(f"\n✅ 完成！图片已保存至: {output_path}")
 
 if __name__ == "__main__":
     main()

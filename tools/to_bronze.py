@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-独立特效脚本：一键转换为【赛博朋克】风格（支持任意图片格式+自动去水印）
+独立特效脚本：一键转换为【青铜雕像】风格（支持任意图片格式+自动去水印）
 """
 import os
 import cv2
@@ -11,27 +11,28 @@ from PIL import Image
 from datetime import datetime
 from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
 
-# ==================== ⚙️ 配置区 ====================
-INPUT_IMAGE_NAME = "input"
-SD_MODEL_PATH = "../models/sd-v1-5/aiiiiii01_v10.safetensors"
-STRENGTH = 0.50
-STEPS = 40
-MAX_LIMIT = 768
+# ✅ 核心加固：定义当前脚本所在的绝对路径
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+from config import SD_MODEL_PATH, STEPS, MAX_LIMIT, INPUT_IMAGE_NAME, DEFAULT_STRENGTH
 
 POSITIVE_PROMPT = (
-    "cyberpunk style, neon lights, futuristic city, rain, "
-    "dark atmosphere, neon glow, reflections on wet street, "
-    "holographic elements, high tech, edgy, cinematic lighting"
-)
-NEGATIVE_PROMPT = (
-    "vintage, rustic, natural, daylight, sunny, bright, "
-    "plain, simple, boring, old, medieval, watermark, text"
+    "transform into ancient bronze statue, weathered bronze texture, "
+    "dark metallic finish, aged copper tone, intricate casting details, "
+    "greenish patina, dramatic lighting, museum pedestal, high quality"
 )
 
-# ==================== 通用核心函数 (移植) ====================
+NEGATIVE_PROMPT = (
+    "color, modern, painting, cartoon, 3d render, shiny, glossy, "
+    "wet, oil, plastic, wax, wood, gold, silver, watermark, text, "
+    "different person"
+)
+
+# ==================== 通用核心函数 ====================
 def find_input_image(base_name):
+    """在 CURRENT_DIR (tools目录) 下寻找 input 图片"""
     for ext in [".jpg", ".jpeg", ".png", ".webp", ".bmp"]:
-        path = base_name + ext
+        path = os.path.join(CURRENT_DIR, base_name + ext)
         if os.path.exists(path):
             print(f"✅ 找到输入图片: {path}")
             return path
@@ -71,7 +72,7 @@ def setup_pipeline():
 
 def generate_style(pipe, init_image, prompt, output_filename, strength=0.45):
     original_w, original_h = init_image.size
-    max_limit = MAX_LIMIT 
+    max_limit = MAX_LIMIT
     target_w, target_h = original_w, original_h
     if target_w > max_limit or target_h > max_limit:
         if target_w > target_h:
@@ -99,7 +100,7 @@ def generate_style(pipe, init_image, prompt, output_filename, strength=0.45):
         image=image,
         strength=strength,
         num_inference_steps=STEPS,
-        guidance_scale=8.0,
+        guidance_scale=7.0,
         generator=generator,
         width=target_w, height=target_h,
     )
@@ -111,13 +112,17 @@ def main():
     if not input_path:
         print(f"❌ 找不到图片！请把图片重命名为 '{INPUT_IMAGE_NAME}.jpg' 或 '{INPUT_IMAGE_NAME}.png' 放到同级目录！")
         return
+
     init_image = check_and_remove_watermark(input_path)
     pipe = setup_pipeline()
-    print(f"🌃 正在转换为赛博朋克夜城风格...")
+    print(f"🏛️ 正在转换为青铜雕像风格...")
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = "./output/cyberpunk"
+    # ✅ 核心修改：绝对路径拼接到 tools/output/bronze
+    output_dir = os.path.join(CURRENT_DIR, "output", "bronze")
     os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, f"cyberpunk_{timestamp}.png")
+
+    output_path = os.path.join(output_dir, f"bronze_{timestamp}.png")
     generate_style(pipe, init_image, POSITIVE_PROMPT, output_path, STRENGTH)
     print(f"\n✅ 完成！图片已保存至: {output_path}")
 
