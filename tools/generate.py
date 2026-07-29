@@ -68,25 +68,20 @@ def generate_style(pipe, init_image, prompt, output_filename, strength):
     target_w, target_h = ((target_w+31)//64)*64, ((target_h+31)//64)*64
     image = init_image.resize((target_w, target_h), Image.Resampling.LANCZOS)
 
-    # ==================== 根据开关生成提示词 ====================
-    full_prompt = f"masterpiece, best quality, photorealistic, highly detailed, {prompt}"
-    neg_prompt = "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, logo, brand"
-
+    # ==================== 修改这里 ====================
+    # ❌ 删除：原来冗长的提示词构建
+    # ✅ 改为：直接使用传入的prompt，不加额外修饰
+    
+    # 安全模式：只加必要的安全词，不堆砌修饰
     if SAFE_MODE:
-        # ✅ 安全模式：强制穿衣服 + 锁定原图脸部
-        full_prompt = f"masterpiece, best quality, photorealistic, highly detailed, {prompt}, wearing clothes, fully clothed, same person, soft natural expression, looking away, candid moment, relaxed atmosphere"
-        neg_prompt = (
-            "worst quality, low quality, ugly, deformed, blurry, bad anatomy, "
-            "nude, naked, no clothes, bare skin, lingerie, underwear, see-through, "
-            "watermark, text, signature, logo, brand"
-        )
-        print(f"🛡️ [安全模式已启用] 强制穿衣服 + 锁定原图脸部")
-    else:
-        # ❌ 自由模式：不加干预
-        full_prompt = f"masterpiece, best quality, photorealistic, highly detailed, {prompt}"
+        full_prompt = f"{prompt}, wearing clothes"  # 只加必要的安全词
         neg_prompt = "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, logo, brand"
-        print(f"🔓 [自由模式已启用] 不干预内容")
-    # ============================================================
+        print(f"🛡️ [安全模式已启用]")
+    else:
+        full_prompt = prompt  # 直接使用，不加任何额外词
+        neg_prompt = "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, logo, brand"
+        print(f"🔓 [自由模式已启用]")
+    # ================================================
     
     print(f"[生成] {os.path.basename(output_filename)} ({target_w}x{target_h})")
     generator = torch.Generator("cpu").manual_seed(int(time.time_ns() % 1000000000))
@@ -129,23 +124,24 @@ def main():
     config = STYLE_PROMPTS[target_style]
     
     # ========== 新增：固定生成数量（可配置） ==========
-    GENERATE_COUNT = 4  # 想要生成几张就改这里
-    # =================================================
-    
+    # ========== 删除这部分的固定数量限制 ==========
+    # GENERATE_COUNT = 4  # 删除这行
+    # =============================================
+
+    # ========== 改为：全部生成 ==========
+    total_count = len(config["subjects"])  # 获取提示词总数
     print(f"\n🎯 正在生成风格: {target_style} -> {config['folder']}")
-    print(f"📊 本次共生成 {GENERATE_COUNT} 张图片")
+    print(f"📊 本次共生成 {total_count} 张图片（全部提示词）")
+    # ===================================
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_root = os.path.join(CURRENT_DIR, "output", f"{config['folder']}_{timestamp}")
     os.makedirs(output_root, exist_ok=True)
 
-    # ========== 修复：明确生成指定数量 ==========
-    for i in range(GENERATE_COUNT):
-        # 从配置的 subjects 列表中随机选一个提示词
-        prompt = random.choice(config["subjects"])
-        
+    # ========== 改为：遍历所有提示词 ==========
+    for i, prompt in enumerate(config["subjects"]):
         # 实时进度提示
-        print(f"\n🔄 进度：第 {i+1}/{GENERATE_COUNT} 张")
+        print(f"\n🔄 进度：第 {i+1}/{total_count} 张")
         
         generate_style(
             pipe, 
@@ -154,9 +150,9 @@ def main():
             os.path.join(output_root, f"{i+1:02d}.png"), 
             config["strength"]
         )
-    # =============================================
+    # ============================================
 
-    print(f"\n✅ 全部完成！共 {GENERATE_COUNT} 张图片，保存在: {output_root}")
+    print(f"\n✅ 全部完成！共 {total_count} 张图片，保存在: {output_root}")
     
 if __name__ == "__main__":
     main()
