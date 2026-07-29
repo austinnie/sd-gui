@@ -102,15 +102,14 @@ def generate_style(pipe, init_image, prompt, output_filename, strength):
 
 def main():
     # 1. 检查命令行参数
-    # 检查是否只想要查询列表
     if len(sys.argv) < 2 or sys.argv[1] == "--list" or sys.argv[1] == "-l":
         print("\n📋 当前支持的风格列表：")
         for key in STYLE_PROMPTS.keys():
             print(f"   - {key}")
         print("\n💡 用法：python generate.py <风格名称>")
-        sys.exit(0)  # 正常退出
+        sys.exit(0)
 
-    target_style = sys.argv[1]  # 获取你输入的第一个参数
+    target_style = sys.argv[1]
 
     if target_style not in STYLE_PROMPTS:
         print(f"\n❌ 错误：找不到风格 '{target_style}'！")
@@ -128,18 +127,36 @@ def main():
     pipe = setup_pipeline()
 
     config = STYLE_PROMPTS[target_style]
+    
+    # ========== 新增：固定生成数量（可配置） ==========
+    GENERATE_COUNT = 4  # 想要生成几张就改这里
+    # =================================================
+    
     print(f"\n🎯 正在生成风格: {target_style} -> {config['folder']}")
+    print(f"📊 本次共生成 {GENERATE_COUNT} 张图片")
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_root = os.path.join(CURRENT_DIR, "output", f"{config['folder']}_{timestamp}")
     os.makedirs(output_root, exist_ok=True)
 
-    # 随机生成 4 张
-    for i, prompt in enumerate(config["subjects"]):
+    # ========== 修复：明确生成指定数量 ==========
+    for i in range(GENERATE_COUNT):
+        # 从配置的 subjects 列表中随机选一个提示词
         prompt = random.choice(config["subjects"])
-        generate_style(pipe, init_image, prompt, os.path.join(output_root, f"{i+1:02d}.png"), config["strength"])
+        
+        # 实时进度提示
+        print(f"\n🔄 进度：第 {i+1}/{GENERATE_COUNT} 张")
+        
+        generate_style(
+            pipe, 
+            init_image, 
+            prompt, 
+            os.path.join(output_root, f"{i+1:02d}.png"), 
+            config["strength"]
+        )
+    # =============================================
 
-    print(f"\n✅ 全部完成！共 4 张图片，保存在: {output_root}")
-
+    print(f"\n✅ 全部完成！共 {GENERATE_COUNT} 张图片，保存在: {output_root}")
+    
 if __name__ == "__main__":
     main()
