@@ -114,6 +114,6 @@ STYLE = {
             "woman, oversized shirt, studio, morning vibes",
             "woman, satin robe, balcony, modern, sensual"
         ],
-        "strength": 0.40
+        "strength": 0.35
     }
 }
