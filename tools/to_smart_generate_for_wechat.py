@@ -96,12 +96,12 @@ def build_prompts():
 
         if target == "女性人物":
             subjects = [
-                "a beautiful woman, huge breasts, large cleavage, perfect curvy body, hands resting naturally on lap, sitting elegantly",
-                "an elegant girl, big chest, full bust, sexy curvy figure, hand lightly touching face, thoughtful expression",
-                "a graceful lady, voluptuous body, attractive figure, standing gracefully, arms relaxed at sides",
-                "a stunning female, massive breasts, alluring curvy body, sitting, hands clasped gently together",
-                "a charming goddess, perfect body, full round bust, elegant pose, hands out of frame, focusing on upper body and face",
-                "a serene maiden, busty, curvy hourglass figure, sitting elegantly, hands holding a small flower stem gently"
+                "a beautiful woman, elegant and serene, hands resting naturally on lap, sitting elegantly",
+                "an elegant girl, refined beauty, gentle smile, hand lightly touching face, thoughtful expression",
+                "a graceful lady, standing gracefully, arms relaxed at sides, soft expression",
+                "a stunning female, sitting peacefully, hands clasped gently together, delicate beauty",
+                "a charming goddess, pure and ethereal, elegant pose, focusing on upper body and face",
+                "a serene maiden, sitting elegantly, soft features, holding a small flower stem gently"
             ]
         elif target == "风景":
             subjects = ["mountain and river", "forest and lake", "sunset valley", "winter snowscape", "crystal ocean", "starry night"]
