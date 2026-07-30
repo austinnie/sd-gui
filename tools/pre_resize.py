@@ -29,7 +29,7 @@ from config import INPUT_IMAGE_NAME, MAX_LIMIT
 # 9 = 高清 (1280)      - 大图，细节丰富，速度慢
 # 10 = 超高清 (1536)   - 超大图，细节极致，速度很慢，需要大显存
 
-SCALE_MODE = 3  # 👈 改这个数字就行（0-10）
+SCALE_MODE = 6  # 👈 改这个数字就行（0-10）
 
 # 档位映射
 SCALE_MAP = {
