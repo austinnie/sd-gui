@@ -28,6 +28,12 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # ==================== ⚙️ 安全开关 ====================
 SAFE_MODE = True  
+# 安全模式策略：
+#   "simple" = 简单模式：在提示词后加 "wearing clothes"
+#   "filter" = 过滤模式：移除露骨词汇 (nude, naked, explicit, pornographic, sex, hentai)
+SAFE_MODE_STRATEGY = "filter"  # 可选: "simple" 或 "filter"
+
+
 # 是否启用去水印
 REMOVE_WATERMARK = True
 # =======================================================
@@ -185,13 +191,42 @@ def generate_style(pipe, init_image, prompt, output_filename, strength):
     image = init_image.resize((target_w, target_h), Image.Resampling.LANCZOS)
 
     if SAFE_MODE:
-        full_prompt = f"{prompt}, wearing clothes"
-        neg_prompt = "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, logo, brand, bad hands, extra fingers, missing fingers, fused fingers, deformed hands"
-        print(f"🛡️ [安全模式已启用]")
+        if SAFE_MODE_STRATEGY == "simple":
+            # 简单模式：直接加 wearing clothes
+            full_prompt = f"{prompt}, wearing clothes"
+            print(f"🛡️ [安全模式] 策略: 简单 (附加 wearing clothes)")
+        elif SAFE_MODE_STRATEGY == "filter":
+            # 过滤模式：移除露骨词汇
+            safe_prompt = prompt.replace("nude", "").replace("naked", "").replace("explicit", "").replace("pornographic", "")
+            safe_prompt = ", ".join([p for p in safe_prompt.split(",") if "sex" not in p.lower() and "hentai" not in p.lower() and "penetration" not in p.lower()])
+            # 清理多余的逗号和空格
+            safe_prompt = ", ".join([p.strip() for p in safe_prompt.split(",") if p.strip()])
+            full_prompt = safe_prompt if safe_prompt.strip() else prompt
+            print(f"🛡️ [安全模式] 策略: 过滤 (移除露骨词汇)")
+        else:
+            # 默认：简单模式
+            full_prompt = f"{prompt}, wearing clothes"
+            print(f"🛡️ [安全模式] 策略: 默认 (附加 wearing clothes)")
+        
+        # 统一使用强化版负面提示词
+        neg_prompt = (
+            "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, logo, brand, "
+            "bad hands, extra fingers, missing fingers, fused fingers, deformed hands, "
+            "mutated hands, poorly drawn hands, six fingers, eleven fingers, "
+            "bad anatomy, malformed limbs, extra limbs, missing limbs, "
+            "bad proportions, disfigured, gross proportions, "
+            "bad feet, extra toes, missing toes, fused toes"
+        )
     else:
         full_prompt = prompt
-        neg_prompt = "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, logo, brand"
+        neg_prompt = (
+            "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, logo, brand, "
+            "bad hands, extra fingers, missing fingers, fused fingers, deformed hands, "
+            "mutated hands, poorly drawn hands, six fingers, eleven fingers, "
+            "bad anatomy, malformed limbs, extra limbs, missing limbs"
+        )
         print(f"🔓 [自由模式已启用]")
+        
     
     print(f"[生成] {os.path.basename(output_filename)} ({target_w}x{target_h})")
     print(f"  提示词: {full_prompt[:80]}...")
