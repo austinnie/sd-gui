@@ -18,13 +18,13 @@ SD_MODEL_PATH_3 = os.path.join(PROJECT_ROOT, "models/sd-v1-5/sd-v1-5-tiny.safete
 ACTIVE_MODEL = 1
 
 # 👇 统一核心参数（所有工具都从这里读）
-STEPS = 20
+STEPS = 25
 MAX_LIMIT = 512
 NEGATIVE_PROMPT_BASE = "worst quality, low quality, ugly, deformed, blurry, bad anatomy, watermark, text, signature, logo, brand"
 INPUT_IMAGE_NAME = "input"  # 👈 统一原图文件名
 
 # 👇 统一默认强度（各别特殊脚本可以在内部单独覆盖）
-DEFAULT_STRENGTH = 0.45
+DEFAULT_STRENGTH = 0.35
 
 if ACTIVE_MODEL == 1:
     SD_MODEL_PATH = SD_MODEL_PATH_1
