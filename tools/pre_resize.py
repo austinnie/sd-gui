@@ -2,8 +2,14 @@
 # -*- coding: utf-8 -*-
 """
 前置工具：多档位图片缩小器
-自动识别 input.xxx，直接覆盖原文件。
+自动识别 tools 目录下的 input.xxx，直接覆盖原文件。
 在顶部修改 SCALE_MODE 即可切换不同尺寸。
+
+使用方法：
+  1. 将图片放到 tools 目录下，命名为 input.jpg / input.png / input.webp
+  2. 修改 SCALE_MODE 选择档位
+  3. 运行 python pre_resize.py
+  4. 原图会被缩放并覆盖
 """
 import os
 from PIL import Image
@@ -23,7 +29,7 @@ from config import INPUT_IMAGE_NAME, MAX_LIMIT
 # 9 = 高清 (1280)      - 大图，细节丰富，速度慢
 # 10 = 超高清 (1536)   - 超大图，细节极致，速度很慢，需要大显存
 
-SCALE_MODE = 6  # 👈 改这个数字就行（0-10）
+SCALE_MODE = 3  # 👈 改这个数字就行（0-10）
 
 # 档位映射
 SCALE_MAP = {
@@ -58,7 +64,11 @@ SCALE_NAMES = {
 # ==================== 核心逻辑 ====================
 
 def find_and_replace_image(base_name):
-    """找到原图，缩小，直接覆盖原文件"""
+    """
+    在 tools 目录下查找 input.xxx，缩小，直接覆盖原文件
+    """
+    # 获取当前目录（tools 目录）
+    current_dir = os.path.dirname(os.path.abspath(__file__))
     
     # 检查档位是否有效
     if SCALE_MODE not in SCALE_MAP:
@@ -71,11 +81,16 @@ def find_and_replace_image(base_name):
     target_max_limit = SCALE_MAP[SCALE_MODE]
     mode_name = SCALE_NAMES.get(SCALE_MODE, f"模式{SCALE_MODE}")
     
-    print(f"📏 目标尺寸模式: {SCALE_MODE} -> {mode_name}")
-    print(f"📏 最大限制边长: {target_max_limit}px")
+    print("="*50)
+    print("🔄 图片缩小器 (tools 目录)")
+    print("="*50)
+    print(f"📂 工作目录: {current_dir}")
+    print(f"📏 目标档位: {SCALE_MODE} -> {mode_name}")
+    print(f"📏 最大边长: {target_max_limit}px")
+    print("="*50)
 
     for ext in [".jpg", ".jpeg", ".png", ".webp", ".bmp"]:
-        path = base_name + ext
+        path = os.path.join(current_dir, base_name + ext)
         if os.path.exists(path):
             print(f"📸 找到原图: {path}")
             
@@ -86,7 +101,7 @@ def find_and_replace_image(base_name):
 
             # 2. 如果已经比目标小，直接跳过
             if w <= target_max_limit and h <= target_max_limit:
-                print(f"✅ 原图已经小于 {target_max_limit}，无需缩小，原路返回。")
+                print(f"✅ 原图已经小于或等于 {target_max_limit}，无需缩小")
                 return True
 
             # 3. 等比例缩小到目标以内
@@ -103,24 +118,20 @@ def find_and_replace_image(base_name):
             target_w = ((target_w + 31) // 64) * 64
             target_h = ((target_h + 31) // 64) * 64
 
+            print(f"📐 目标尺寸: {target_w}x{target_h}")
+
             # 5. 执行缩小并直接覆盖原文件
             small_img = img.resize((target_w, target_h), Image.Resampling.LANCZOS)
             small_img.save(path, quality=95)
             
-            print(f"✅ 已完成！缩小至 {target_w}x{target_h}，已直接覆盖原文件！")
-            print(f"💡 提示：如需换档，修改 SCALE_MODE 后重新运行本脚本")
+            print(f"✅ 已完成！已覆盖原文件")
+            print(f"💡 提示：如需换档，修改 SCALE_MODE 后重新运行")
             return True
 
     print(f"❌ 找不到 {base_name} 图片！")
-    print(f"💡 请确保图片放在 tools 目录下，命名为 {INPUT_IMAGE_NAME}.jpg/.png")
+    print(f"💡 请确保图片放在 tools 目录下，命名为:")
+    print(f"   {base_name}.jpg / {base_name}.png / {base_name}.webp")
     return False
 
 if __name__ == "__main__":
-    # 显示当前配置
-    print("="*50)
-    print("🔄 图片缩小器")
-    print("="*50)
-    print(f"当前档位: {SCALE_MODE} -> {SCALE_NAMES.get(SCALE_MODE, '未知')} ({SCALE_MAP.get(SCALE_MODE, '?')}px)")
-    print("="*50)
-    
     find_and_replace_image(INPUT_IMAGE_NAME)
