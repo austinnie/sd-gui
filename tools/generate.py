@@ -8,6 +8,10 @@
 指定生成数量：
   python generate.py pure_serene_v2 -n 10
   python generate.py pure_serene_v2 --count 20
+
+生成模式：
+  --img2img, --i2i    图生图模式（默认，需要 input.jpg）
+  --txt2img, --t2i    文生图模式（无需参考图，从零生成）
 """
 import os
 import sys
@@ -33,7 +37,6 @@ SAFE_MODE = True
 #   "filter" = 过滤模式：移除露骨词汇 (nude, naked, explicit, pornographic, sex, hentai)
 SAFE_MODE_STRATEGY = "filter"  # 可选: "simple" 或 "filter"
 
-
 # 是否启用去水印
 REMOVE_WATERMARK = True
 # =======================================================
@@ -49,18 +52,21 @@ def print_usage():
     print("  python generate.py <风格名称>")
     print("  python generate.py <风格名称> -n <数量>")
     print("  python generate.py <风格名称> --count <数量>")
+    print("\n生成模式：")
+    print("  --img2img, --i2i    图生图模式（默认，需要 input.jpg）")
+    print("  --txt2img, --t2i    文生图模式（无需参考图，从零生成）")
     print("\n示例：")
-    print("  python generate.py pure_serene_v2              # 全部生成")
-    print("  python generate.py pure_serene_v2 -n 10        # 生成10张")
-    print("  python generate.py curvy_daily_v2 --count 20   # 生成20张")
-    print("  python generate.py ancient_chinese_v2 -n 5     # 生成5张")
+    print("  python generate.py anime_xxx_v3              # 图生图，全部生成")
+    print("  python generate.py anime_xxx_v3 -n 10        # 图生图，生成10张")
+    print("  python generate.py anime_xxx_v3 --txt2img    # 文生图，全部生成")
+    print("  python generate.py anime_xxx_v3 --t2i -n 20  # 文生图，生成20张")
     print("\n其他命令：")
     print("  python generate.py --list     显示所有可用风格（分屏）")
     print("  python generate.py -l         显示所有可用风格（分屏）")
     print("\n💡 提示：")
-    print("  - 确保输入图片放在 tools 目录下")
-    print("  - 图片命名为 input.jpg 或 input.png")
-    print("  - 生成图片保存在 tools/output/ 目录下")
+    print("  - 图生图模式：需要 input.jpg 作为参考图")
+    print("  - 文生图模式：不需要参考图，完全根据提示词生成")
+    print("  - 文生图模式会自动随机选择尺寸，增加多样性")
     print("  - 去水印功能: " + ("✅ 已开启" if REMOVE_WATERMARK else "❌ 已关闭"))
     print("="*60)
 
@@ -177,19 +183,43 @@ def build_prompt(config):
         prompt = random.choice(config["subjects"])
         return prompt, "扁平"
 
-def generate_style(pipe, init_image, prompt, output_filename, strength):
-    w, h = init_image.size
+def generate_style(pipe, init_image, prompt, output_filename, strength, mode="img2img"):
+    """
+    生成单张图片
+    mode: "img2img" 或 "txt2img"
+    """
     max_limit = MAX_LIMIT
-    target_w, target_h = w, h
-    if target_w > max_limit or target_h > max_limit:
-        if target_w > target_h:
-            scale = max_limit / target_w
-        else:
-            scale = max_limit / target_h
-        target_w, target_h = int(target_w * scale), int(target_h * scale)
-    target_w, target_h = ((target_w+31)//64)*64, ((target_h+31)//64)*64
-    image = init_image.resize((target_w, target_h), Image.Resampling.LANCZOS)
+    
+    if mode == "img2img":
+        # 图生图：使用原图尺寸
+        w, h = init_image.size
+        if w > max_limit or h > max_limit:
+            if w > h:
+                scale = max_limit / w
+            else:
+                scale = max_limit / h
+            w, h = int(w * scale), int(h * scale)
+        w, h = ((w+31)//64)*64, ((h+31)//64)*64
+        image = init_image.resize((w, h), Image.Resampling.LANCZOS)
+        print(f"[图生图] {os.path.basename(output_filename)} ({w}x{h})")
+    else:
+        # 文生图：随机选择尺寸，增加多样性
+        aspect_ratios = [
+            (512, 512), (512, 576), (576, 512),
+            (512, 640), (640, 512), 
+            (512, 768), (768, 512), 
+            (576, 768), (768, 576),
+            (448, 640), (640, 448)
+        ]
+        w, h = random.choice(aspect_ratios)
+        # 限制最大尺寸
+        if w > max_limit: w = max_limit
+        if h > max_limit: h = max_limit
+        w, h = ((w+31)//64)*64, ((h+31)//64)*64
+        image = None
+        print(f"[文生图] {os.path.basename(output_filename)} ({w}x{h})")
 
+    # ========== 安全模式处理 ==========
     if SAFE_MODE:
         if SAFE_MODE_STRATEGY == "simple":
             # 简单模式：直接加 wearing clothes
@@ -228,22 +258,34 @@ def generate_style(pipe, init_image, prompt, output_filename, strength):
         print(f"🔓 [自由模式已启用]")
         
     
-    print(f"[生成] {os.path.basename(output_filename)} ({target_w}x{target_h})")
     print(f"  提示词: {full_prompt[:80]}...")
     
     generator = torch.Generator("cpu").manual_seed(int(time.time_ns() % 1000000000))
     
-    result = pipe(
-        prompt=full_prompt, 
-        negative_prompt=neg_prompt, 
-        image=image,
-        strength=strength, 
-        num_inference_steps=STEPS, 
-        guidance_scale=7.5,
-        generator=generator, 
-        width=target_w, 
-        height=target_h
-    )
+    if mode == "img2img":
+        result = pipe(
+            prompt=full_prompt,
+            negative_prompt=neg_prompt,
+            image=image,
+            strength=strength,
+            num_inference_steps=STEPS,
+            guidance_scale=7.5,
+            generator=generator,
+            width=w,
+            height=h
+        )
+    else:
+        # 文生图：不传 image，用纯随机噪声
+        result = pipe(
+            prompt=full_prompt,
+            negative_prompt=neg_prompt,
+            num_inference_steps=STEPS,
+            guidance_scale=7.5,
+            generator=generator,
+            width=w,
+            height=h
+        )
+    
     result.images[0].save(output_filename, quality=95)
 
 # ==================== 🚀 主入口 ====================
@@ -251,10 +293,12 @@ def generate_style(pipe, init_image, prompt, output_filename, strength):
 def parse_arguments(args):
     """
     解析命令行参数
-    返回: (target_style, count)
+    返回: (target_style, count, mode)
+    mode: "img2img" 或 "txt2img"
     """
     target_style = None
     count = None
+    mode = "img2img"  # 默认图生图
     
     i = 1
     while i < len(args):
@@ -273,11 +317,17 @@ def parse_arguments(args):
             else:
                 print(f"❌ 参数 {arg} 需要指定数量")
                 sys.exit(1)
+        elif arg in ["--txt2img", "--t2i"]:
+            mode = "txt2img"
+            i += 1
+        elif arg in ["--img2img", "--i2i"]:
+            mode = "img2img"
+            i += 1
         else:
             target_style = arg
             i += 1
     
-    return target_style, count
+    return target_style, count, mode
 
 def main():
     # ========== 处理无参数情况 ==========
@@ -291,7 +341,7 @@ def main():
         sys.exit(0)
     
     # ========== 解析参数 ==========
-    target_style, user_count = parse_arguments(sys.argv)
+    target_style, user_count, mode = parse_arguments(sys.argv)
     
     if target_style is None:
         print("❌ 请指定风格名称")
@@ -309,14 +359,16 @@ def main():
         print("\n💡 使用 python generate.py --list 查看完整列表")
         sys.exit(1)
 
-    # ========== 只有确认有有效风格后才加载模型 ==========
-    input_path = find_input_image()
-    if not input_path:
-        print(f"\n❌ 没找到图片！请把图片命名为 {INPUT_IMAGE_NAME}.jpg/.png 放在 tools 目录下！")
-        return
-
-    # ========== 去水印处理 ==========
-    init_image = remove_watermark(input_path)
+    # ========== 处理输入图片 ==========
+    if mode == "img2img":
+        input_path = find_input_image()
+        if not input_path:
+            print(f"\n❌ 图生图模式需要参考图！请把图片命名为 {INPUT_IMAGE_NAME}.jpg/.png 放在 tools 目录下！")
+            return
+        init_image = remove_watermark(input_path)
+    else:
+        init_image = None
+        print(f"\n🎨 文生图模式：无需参考图，从零生成")
 
     # ========== 加载模型 ==========
     pipe = setup_pipeline()
@@ -326,35 +378,32 @@ def main():
     # ========== 计算生成数量 ==========
     # 检查是分层还是扁平
     if "styles" in config and "moods" in config:
-        mode = "分层"
+        mode_type = "分层"
         total_possible = len(config["subjects"]) * len(config["styles"]) * len(config["moods"])
         default_count = len(config["subjects"])
         combo_info = f" ({len(config['subjects'])}×{len(config['styles'])}×{len(config['moods'])}={total_possible}种组合)"
     else:
-        mode = "扁平"
+        mode_type = "扁平"
         total_possible = len(config["subjects"])
         default_count = len(config["subjects"])
         combo_info = ""
     
     # 确定实际生成数量
     if user_count is not None:
-        # 用户指定了数量
         total_count = user_count
         count_source = f"用户指定"
-        # 如果用户指定的数量超过总组合数，给出提示
         if user_count > total_possible:
             print(f"\n⚠️ 提示：您指定生成 {user_count} 张，但该风格最多只有 {total_possible} 种不同组合")
             print(f"   将生成 {total_possible} 张（全部组合）")
             total_count = total_possible
     else:
-        # 默认：全部生成（subjects数量）
         total_count = default_count
         count_source = "全部提示词"
     
     print(f"\n🎯 正在生成风格: {target_style} -> {config['folder']}")
-    print(f"📊 模式: {mode}{combo_info}")
+    print(f"📊 模式: {mode_type}{combo_info}")
     print(f"📊 本次共生成 {total_count} 张图片（{count_source}）")
-    if mode == "分层":
+    if mode_type == "分层":
         print(f"   ├─ 主体: {len(config['subjects'])} 种")
         print(f"   ├─ 风格: {len(config['styles'])} 种")
         print(f"   └─ 情绪: {len(config['moods'])} 种")
@@ -370,16 +419,17 @@ def main():
 
     # ========== 生成循环 ==========
     for i in range(total_count):
-        prompt, mode_used = build_prompt(config)
+        prompt, prompt_mode = build_prompt(config)
         
-        print(f"\n🔄 进度：第 {i+1}/{total_count} 张 [{mode_used}]")
+        print(f"\n🔄 进度：第 {i+1}/{total_count} 张 [{prompt_mode}]")
         
         generate_style(
             pipe, 
             init_image, 
             prompt, 
             os.path.join(output_root, f"{i+1:02d}.png"), 
-            config["strength"]
+            config["strength"],
+            mode
         )
     # =================================
 
