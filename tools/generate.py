@@ -12,6 +12,8 @@
 import os
 import sys
 import time
+import cv2
+import numpy as np
 import torch
 import random
 from PIL import Image
@@ -26,6 +28,8 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # ==================== ⚙️ 安全开关 ====================
 SAFE_MODE = True  
+# 是否启用去水印
+REMOVE_WATERMARK = True
 # =======================================================
 
 # ==================== 🛠️ 工具函数 ====================
@@ -51,6 +55,7 @@ def print_usage():
     print("  - 确保输入图片放在 tools 目录下")
     print("  - 图片命名为 input.jpg 或 input.png")
     print("  - 生成图片保存在 tools/output/ 目录下")
+    print("  - 去水印功能: " + ("✅ 已开启" if REMOVE_WATERMARK else "❌ 已关闭"))
     print("="*60)
 
 def print_style_list():
@@ -98,6 +103,38 @@ def find_input_image():
         if os.path.exists(path):
             return path
     return None
+
+# ==================== 去水印功能 ====================
+def remove_watermark(image_path):
+    """
+    检测并去除图片水印
+    返回: PIL Image 对象
+    """
+    if not REMOVE_WATERMARK:
+        print("[系统] 去水印功能已关闭，直接使用原图")
+        return Image.open(image_path).convert('RGB')
+    
+    print("\n[AI预处理] 检测并去除图片水印...")
+    img = cv2.imread(image_path)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    
+    # 检测白色/亮色区域（常见水印特征）
+    _, mask = cv2.threshold(gray, 230, 255, cv2.THRESH_BINARY)
+    kernel = np.ones((5,5), np.uint8)
+    mask = cv2.dilate(mask, kernel, iterations=1)
+    
+    # 计算白色区域占比
+    white_pixel_ratio = np.sum(mask > 0) / mask.size
+    
+    # 如果白色区域过少或过多，认为没有明显水印
+    if white_pixel_ratio < 0.01 or white_pixel_ratio > 0.2:
+        print("✅ 未检测到明显水印，继续生成。")
+        return Image.open(image_path).convert('RGB')
+
+    print("⚠️ 检测到水印，正在使用 OpenCV 修复去除...")
+    result = cv2.inpaint(img, mask, 3, cv2.INPAINT_TELEA)
+    print("✅ 水印去除完成！")
+    return Image.fromarray(cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
 
 def setup_pipeline():
     print(f"\n[系统] 正在加载 AI 模型...")
@@ -243,7 +280,10 @@ def main():
         print(f"\n❌ 没找到图片！请把图片命名为 {INPUT_IMAGE_NAME}.jpg/.png 放在 tools 目录下！")
         return
 
-    init_image = Image.open(input_path).convert('RGB')
+    # ========== 去水印处理 ==========
+    init_image = remove_watermark(input_path)
+
+    # ========== 加载模型 ==========
     pipe = setup_pipeline()
 
     config = STYLE_PROMPTS[target_style]
