@@ -15,6 +15,14 @@
 """
 import os
 import sys
+import io
+
+# ========== 修复 Windows 终端编码问题 ==========
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+# =================================================
+
 import time
 import cv2
 import numpy as np
@@ -39,7 +47,12 @@ SAFE_MODE_STRATEGY = "filter"  # 可选: "simple" 或 "filter"
 
 # 是否启用去水印
 REMOVE_WATERMARK = True
-# =======================================================
+
+
+# ==================== ⚙️ 内容文本开关 ====================
+# 是否启用 content_texts 字段（将文本内容添加到提示词中）
+USE_CONTENT_TEXTS = False  # 默认关闭，设为 True 开启
+# ========================================================
 
 # ==================== 🛠️ 工具函数 ====================
 
@@ -169,20 +182,28 @@ def setup_pipeline():
 def build_prompt(config):
     """
     分层构建提示词
-    支持两种格式：
+    支持三种格式：
     1. 分层格式：subjects + styles + moods
     2. 扁平格式：只有 subjects（兼容旧配置）
+    3. 内容文本扩展：subjects + styles + moods + content_texts（需开启 USE_CONTENT_TEXTS）
     """
     if "styles" in config and "moods" in config:
         subject = random.choice(config["subjects"])
         style = random.choice(config["styles"])
         mood = random.choice(config["moods"])
-        prompt = f"{subject}, {style}, {mood}"
+        
+        # 如果开启且存在 content_texts，随机选一句添加
+        if USE_CONTENT_TEXTS and "content_texts" in config and config["content_texts"]:
+            text = random.choice(config["content_texts"])
+            prompt = f"{subject}, {style}, {mood}, calligraphy text: {text}"
+            print(f"   📜 已添加内容文本: {text[:20]}...")
+        else:
+            prompt = f"{subject}, {style}, {mood}"
         return prompt, "分层"
     else:
         prompt = random.choice(config["subjects"])
         return prompt, "扁平"
-
+        
 def generate_style(pipe, init_image, prompt, output_filename, strength, mode="img2img"):
     """
     生成单张图片
@@ -341,12 +362,12 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
 def parse_arguments(args):
     """
     解析命令行参数
-    返回: (target_style, count, mode)
-    mode: "img2img" 或 "txt2img"
+    返回: (target_style, count, mode, search_keyword)
     """
     target_style = None
     count = None
-    mode = "img2img"  # 默认图生图
+    mode = "img2img"
+    search_keyword = None
     
     i = 1
     while i < len(args):
@@ -371,25 +392,55 @@ def parse_arguments(args):
         elif arg in ["--img2img", "--i2i"]:
             mode = "img2img"
             i += 1
+        elif arg in ["--search", "-s"]:
+            if i + 1 < len(args):
+                search_keyword = args[i + 1]
+                i += 2
+            else:
+                print(f"❌ 参数 {arg} 需要指定搜索关键词")
+                sys.exit(1)
         else:
             target_style = arg
             i += 1
     
-    return target_style, count, mode
-
+    return target_style, count, mode, search_keyword  # 确保返回4个值
 def main():
     # ========== 处理无参数情况 ==========
     if len(sys.argv) < 2:
         print_usage()
         sys.exit(0)
     
+    # ========== 解析参数 ==========
+    target_style, user_count, mode, search_keyword = parse_arguments(sys.argv)
+    
+    # ========== 处理搜索 ==========
+    if search_keyword:
+        print(f"\n🔍 搜索包含 '{search_keyword}' 的风格：")
+        print("="*60)
+        found = []
+        for name, config in STYLE_PROMPTS.items():
+            folder = config.get("folder", "")
+            if search_keyword.lower() in name.lower() or search_keyword.lower() in folder.lower():
+                found.append((name, folder))
+        
+        if found:
+            print(f"找到 {len(found)} 个匹配的风格：\n")
+            for i, (name, folder) in enumerate(found, 1):
+                print(f"  {i:3d}. {name} -> {folder}")
+        else:
+            print(f"  ❌ 没有找到包含 '{search_keyword}' 的风格")
+        
+        print("\n" + "="*60)
+        print("💡 使用方式：python generate.py <风格名称> [-n <数量>]")
+        sys.exit(0)
+    
     # ========== 处理 --list 或 -l ==========
-    if sys.argv[1] == "--list" or sys.argv[1] == "-l":
+    if target_style == "--list" or target_style == "-l":
         print_style_list()
         sys.exit(0)
     
     # ========== 解析参数 ==========
-    target_style, user_count, mode = parse_arguments(sys.argv)
+    target_style, user_count, mode, search_keyword = parse_arguments(sys.argv)
     
     if target_style is None:
         print("❌ 请指定风格名称")
