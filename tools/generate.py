@@ -231,7 +231,13 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
             (512, 640), (640, 512), 
             (512, 768), (768, 512), 
             (576, 768), (768, 576),
-            (448, 640), (640, 448)
+            (448, 640), (640, 448),
+            # --- 手机壁纸（竖屏） ---
+            (768, 1360), (1080, 1920), (768, 1024),
+            # --- 电脑壁纸（横屏） ---
+            (1024, 576), (1280, 720), (1360, 768),
+            # --- 经典正方形 ---
+            (768, 768), (1024, 1024)            
         ]
         w, h = random.choice(aspect_ratios)
         # 限制最大尺寸
@@ -302,9 +308,18 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
     # 检测是否包含多人关键词
     multi_person_keywords = ["two", "multiple", "group", "couple", "pair", "man and woman", "both bodies"]
     
-    # 检测是否包含天使/翅膀关键词
-    wing_keywords = ["wing", "angel", "fallen angel", "feathered"]
     
+    # 检测是否包含天使/翅膀关键词
+    # ✨ 修改1：把范围缩小，必须明确出现“翅膀”和“生物”的组合才触发
+    #wing_keywords = ["wing", "angel", "fallen angel", "feathered"]
+    wing_keywords = ["angel wings", "feathered wings", "bird wings", "butterfly wings", "dragon wings", "wings spread", "winged figure"]
+    
+    # ✨ 修改2：增加一个“草图阻断”逻辑。如果提示词里明确带了草稿/结构词，直接清空翅膀检测。
+    # 这样下次你专门写“天使”提示词的时候，它依然会加翅膀；但写“人体结构”时绝对不会误加。
+    sketch_keywords = ["sketch", "pencil", "draft", "wireframe", "construction", "anatomy", "lineart", "structural"]
+    if any(keyword in prompt.lower() for keyword in sketch_keywords):
+        wing_keywords = []  # 遇到结构草稿，直接把翅膀检测列表清空
+        
     # 构建约束
     constraints = []
     
