@@ -51,7 +51,7 @@ REMOVE_WATERMARK = True
 
 # ==================== ⚙️ 内容文本开关 ====================
 # 是否启用 content_texts 字段（将文本内容添加到提示词中）
-USE_CONTENT_TEXTS = False  # 默认关闭，设为 True 开启
+USE_CONTENT_TEXTS = True  # 默认关闭，设为 True 开启
 # ========================================================
 
 # ==================== 🛠️ 工具函数 ====================
@@ -195,7 +195,8 @@ def build_prompt(config):
         # 如果开启且存在 content_texts，随机选一句添加
         if USE_CONTENT_TEXTS and "content_texts" in config and config["content_texts"]:
             text = random.choice(config["content_texts"])
-            prompt = f"{subject}, {style}, {mood}, calligraphy text: {text}"
+            # ✨ 修改点：去掉死板的 "calligraphy text: "，将文字融入画面描述
+            prompt = f"{subject}, {style}, {mood}, the scroll features the Chinese characters '{text}' written in flowing calligraphy"
             print(f"   📜 已添加内容文本: {text[:20]}...")
         else:
             prompt = f"{subject}, {style}, {mood}"
@@ -261,17 +262,19 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
         
         # 统一使用强化版负面提示词
         neg_prompt = (
-            "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, logo, brand, "
+            "worst quality, low quality, ugly, deformed, blurry, watermark, signature, logo, brand, "
             "bad hands, extra fingers, missing fingers, fused fingers, deformed hands, "
             "mutated hands, poorly drawn hands, six fingers, eleven fingers, "
             "bad anatomy, malformed limbs, extra limbs, missing limbs, "
             "bad proportions, disfigured, gross proportions, "
             "bad feet, extra toes, missing toes, fused toes"
+            # ✨ 新增点：阻止AI生成糊成一团的墨迹或乱码
+            "jumbled text, gibberish characters, messy ink, smudged writing, illegible scribbles, unreadable signs"            
         )
     else:
         full_prompt = prompt
         neg_prompt = (
-            "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, logo, brand, "
+            "worst quality, low quality, ugly, deformed, blurry, watermark, signature, logo, brand, "
             "bad hands, extra fingers, missing fingers, fused fingers, deformed hands, "
             "mutated hands, poorly drawn hands, six fingers, eleven fingers, "
             "bad anatomy, malformed limbs, extra limbs, missing limbs, "
@@ -281,7 +284,8 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
             "fused hand, extra digit, wrong finger count, "
             "deformed finger, twisted finger, broken finger, "
             "claw hand, abnormal hand, mutant hand, "
-            "bad pose, unnatural pose, contorted body, twisted body"
+            "bad pose, unnatural pose, contorted body, twisted body",
+            "jumbled text, gibberish characters, messy ink, smudged writing, illegible scribbles, meaningless strokes"
         )
         print(f"🔓 [自由模式已启用]")
     
