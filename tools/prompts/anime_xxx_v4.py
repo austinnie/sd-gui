@@ -28,31 +28,41 @@ STYLE = {
             "anime schoolgirl, huge breasts, school uniform, tight white shirt, short skirt, innocent yet seductive, classroom background",
             "anime office lady, huge breasts, tight blouse, short skirt, stockings, glasses, seductive expression, office background",
             
-            # ----- 性爱场景 (14种) -----
-            "man and woman having sex in missionary position, huge breasts, man on top, woman lying down, intimate lovemaking, passionate, romantic atmosphere, bedroom setting, both bodies visible",
-            "man and woman having sex in doggy style position, huge breasts, from behind, passionate sex, intimate, bedroom setting, both bodies visible, deep penetration",
-            "man and woman having sex in cowgirl position, huge breasts, woman on top, riding, passionate lovemaking, intimate, bedroom setting, both bodies visible, woman in control",
-            "man and woman having sex standing up from behind, huge breasts, passionate sex, intimate, bedroom or bathroom setting, both bodies visible, standing sex",
-            "man and woman having sex in spooning position, huge breasts, side lying, intimate lovemaking, passionate, bedroom setting, both bodies visible, spooning sex",
-            "two people in 69 position, huge breasts, mutual oral, intimate pleasure, both bodies visible, mutual pleasure",
-            "woman giving oral sex to a man, huge breasts, blowjob, intimate, passionate, bedroom setting, both bodies visible",
-            "man giving oral sex to a woman, huge breasts, cunnilingus, intimate pleasure, passionate, bedroom setting, both bodies visible",
-            "beautiful anime woman, artistic shibari rope bondage, red ropes wrapped around huge breasts and curvy body, sensual submission, intimate atmosphere, tasteful bondage art",
-            "beautiful anime woman, tentacles wrapped around curvy body, huge breasts, sensual expression, fantasy atmosphere, dark magical setting, erotic fantasy art",
-            "beautiful anime woman, forced submission, dominant male, intense expression, dark atmosphere, rough sex, power exchange",
-            "multiple people having group sex, huge breasts, threesome, passionate, intense, bedroom setting, all bodies visible, group sex",
-            "two beautiful anime women making love, huge breasts, intimate embrace, kissing, sensual pose, soft romantic lighting, bedroom setting, yuri, girls love, lesbian",
+            # ----- 性爱场景 (14种) 修正版 -----
+            # 一男一女 (7种)
+            "man and woman having sex in missionary position, man on top, woman lying down, intimate lovemaking, passionate, romantic atmosphere, bedroom setting, both bodies visible",
+            "man and woman having sex in doggy style position, from behind, passionate sex, intimate, bedroom setting, both bodies visible, deep penetration",
+            "man and woman having sex in cowgirl position, woman on top, riding, passionate lovemaking, intimate, bedroom setting, both bodies visible, woman in control",
+            "man and woman having sex standing up from behind, passionate sex, intimate, bedroom or bathroom setting, both bodies visible, standing sex",
+            "man and woman having sex in spooning position, side lying, intimate lovemaking, passionate, bedroom setting, both bodies visible, spooning sex",
+            "woman giving oral sex to a man, blowjob, intimate, passionate, bedroom setting, both bodies visible",
+            "man giving oral sex to a woman, cunnilingus, intimate pleasure, passionate, bedroom setting, both bodies visible",
+            # 强制场景 (一男一女)
+            "beautiful anime woman in forced submission, dominant male, intense expression, dark atmosphere, rough sex, power exchange, both bodies visible",
+            
+            # 女女 (1种)
+            "two beautiful anime women making love, intimate embrace, kissing, sensual pose, soft romantic lighting, bedroom setting, yuri, girls love, lesbian",
+            
+            # 男男 (1种)
             "two handsome anime men making love, intimate embrace, passionate kiss, sensual pose, soft romantic lighting, bedroom setting, yaoi, boys love, gay",
             
-            # ----- 场景性爱 (9种) -----
-            "man and woman having sex in bathroom, huge breasts, wet bodies, steam, passionate, intimate, shower sex",
-            "man and woman having sex in kitchen, huge breasts, passionate, intimate, dramatic lighting, both bodies visible, forbidden kitchen sex",
-            "man and woman having sex in office, huge breasts, passionate, intimate, desk setting, dramatic lighting, both bodies visible, office romance",
-            "man and woman having sex in classroom, huge breasts, passionate, intimate, school setting, dramatic lighting, both bodies visible, forbidden classroom",
-            "man and woman having sex outdoors, huge breasts, passionate, intimate, forest or nature setting, moonlight, both bodies visible, outdoor sex",
-            "man and woman having sex on beach, huge breasts, passionate, intimate, sunset, ocean waves, both bodies visible, beach sex",
-            "man and woman having sex in hot spring, huge breasts, wet bodies, steam, passionate, intimate, both bodies visible, onsen sex",
-            "man and woman having sex in car, huge breasts, passionate, intimate, cramped space, both bodies visible, car sex",
+            # 模糊性别/多人 (3种) - 让 SD 自己发挥
+            "two people in 69 position, mutual oral, intimate pleasure, both bodies visible, mutual pleasure",
+            "multiple people having group sex, threesome, passionate, intense, bedroom setting, all bodies visible, group sex",
+            
+            # 特殊 (2种) - 无性伴侣，但属于性爱主题
+            "beautiful anime woman, artistic shibari rope bondage, red ropes wrapped around huge breasts and curvy body, sensual submission, intimate atmosphere, tasteful bondage art",
+            "beautiful anime woman, tentacles wrapped around curvy body, huge breasts, sensual expression, fantasy atmosphere, dark magical setting, erotic fantasy art",
+            
+            # ----- 场景性爱 (9种) 修正 -----
+            "man and woman having sex in bathroom, wet bodies, steam, passionate, intimate, shower sex",
+            "man and woman having sex in kitchen, passionate, intimate, dramatic lighting, both bodies visible, forbidden kitchen sex",
+            "man and woman having sex in office, passionate, intimate, desk setting, dramatic lighting, both bodies visible, office romance",
+            "man and woman having sex in classroom, passionate, intimate, school setting, dramatic lighting, both bodies visible, forbidden classroom",
+            "man and woman having sex outdoors, passionate, intimate, forest or nature setting, moonlight, both bodies visible, outdoor sex",
+            "man and woman having sex on beach, passionate, intimate, sunset, ocean waves, both bodies visible, beach sex",
+            "man and woman having sex in hot spring, wet bodies, steam, passionate, intimate, both bodies visible, onsen sex",
+            "man and woman having sex in car, passionate, intimate, cramped space, both bodies visible, car sex",
             "close-up of huge anime breasts, massive cleavage, big boobs, perfect curves, seductive, erotic"
         ],
         
