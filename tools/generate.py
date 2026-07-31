@@ -253,10 +253,58 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
             "worst quality, low quality, ugly, deformed, blurry, watermark, text, signature, logo, brand, "
             "bad hands, extra fingers, missing fingers, fused fingers, deformed hands, "
             "mutated hands, poorly drawn hands, six fingers, eleven fingers, "
-            "bad anatomy, malformed limbs, extra limbs, missing limbs"
+            "bad anatomy, malformed limbs, extra limbs, missing limbs, "
+            "bad proportions, disfigured, gross proportions, "
+            "bad feet, extra toes, missing toes, fused toes, "
+            "extra arm, extra hand, missing arm, missing hand, "
+            "fused hand, extra digit, wrong finger count, "
+            "deformed finger, twisted finger, broken finger, "
+            "claw hand, abnormal hand, mutant hand, "
+            "bad pose, unnatural pose, contorted body, twisted body"
         )
         print(f"🔓 [自由模式已启用]")
-        
+    
+    # ========== 🧠 自动添加解剖约束 ==========
+    # 检测是否包含复杂姿势关键词，自动添加约束
+    complex_pose_keywords = [
+        "sex", "posing", "bending", "kneeling", "lying", 
+        "standing", "spooning", "riding", "missionary", 
+        "doggy", "cowgirl", "spread", "bent over", 
+        "on top", "from behind", "oral", "blowjob", 
+        "cunnilingus", "group", "threesome"
+    ]
+    
+    # 检测是否包含多人关键词
+    multi_person_keywords = ["two", "multiple", "group", "couple", "pair", "man and woman", "both bodies"]
+    
+    # 检测是否包含天使/翅膀关键词
+    wing_keywords = ["wing", "angel", "fallen angel", "feathered"]
+    
+    # 构建约束
+    constraints = []
+    
+    # 复杂姿势约束
+    if any(keyword in prompt.lower() for keyword in complex_pose_keywords):
+        constraints.append("natural body position")
+        constraints.append("correct anatomy")
+        constraints.append("realistic hands and feet")
+    
+    # 多人场景约束
+    if any(keyword in prompt.lower() for keyword in multi_person_keywords):
+        constraints.append("two hands per person")
+        constraints.append("two feet per person")
+        constraints.append("normal proportions")
+    
+    # 翅膀约束
+    if any(keyword in prompt.lower() for keyword in wing_keywords):
+        constraints.append("symmetrical wings")
+        constraints.append("beautiful feathered wings")
+    
+    # 如果有约束，添加到提示词末尾
+    if constraints:
+        constraint_text = ", ".join(constraints)
+        full_prompt = f"{full_prompt}, {constraint_text}"
+        print(f"   🧠 已添加解剖约束: {constraint_text}")
     
     print(f"  提示词: {full_prompt[:80]}...")
     
@@ -287,7 +335,7 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
         )
     
     result.images[0].save(output_filename, quality=95)
-
+    
 # ==================== 🚀 主入口 ====================
 
 def parse_arguments(args):
