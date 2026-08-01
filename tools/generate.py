@@ -15,6 +15,9 @@
 
 步数控制：
   --steps <数字>      临时指定生成步数（优先于 config.py 中的 STEPS）
+
+图生图输入：
+  --input <文件路径>   指定图生图的参考图（不指定则默认读取 config.py 中的 input.jpg）
 """
 import os
 import sys
@@ -69,14 +72,18 @@ def print_usage():
     print("  python generate.py <风格名称> -n <数量>")
     print("  python generate.py <风格名称> --count <数量>")
     print("  python generate.py <风格名称> --steps <数字>")
+    print("  python generate.py <风格名称> --input <参考图路径>")
     print("\n生成模式：")
     print("  --img2img, --i2i    图生图模式（默认，需要 input.jpg）")
     print("  --txt2img, --t2i    文生图模式（无需参考图，从零生成）")
     print("\n步数控制：")
     print("  --steps <数字>      指定生成步数（不指定则使用 config.py 中的 STEPS）")
+    print("\n图生图输入：")
+    print("  --input <文件路径>  指定参考图（不指定则使用 config.py 中的默认 input.jpg）")
     print("\n示例：")
     print("  python generate.py anime_xxx_v3 --steps 30 -n 5   # 30步生成5张")
     print("  python generate.py anime_xxx_v3 --txt2img         # 使用config默认步数")
+    print("  python generate.py anime_xxx_v3 --img2img --input my_pic.png -n 3 # 用指定图生图")
     print("\n其他命令：")
     print("  python generate.py --list     显示所有可用风格（分屏）")
     print("  python generate.py -l         显示所有可用风格（分屏）")
@@ -126,7 +133,15 @@ def print_style_list():
     print("💡 使用方式：python generate.py <风格名称> [-n <数量>]")
     print("="*60)
 
-def find_input_image():
+def find_input_image(custom_input=None):
+    """查找参考图，支持自定义路径或默认路径"""
+    if custom_input:
+        if os.path.exists(custom_input):
+            return custom_input
+        else:
+            print(f"⚠️ 警告：找不到指定的输入文件 '{custom_input}'，尝试查找默认 input 文件...")
+    
+    # 默认查找 INPUT_IMAGE_NAME
     for ext in [".jpg", ".jpeg", ".png", ".webp", ".bmp"]:
         path = os.path.join(CURRENT_DIR, INPUT_IMAGE_NAME + ext)
         if os.path.exists(path):
@@ -382,13 +397,14 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
 def parse_arguments(args):
     """
     解析命令行参数
-    返回: (target_style, count, mode, search_keyword, steps)
+    返回: (target_style, count, mode, search_keyword, steps, input_path)
     """
     target_style = None
     count = None
     mode = "img2img"
     search_keyword = None
     steps = None
+    input_path = None
     
     i = 1
     while i < len(args):
@@ -427,6 +443,13 @@ def parse_arguments(args):
             else:
                 print(f"❌ 参数 {arg} 需要指定步数")
                 sys.exit(1)
+        elif arg in ["--input"]:
+            if i + 1 < len(args):
+                input_path = args[i + 1]
+                i += 2
+            else:
+                print(f"❌ 参数 {arg} 需要指定文件路径")
+                sys.exit(1)
         elif arg in ["--search", "-s"]:
             if i + 1 < len(args):
                 search_keyword = args[i + 1]
@@ -438,7 +461,7 @@ def parse_arguments(args):
             target_style = arg
             i += 1
     
-    return target_style, count, mode, search_keyword, steps
+    return target_style, count, mode, search_keyword, steps, input_path
 
 def main():
     # ========== 处理无参数情况 ==========
@@ -447,7 +470,7 @@ def main():
         sys.exit(0)
     
     # ========== 解析参数 ==========
-    target_style, user_count, mode, search_keyword, user_steps = parse_arguments(sys.argv)
+    target_style, user_count, mode, search_keyword, user_steps, user_input = parse_arguments(sys.argv)
     
     # ========== 处理搜索 ==========
     if search_keyword:
@@ -476,7 +499,7 @@ def main():
         sys.exit(0)
     
     # ========== 解析参数 ==========
-    target_style, user_count, mode, search_keyword, user_steps = parse_arguments(sys.argv)
+    target_style, user_count, mode, search_keyword, user_steps, user_input = parse_arguments(sys.argv)
     
     if target_style is None:
         print("❌ 请指定风格名称")
@@ -496,9 +519,10 @@ def main():
 
     # ========== 处理输入图片 ==========
     if mode == "img2img":
-        input_path = find_input_image()
+        # ✨ 优先使用命令行指定的输入文件
+        input_path = find_input_image(user_input)
         if not input_path:
-            print(f"\n❌ 图生图模式需要参考图！请把图片命名为 {INPUT_IMAGE_NAME}.jpg/.png 放在 tools 目录下！")
+            print(f"\n❌ 图生图模式需要参考图！请用 --input 指定或把图片命名为 {INPUT_IMAGE_NAME}.jpg/.png 放在 tools 目录下！")
             return
         init_image = remove_watermark(input_path)
     else:

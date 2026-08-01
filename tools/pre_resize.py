@@ -2,18 +2,18 @@
 # -*- coding: utf-8 -*-
 """
 前置工具：多档位图片缩小器
-自动识别 tools 目录下的 input.xxx，直接覆盖原文件。
-在顶部修改 SCALE_MODE 即可切换不同尺寸。
+支持指定文件缩放（覆盖原文件）或处理默认 input.xxx。
 
 使用方法：
-  1. 将图片放到 tools 目录下，命名为 input.jpg / input.png / input.webp
-  2. 修改 SCALE_MODE 选择档位
-  3. 运行 python pre_resize.py
-  4. 原图会被缩放并覆盖
+  1. 修改 SCALE_MODE 选择档位（0-10）
+  2a. (处理默认) 将图片放到 tools 目录下，命名为 input.jpg / input.png / input.webp
+  2b. (处理指定) 运行 python pre_resize.py --input <文件路径>
+  3. 原图会被缩放并覆盖
 """
 import os
+import sys
 from PIL import Image
-from config import INPUT_IMAGE_NAME, MAX_LIMIT
+from config import INPUT_IMAGE_NAME
 
 # ==================== ⚙️ 尺寸档位配置 ====================
 # 档位说明：
@@ -63,12 +63,82 @@ SCALE_NAMES = {
 
 # ==================== 核心逻辑 ====================
 
-def find_and_replace_image(base_name):
-    """
-    在 tools 目录下查找 input.xxx，缩小，直接覆盖原文件
-    """
+def parse_arguments(args):
+    """解析命令行参数"""
+    input_path = None
+    i = 1
+    while i < len(args):
+        arg = args[i]
+        if arg in ["--input"]:
+            if i + 1 < len(args):
+                input_path = args[i + 1]
+                i += 2
+            else:
+                print(f"❌ 参数 {arg} 需要指定文件路径")
+                sys.exit(1)
+        else:
+            i += 1
+    return input_path
+
+def resize_and_cover(file_path, target_max_limit):
+    """读取图片，缩放，并直接覆盖原文件"""
+    if not os.path.exists(file_path):
+        print(f"❌ 找不到文件: {file_path}")
+        return False
+
+    print(f"📸 正在处理: {file_path}")
+    
+    # 1. 读取图片
+    img = Image.open(file_path).convert('RGB')
+    w, h = img.size
+    print(f"📐 原图尺寸: {w}x{h}")
+
+    # 2. 如果已经比目标小，直接跳过
+    if w <= target_max_limit and h <= target_max_limit:
+        print(f"✅ 原图已经小于或等于 {target_max_limit}，无需缩小")
+        return True
+
+    # 3. 等比例缩小到目标以内
+    target_w, target_h = w, h
+    if target_w > target_max_limit or target_h > target_max_limit:
+        if target_w > target_h:
+            scale = target_max_limit / target_w
+        else:
+            scale = target_max_limit / target_h
+        target_w = int(target_w * scale)
+        target_h = int(target_h * scale)
+
+    # 4. 对齐到 64 的倍数 (SD 硬要求)
+    target_w = ((target_w + 31) // 64) * 64
+    target_h = ((target_h + 31) // 64) * 64
+
+    print(f"📐 目标尺寸: {target_w}x{target_h}")
+
+    # 5. 执行缩小并直接覆盖原文件
+    small_img = img.resize((target_w, target_h), Image.Resampling.LANCZOS)
+    small_img.save(file_path, quality=95)
+    
+    print(f"✅ 已完成！已覆盖原文件")
+    return True
+
+def main():
     # 获取当前目录（tools 目录）
     current_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # 解析命令行参数
+    user_input = parse_arguments(sys.argv)
+    
+    # 如果命令行指定了 --input，则优先处理指定的文件
+    target_file = None
+    if user_input:
+        target_file = user_input
+    else:
+        # 否则查找默认的 input.jpg / input.png
+        for ext in [".jpg", ".jpeg", ".png", ".webp", ".bmp"]:
+            path = os.path.join(current_dir, INPUT_IMAGE_NAME + ext)
+            if os.path.exists(path):
+                target_file = path
+                break
     
     # 检查档位是否有效
     if SCALE_MODE not in SCALE_MAP:
@@ -76,62 +146,27 @@ def find_and_replace_image(base_name):
         print(f"📋 可用档位：")
         for key, value in SCALE_MAP.items():
             print(f"   {key} = {value} ({SCALE_NAMES.get(key, '')})")
-        return False
+        return
     
     target_max_limit = SCALE_MAP[SCALE_MODE]
     mode_name = SCALE_NAMES.get(SCALE_MODE, f"模式{SCALE_MODE}")
     
     print("="*50)
-    print("🔄 图片缩小器 (tools 目录)")
+    print("🔄 图片缩小器")
     print("="*50)
     print(f"📂 工作目录: {current_dir}")
     print(f"📏 目标档位: {SCALE_MODE} -> {mode_name}")
     print(f"📏 最大边长: {target_max_limit}px")
     print("="*50)
 
-    for ext in [".jpg", ".jpeg", ".png", ".webp", ".bmp"]:
-        path = os.path.join(current_dir, base_name + ext)
-        if os.path.exists(path):
-            print(f"📸 找到原图: {path}")
-            
-            # 1. 读取图片
-            img = Image.open(path).convert('RGB')
-            w, h = img.size
-            print(f"📐 原图尺寸: {w}x{h}")
+    if not target_file:
+        print(f"❌ 找不到默认图片！")
+        print(f"💡 请确保图片放在 tools 目录下，命名为:")
+        print(f"   {INPUT_IMAGE_NAME}.jpg / {INPUT_IMAGE_NAME}.png")
+        print(f"   (或者使用 --input 指定文件路径)")
+        return
 
-            # 2. 如果已经比目标小，直接跳过
-            if w <= target_max_limit and h <= target_max_limit:
-                print(f"✅ 原图已经小于或等于 {target_max_limit}，无需缩小")
-                return True
-
-            # 3. 等比例缩小到目标以内
-            target_w, target_h = w, h
-            if target_w > target_max_limit or target_h > target_max_limit:
-                if target_w > target_h:
-                    scale = target_max_limit / target_w
-                else:
-                    scale = target_max_limit / target_h
-                target_w = int(target_w * scale)
-                target_h = int(target_h * scale)
-
-            # 4. 对齐到 64 的倍数 (SD 硬要求)
-            target_w = ((target_w + 31) // 64) * 64
-            target_h = ((target_h + 31) // 64) * 64
-
-            print(f"📐 目标尺寸: {target_w}x{target_h}")
-
-            # 5. 执行缩小并直接覆盖原文件
-            small_img = img.resize((target_w, target_h), Image.Resampling.LANCZOS)
-            small_img.save(path, quality=95)
-            
-            print(f"✅ 已完成！已覆盖原文件")
-            print(f"💡 提示：如需换档，修改 SCALE_MODE 后重新运行")
-            return True
-
-    print(f"❌ 找不到 {base_name} 图片！")
-    print(f"💡 请确保图片放在 tools 目录下，命名为:")
-    print(f"   {base_name}.jpg / {base_name}.png / {base_name}.webp")
-    return False
+    resize_and_cover(target_file, target_max_limit)
 
 if __name__ == "__main__":
-    find_and_replace_image(INPUT_IMAGE_NAME)
+    main()
