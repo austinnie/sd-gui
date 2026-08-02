@@ -8,18 +8,18 @@ STYLE = {
         
         # ==================== 主体 (12种) ====================
         "subjects": [
-            "pencil sketch of a beautiful anime girl, long white hair, wearing intricate white mechanical armor, exposed mechanical joints, fine linework, detailed robotic structures, grey tone shading, high contrast black and white pencil draft on white paper, concept art, masterpiece",
-            "detailed pencil drawing, cyborg girl with long white hair, translucent mechanical body parts, visible gears and wiring, elegant female face, 2D manga draft style, precision linework, fine cross-hatching, pure white background",
-            "highly detailed graphite pencil sketch, bio-mechanical anime girl, white hair flowing, mechanical skeletal structure, exposed robotic joints, grey scale shading, industrial design blueprint aesthetic, white paper, masterpiece",
-            "pencil sketch, futuristic android girl, beautiful female face with white hair, white mechanical armor, internal gears and wiring visible through transparent panels, hand-drawn illustration style, rough pencil lines, high contrast, white background",
-            "anime character pencil drawing, white-haired mecha girl, intricate mechanical parts, robotic shoulders and torso, elegant and clean lineart, subtle shading, raw pencil sketch, pure white page",
-            "pencil art, cybernetic girl with white hair, white and silver mechanical body, exposed wiring, sophisticated mechanical design, 2D sketch style, fine pencil strokes, minimal shading, concept art on white paper",
-            "white mecha anime girl pencil sketch, long white hair, intricate mechanical chest and arms, grey shading, detailed linework, artistic pencil draft, sketchbook style, white background",
-            "high precision pencil illustration, white haired mecha girl, complex cybernetic structure, detailed mechanical joints, realistic mechanical anatomy, black and white pencil drawing, pure white background",
-            "pencil sketch of a white robotic anime girl, fine hair flowing, mechanical body with visible gears, crosshatch shading, detailed lineart, 2D manga concept art on white paper",
-            "pencil drawing, futuristic cyborg girl with white hair, exposed mechanical framework, beautiful human face, detailed mechanical components, rough sketch style, grey shading, white background",
-            "mecha anime girl pencil sketch, white hair, intricate mechanical design, visible internal mechanisms, fine linework, deep contrast, pencil draft on white paper, concept art",
-            "pencil sketch of a white-haired android girl, mechanical body with intricate details, delicate face, fine lines, dark grey shading, 2D hand-drawn style, white background, masterpiece"
+            "pencil sketch of a beautiful anime girl, long white hair, wearing a futuristic sleek pilot suit and intricate white mechanical armor, visible mechanical joints, fine linework, detailed robotic structures, grey tone shading, high contrast black and white pencil draft on white paper, concept art, masterpiece",
+            "detailed pencil drawing, cyborg girl with long white hair, wearing a futuristic tight suit, mechanical body parts, visible gears and wiring, elegant female face, 2D manga draft style, precision linework, fine cross-hatching, pure white background",
+            "highly detailed graphite pencil sketch, bio-mechanical anime girl, white hair flowing, wearing a futuristic tight suit, mechanical skeletal structure, visible robotic joints, grey scale shading, industrial design blueprint aesthetic, white paper, masterpiece",
+            "pencil sketch, futuristic android girl, beautiful female face with white hair, wearing a futuristic tight suit and white mechanical armor, internal gears and wiring visible through transparent panels, hand-drawn illustration style, rough pencil lines, high contrast, white background",
+            "anime character pencil drawing, white-haired mecha girl, wearing a futuristic pilot suit, intricate mechanical parts, robotic shoulders and torso, elegant and clean lineart, subtle shading, raw pencil sketch, pure white page",
+            "pencil art, cybernetic girl with white hair, wearing a futuristic tight suit, white and silver mechanical body, visible wiring, sophisticated mechanical design, 2D sketch style, fine pencil strokes, minimal shading, concept art on white paper",
+            "white mecha anime girl pencil sketch, long white hair, wearing a futuristic tight suit, intricate mechanical chest and arms, grey shading, detailed linework, artistic pencil draft, sketchbook style, white background",
+            "high precision pencil illustration, white haired mecha girl, wearing a futuristic tight suit, complex cybernetic structure, detailed mechanical joints, realistic mechanical anatomy, black and white pencil drawing, pure white background",
+            "pencil sketch of a white robotic anime girl, fine hair flowing, wearing a futuristic tight suit, mechanical body with visible gears, crosshatch shading, detailed lineart, 2D manga concept art on white paper",
+            "pencil drawing, futuristic cyborg girl with white hair, wearing a futuristic tight suit, visible mechanical framework, beautiful human face, detailed mechanical components, rough sketch style, grey shading, white background",
+            "mecha anime girl pencil sketch, white hair, wearing a futuristic tight suit, intricate mechanical design, visible internal mechanisms, fine linework, deep contrast, pencil draft on white paper, concept art",
+            "pencil sketch of a white-haired android girl, wearing a futuristic tight suit, mechanical body with intricate details, delicate face, fine lines, dark grey shading, 2D hand-drawn style, white background, masterpiece"
         ],
         
         # ==================== 风格 (4种) ====================
