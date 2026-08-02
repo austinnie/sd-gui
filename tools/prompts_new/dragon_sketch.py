@@ -1,42 +1,29 @@
 # prompts/dragon_sketch.py
-# 中国传统白描龙 / 水墨线稿风格
+# 长卷盘龙线稿（横向吐珠构图）
 
 STYLE = {
     "dragon_sketch": {
-        "folder": "传统龙纹线稿",
+        "folder": "长卷盘龙线稿",
         "strength": 0.35,
         
-        # ==================== 主体 (12种) ====================
+        # ==================== 主体 (6种横版构图) ====================
         "subjects": [
-            "traditional Chinese dragon lineart, serpentine body, detailed scales, deer-like antlers, fierce claws, swirling clouds, ancient ink brush style, black and white illustration, pure white background, minimalist contour",
-            "classic Chinese Loong pencil sketch, nine-clawed imperial dragon, flowing mane, fiery pearl motif, cloud patterns, rough draft, elegant simple lineart, white paper texture",
-            "Chinese dragon face close-up, majestic horned head, whiskers, intricate scale patterns, traditional baimiao line drawing, high contrast pencil strokes, centered composition, white background",
-            "dynamic Chinese dragon in flight, winding S-shaped body, fog and mist swirls, traditional tianlong style, uncolored ink wash sketch, clean minimalist lines, empty white page",
-            "dragon wind and cloud drawing, chinese mythological creature, elongated body, sharp talons, stylized clouds, raw graphite sketch, artistic black and white draft, minimalist composition",
-            "Chinese dragon masterpiece sketch, dense scale patterns, traditional auspicious creature, baimiao technique, fine linework, white background, raw penciling style",
-            "simple outline of a Chinese dragon, minimal ink strokes, elegant ancient art style, mythological serpent, flowing mane, few bold lines, clean white background",
-            "classical dragon illustration, traditional Chinese white sketch, floating in clouds, detailed horn and whisker structure, meticulous black lineart, white paper, minimalist design",
-            "loose pencil gesture of a Chinese dragon, quick contour lines, majestic animal form, traditional Asian art draft, uncolored, white background, high contrast lines",
-            "Chinese dragon in swirling pose, traditional cloud and water patterns, meticulous scale details, rough pencil study, white background, minimalist contour drawing",
-            "powerful Chinese dragon sketch, traditional mythological design, dynamic twist, intricate scale rows, black ink style, clean white page, minimalist line art",
-            "traditional dragon and pearl motif, Chinese Loong, detailed serpentine body, claws grasping the fire pearl, uncolored ancient art style, minimalist raw sketch, white background"
+            "highly detailed black and white lineart illustration, traditional Chinese dragon in horizontal panoramic composition, dragon head on the left facing right, exhaling swirling flames and holding a fire pearl, long serpentine body coiled in figure-eight shape, four sharp claws, stylized ocean waves and traditional cloud patterns at the bottom, pure white background, fine ink line drawing, clean manga tattoo style",
+            "horizontal black ink drawing of a coiled Eastern dragon, head on the left, body winding through thick stylized clouds, classic 'dragon playing with a pearl' motif, detailed scales and flowing mane, white background, intricate line work",
+            "baimiao lineart of a Chinese dragon in a wide landscape layout, head emitting fire and smoke, serpentine body forming circular loops, surrounded by intricate wind and cloud swirls, white paper, masterwork black and white illustration",
+            "long horizontal sketch of a mythical Chinese Loong, head raised in a roar, claw grasping a flaming orb, body twisting through waves and clouds, high contrast pure black lines on white, traditional scroll painting style draft",
+            "horizontal dragon illustration, Chinese dragon with deer horns and whiskers, body looping in a dynamic S-shape, four visible claws, background filled with dense stylized cloud waves, pure lineart, white background",
+            "traditional black ink dragon scroll, horizontal composition, dragon breathing fire and chasing a pearl, intertwined with classic cloud scrolls, fine linework, high detail, white empty background"
         ],
         
-        # ==================== 风格 (4种) ====================
+        # ==================== 风格 (锁定) ====================
         "styles": [
-            "traditional Chinese baimiao lineart, fine ink brush strokes, minimalist black and white, raw draft style",
-            "ancient Chinese painting sketch, elegant contour lines, simple shading, white background, artistic pencil draft",
-            "ink wash style line drawing, traditional mythological illustration, uncolored, high contrast black lines",
-            "minimalist pencil sketch, traditional Chinese art, rough strokes, pure white background, simple aesthetic"
+            "intricate black and white lineart, pure white background, baimiao style, high contrast"
         ],
         
-        # ==================== 情绪 (5种) ====================
+        # ==================== 情绪 ====================
         "moods": [
-            "majestic, powerful, ancient, imperial",
-            "serene, flowing, mystical, legendary",
-            "artistic, raw, elegant, traditional",
-            "graceful, dynamic, spirited, timeless",
-            "minimalist, clean, monumental, awe-inspiring"
+            "majestic, dynamic, flowing, traditional"
         ],
         
         # ==================== 内容文本开关 ====================
