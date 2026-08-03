@@ -42,7 +42,10 @@ STYLE = {
             "split screen diagram of a white mecha girl, left side shows her front view holding a futuristic rifle, right side shows her back view with jetpack and thrusters, industrial design presentation, monochrome with glowing blue accents, artstation concept art",
             
             # --- 12. 四宫格战斗姿态图解 ---
-            "four-panel dynamic action diagram of a white mecha girl, showing combat poses: standing guard, running, jumping, and firing weapon, technical blueprint layout, white and blue monochrome aesthetic, high precision lineart, cinematic lighting"            
+            "four-panel dynamic action diagram of a white mecha girl, showing combat poses: standing guard, running, jumping, and firing weapon, technical blueprint layout, white and blue monochrome aesthetic, high precision lineart, cinematic lighting" ,
+            
+            # --- 13. 四宫格：展现机甲展开机械双翼的过程 ---
+            "four-panel split diagram of a white mecha girl, sequential stages of mechanical wings deploying from her back, show the folding panels, glowing boosters, and full aerodynamic spread, technical blueprint aesthetic, cinematic lighting, masterpiece"            
         ],
         
         # ==================== 风格 (工程图纸与蓝光美学) ====================
