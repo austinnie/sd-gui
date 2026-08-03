@@ -361,7 +361,7 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
         full_prompt = f"{full_prompt}, {constraint_text}"
         print(f"   🧠 已添加解剖约束: {constraint_text}")
     
-    print(f"  提示词: {full_prompt[:80]}...")
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] 提示词: {full_prompt[:80]}...")
     print(f"  步数: {steps}")
     
     generator = torch.Generator("cpu").manual_seed(int(time.time_ns() % 1000000000))
@@ -609,7 +609,8 @@ def main():
     os.makedirs(output_root, exist_ok=True)
 
     # ========== 生成循环 ==========
-    for i in range(total_count):
+    from tqdm import tqdm
+    for i in tqdm(range(total_count), desc="生成进度"):
         prompt, prompt_mode = build_prompt(config)
         
         print(f"\n🔄 进度：第 {i+1}/{total_count} 张 [{prompt_mode}]")
