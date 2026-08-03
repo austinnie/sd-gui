@@ -224,7 +224,7 @@ def build_prompt(config):
         prompt = random.choice(config["subjects"])
         return prompt, "扁平"
         
-def generate_style(pipe, init_image, prompt, output_filename, strength, mode="img2img", steps=STEPS):
+def generate_style(pipe, init_image, prompt, output_filename, strength, mode="img2img", steps=STEPS, target_style="unknown"):
     """
     生成单张图片
     mode: "img2img" 或 "txt2img"
@@ -372,7 +372,7 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
             negative_prompt=neg_prompt,
             image=image,
             strength=strength,
-            num_inference_steps=steps, # 👈 使用传入的步数
+            num_inference_steps=steps,
             guidance_scale=7.5,
             generator=generator,
             width=w,
@@ -383,14 +383,36 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
         result = pipe(
             prompt=full_prompt,
             negative_prompt=neg_prompt,
-            num_inference_steps=steps, # 👈 使用传入的步数
+            num_inference_steps=steps,
             guidance_scale=7.5,
             generator=generator,
             width=w,
             height=h
         )
     
+    # 保存图片
     result.images[0].save(output_filename, quality=95)
+
+    # ✨ ========== 新增：同步生成提示词记录文件 (.txt) ==========
+    # 只要生成图片成功，就在同一目录下生成一个同名的 .txt 说明文件
+    metadata_filename = output_filename.replace(".png", ".txt")
+    try:
+        with open(metadata_filename, "w", encoding="utf-8") as f:
+            f.write(f"【生成时间】: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"【风格名称】: {target_style}\n")
+            f.write(f"【生成模式】: {mode}\n")
+            f.write(f"【迭代步数】: {steps}\n")
+            f.write(f"【提示词强度】: {strength}\n")
+            f.write(f"【完整正向提示词】: \n{full_prompt}\n")
+            if mode == "img2img":
+                f.write(f"【参考图路径】: {input_path if 'input_path' in locals() else '默认 input.jpg'}\n")
+        print(f"   📝 已生成对应提示词记录: {os.path.basename(metadata_filename)}")
+    except Exception as e:
+        print(f"   ⚠️ 提示词记录文件写入失败: {e}")
+               
+    # ============================================================
+    
+ 
     
 # ==================== 🚀 主入口 ====================
 
@@ -594,7 +616,7 @@ def main():
         
         # ✨ 生成带前缀的文件名，避免重名冲突
         safe_prefix = folder_name.replace(" ", "_").replace("/", "_")
-        filename = f"{safe_prefix}-{i+1:02d}.png"
+        filename = f"{target_style}_{i+1:02d}.png"
         
         generate_style(
             pipe, 
@@ -603,7 +625,8 @@ def main():
             os.path.join(output_root, filename), 
             config["strength"],
             mode,
-            actual_steps  # 👈 传递最终确定的步数
+            actual_steps,  # 👈 传递最终确定的步数
+            target_style   # 👈 补充传递这个变量
         )
     # =================================
 
