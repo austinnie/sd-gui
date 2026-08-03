@@ -2,7 +2,7 @@
 # 公众号安全特供 - 专辑3：科幻机甲与翅膀设定
 
 STYLE = {
-    "sketch_mecha_wings": {
+    "pencil_sketch_03_mecha": {
         "folder": "安全铅笔稿_机甲与设定",
         "strength": 0.35,
         

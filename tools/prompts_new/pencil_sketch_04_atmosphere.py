@@ -2,7 +2,7 @@
 # 公众号安全特供 - 专辑4：情绪氛围与自然光影
 
 STYLE = {
-    "sketch_atmosphere": {
+    "pencil_sketch_04_atmosphere": {
         "folder": "安全铅笔稿_氛围感光影",
         "strength": 0.35,
         

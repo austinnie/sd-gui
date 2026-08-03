@@ -2,7 +2,7 @@
 # 公众号安全特供 - 专辑2：头部、五官与手部结构解析
 
 STYLE = {
-    "sketch_head_hands": {
+    "pencil_sketch_02_anatomy": {
         "folder": "安全铅笔稿_五官与手部",
         "strength": 0.35,
         

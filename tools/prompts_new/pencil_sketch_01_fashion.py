@@ -2,7 +2,7 @@
 # 公众号安全特供 - 专辑1：动态穿搭与服饰线稿
 
 STYLE = {
-    "sketch_fashion_dynamic": {
+    "pencil_sketch_01_fashion": {
         "folder": "安全铅笔稿_穿搭速写",
         "strength": 0.35,
         

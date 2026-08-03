@@ -2,7 +2,7 @@
 # 公众号安全特供 - 专辑5：极简主义与留白艺术
 
 STYLE = {
-    "sketch_minimalist": {
+    "pencil_sketch_05_minimal": {
         "folder": "安全铅笔稿_极简留白",
         "strength": 0.35,
         
