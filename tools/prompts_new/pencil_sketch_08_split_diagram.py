@@ -36,7 +36,13 @@ STYLE = {
             "split comparison of a white mecha android, the left side is pristine and shiny white ceramic, the right side shows battle damage with exposed wiring, scratches, and sparks, dramatic cyberpunk lighting, high-tech laboratory background, conceptual art",
             
             # --- 10. 全系统拆解示意图 ---
-            "schematic diagram of a futuristic mecha girl, showing a layered breakdown of the head, torso, arms, and legs, each part shown as a floating wireframe model, engineering blueprint style, monochrome with soft blue glow, technical precision, 4k"
+            "schematic diagram of a futuristic mecha girl, showing a layered breakdown of the head, torso, arms, and legs, each part shown as a floating wireframe model, engineering blueprint style, monochrome with soft blue glow, technical precision, 4k",
+            
+            # --- 11. 手持武器的双人侧视图 ---
+            "split screen diagram of a white mecha girl, left side shows her front view holding a futuristic rifle, right side shows her back view with jetpack and thrusters, industrial design presentation, monochrome with glowing blue accents, artstation concept art",
+            
+            # --- 12. 四宫格战斗姿态图解 ---
+            "four-panel dynamic action diagram of a white mecha girl, showing combat poses: standing guard, running, jumping, and firing weapon, technical blueprint layout, white and blue monochrome aesthetic, high precision lineart, cinematic lighting"            
         ],
         
         # ==================== 风格 (工程图纸与蓝光美学) ====================
