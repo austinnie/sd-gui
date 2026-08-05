@@ -48,10 +48,47 @@ PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+# ✅ 验证路径
+print(f"📁 PROJECT_ROOT: {PROJECT_ROOT}")
 
-# 加载全局配置与提示词库
-#from config import SD_MODEL_PATH, STEPS, MAX_LIMIT, INPUT_IMAGE_NAME
-from config import *
+# ✅ 导入 utils
+from utils.imagemeta_cleaner import smart_clean_image
+from utils.exif_injector import inject_exif
+from utils.photo_realistic import make_photo_realistic
+
+# ========== ✅ 改用绝对导入，明确指定 config 位置 ==========
+# 确保 tools 目录在路径中，然后从 config 导入
+try:
+    from tools.config import SD_MODEL_PATH, STEPS, MAX_LIMIT, INPUT_IMAGE_NAME, DEFAULT_STRENGTH
+    from tools.config import (
+        REMOVE_AI_TRACES,
+        AI_CLEAR_METADATA,
+        AI_INJECT_EXIF,
+        AI_REALISTIC,
+        AI_CAMERA,
+        AI_STRENGTH,
+        AI_STYLE,
+        AI_RANDOMIZE,
+        AI_FINGERPRINT_OBFUSCATION,
+        AI_DISTORTION_STRENGTH,
+        AI_CHROMATIC_ABERRATION,
+        AI_CHROMATIC_STRENGTH,
+        AI_REALISTIC_NOISE,
+        AI_NOISE_ISO_BASE,
+        AI_NOISE_RANDOMIZE,
+        AI_MINOR_CROP,
+        AI_CROP_PERCENT,
+        AUTO_DETECT_STYLE,
+        SKETCH_KEYWORDS,
+    )
+except ImportError as e:
+    print(f"❌ 导入 config 失败: {e}")
+    print(f"   sys.path: {sys.path[:5]}")
+    sys.exit(1)
+
+print(f"📊 STEPS = {STEPS}")
+print(f"📷 AI_CAMERA = {AI_CAMERA}")
+
 from prompts_config import STYLE_PROMPTS
 
 # ==================== ⚙️ 安全开关 ====================
@@ -425,7 +462,7 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
             
             # 1️⃣ 清除元数据（如果需要）
             if AI_CLEAR_METADATA:
-                from utils.imagemeta_cleaner import smart_clean_image
+
                 # 转换为JPG并清除元数据
                 jpg_path = output_filename.replace('.png', '.jpg')
                 final_path = smart_clean_image(
@@ -445,7 +482,7 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
                     
                 # 2️⃣ 照片真实化（添加噪点、暗角、锐化）
                 if AI_REALISTIC:
-                    from utils.photo_realistic import make_photo_realistic
+                    
                     final_path = make_photo_realistic(
                         final_path,
                         final_path,  # 覆盖原文件
@@ -459,7 +496,7 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
                 
                 # 3️⃣ 如果只注入EXIF（不开启照片真实化）
                 elif AI_INJECT_EXIF and not AI_REALISTIC:
-                    from utils.exif_injector import inject_exif
+                    
                     final_path = inject_exif(
                         final_path,
                         final_path,

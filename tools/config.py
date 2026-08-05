@@ -8,30 +8,12 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 if CURRENT_DIR not in sys.path:
     sys.path.insert(0, CURRENT_DIR)
 
-# ✅ 加载 ai_clean_config（放在前面，但不要污染命名空间）
-# 使用显式导入，避免命名冲突
+# ✅ 加载 ai_clean_config
 try:
-    from ai_clean_config import (
-        REMOVE_AI_TRACES,
-        AI_CLEAR_METADATA,
-        AI_INJECT_EXIF,
-        AI_REALISTIC,
-        AI_CAMERA,
-        AI_STRENGTH,
-        AI_STYLE,
-        AI_RANDOMIZE,
-        AI_FINGERPRINT_OBFUSCATION,
-        AI_DISTORTION_STRENGTH,
-        AI_CHROMATIC_ABERRATION,
-        AI_CHROMATIC_STRENGTH,
-        AI_REALISTIC_NOISE,
-        AI_NOISE_ISO_BASE,
-        AI_NOISE_RANDOMIZE,
-        AI_MINOR_CROP,
-        AI_CROP_PERCENT,
-    )
+    from ai_clean_config import *
 except ImportError:
     print("⚠️ 警告：无法加载 ai_clean_config.py，使用默认配置")
+    # 默认配置（所有功能开启）
     REMOVE_AI_TRACES = True
     AI_CLEAR_METADATA = True
     AI_INJECT_EXIF = True
@@ -49,6 +31,13 @@ except ImportError:
     AI_NOISE_RANDOMIZE = True
     AI_MINOR_CROP = True
     AI_CROP_PERCENT = 0.015
+    AUTO_DETECT_STYLE = True
+    SKETCH_KEYWORDS = [
+        "sketch", "pencil", "lineart", "baimiao", "ink", "wash",
+        "draft", "monochrome", "black and white", "drawing",
+        "charcoal", "graphite", "outline", "contour", "tiger_sketch",
+        "素描", "线稿", "白描", "水墨", "铅笔", "炭笔", "速写"
+    ]
 
 # 模型根目录
 PROJECT_ROOT = os.path.dirname(os.path.dirname(CURRENT_DIR))
@@ -61,13 +50,10 @@ SD_MODEL_PATH_3 = os.path.join(PROJECT_ROOT, "models/sd-v1-5/sd-v1-5-tiny.safete
 
 ACTIVE_MODEL = 0
 
-# 👇 统一核心参数（所有工具都从这里读）
 STEPS = 25
 MAX_LIMIT = 576
 NEGATIVE_PROMPT_BASE = "worst quality, low quality, ugly, deformed, blurry, bad anatomy, watermark, text, signature, logo, brand"
-INPUT_IMAGE_NAME = "input"  # 👈 统一原图文件名
-
-# 👇 统一默认强度（各别特殊脚本可以在内部单独覆盖）
+INPUT_IMAGE_NAME = "input"
 DEFAULT_STRENGTH = 0.35
 
 if ACTIVE_MODEL == 0:
@@ -81,7 +67,7 @@ elif ACTIVE_MODEL == 3:
 else:
     SD_MODEL_PATH = SD_MODEL_PATH_0
 
-# 显式导出所有变量（供 generate.py 的 from config import * 使用）
+# ✅ 确保所有变量都导出
 __all__ = [
     'SD_MODEL_PATH', 'STEPS', 'MAX_LIMIT', 'INPUT_IMAGE_NAME',
     'NEGATIVE_PROMPT_BASE', 'DEFAULT_STRENGTH',
@@ -90,5 +76,6 @@ __all__ = [
     'AI_FINGERPRINT_OBFUSCATION', 'AI_DISTORTION_STRENGTH',
     'AI_CHROMATIC_ABERRATION', 'AI_CHROMATIC_STRENGTH',
     'AI_REALISTIC_NOISE', 'AI_NOISE_ISO_BASE', 'AI_NOISE_RANDOMIZE',
-    'AI_MINOR_CROP', 'AI_CROP_PERCENT'
+    'AI_MINOR_CROP', 'AI_CROP_PERCENT',
+    'AUTO_DETECT_STYLE', 'SKETCH_KEYWORDS'
 ]
