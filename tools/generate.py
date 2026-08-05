@@ -356,6 +356,17 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
     mode: "img2img" 或 "txt2img"
     steps: 当前生成使用的步数
     """
+    
+    # ========== 📊 详细调试信息 ==========
+    print(f"\n{'='*50}")
+    print(f"📊 [调试] 参数详情:")
+    print(f"  ├─ 图生图强度 (strength): {strength}")
+    print(f"  ├─ 照片真实化强度 (AI_STRENGTH): {AI_STRENGTH}")
+    print(f"  ├─ 紫边模拟强度 (AI_CHROMATIC_STRENGTH): {AI_CHROMATIC_STRENGTH}")
+    print(f"  ├─ 消除AI痕迹 (REMOVE_AI_TRACES): {REMOVE_AI_TRACES}")
+    print(f"  └─ 迭代步数 (steps): {steps}")
+    print(f"{'='*50}\n")
+    
     import random  # ✅ 添加这一行  
     from PIL import Image    
     max_limit = MAX_LIMIT
@@ -560,7 +571,7 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
                 print(f"   ✅ 元数据已清除 -> JPG")
 
             # 2️⃣ 照片真实化（添加噪点、暗角、锐化）- 由 photo_realistic 单独处理
-            if AI_REALISTIC:
+            if AI_REALISTIC and not is_sketch:
                 
                 final_path = make_photo_realistic(
                     final_path,
@@ -575,7 +586,7 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
                 print(f"   ✅ 照片真实化完成 (强度: {AI_STRENGTH})")
             
             # 3️⃣ 注入 EXIF（如果开启了，且之前没有注入）
-            if AI_INJECT_EXIF:
+            if AI_INJECT_EXIF and not is_sketch:
                 time.sleep(0.5) # 等待 0.5 秒避免文件锁
                 try:
                     final_path = inject_exif(
@@ -593,7 +604,7 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
             # 它们不再被捆绑在“指纹混淆”下，各自独立运作
 
             # 4️⃣ 紫边模拟（独立）
-            if AI_CHROMATIC_ABERRATION:
+            if AI_CHROMATIC_ABERRATION and not is_sketch:
                 try:
                     print(f"   🔬 模拟紫边...")
                     from PIL import Image
@@ -634,7 +645,7 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
                     print(f"   ⚠️ 紫边模拟失败: {e}")
 
             # 5️⃣ 真实噪点（独立，不会因为紫边失败而受影响）
-            if AI_REALISTIC_NOISE:
+            if AI_REALISTIC_NOISE and not is_sketch:
                 try:
                     print(f"   📸 添加真实噪点...")
                     import cv2
@@ -751,29 +762,41 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
             f.write(f"【风格名称】: {target_style}\n")
             f.write(f"【生成模式】: {mode}\n")
             f.write(f"【迭代步数】: {steps}\n")
-            f.write(f"【提示词强度】: {strength}\n")
-            f.write(f"【完整正向提示词】: \n{full_prompt}\n")
+            
+            # ========== 📊 详细记录所有 strength 参数 ==========
+            f.write(f"\n【📊 Strength 参数详情】:\n")
+            f.write(f"  ├─ 图生图强度 (img2img strength): {strength}\n")
+            f.write(f"  ├─ 照片真实化强度 (AI_STRENGTH): {AI_STRENGTH}\n")
+            f.write(f"  ├─ 紫边模拟强度 (AI_CHROMATIC_STRENGTH): {AI_CHROMATIC_STRENGTH}\n")
+            f.write(f"  └─ 消除AI痕迹总开关: {'✅ 已启用' if REMOVE_AI_TRACES else '❌ 已禁用'}\n")
+            
+            f.write(f"\n【📝 完整正向提示词】: \n{full_prompt}\n")
+            
             if mode == "img2img":
-                f.write(f"【参考图路径】: {input_path if 'input_path' in locals() else '默认 input.jpg'}\n")
+                f.write(f"\n【🖼️ 参考图路径】: {input_path if 'input_path' in locals() else '默认 input.jpg'}\n")
+            
             if REMOVE_AI_TRACES:
-                f.write(f"【消除AI痕迹】: 已启用\n")
-                f.write(f"   - 相机: {AI_CAMERA}\n")
-                f.write(f"   - 强度: {AI_STRENGTH}\n")
+                f.write(f"\n【🔧 消除AI痕迹配置】:\n")
+                f.write(f"   - 总开关: ✅ 已启用\n")
+                f.write(f"   - 元数据清理: {'✅' if AI_CLEAR_METADATA else '❌'}\n")
                 
                 if is_sketch:
-                    f.write(f"   - 风格: 素描/线稿 (跳过相机相关处理)\n")
-            
-                if AI_FINGERPRINT_OBFUSCATION:
-                    f.write(f"   - 指纹混淆: 已启用\n")  
-                    
-                if AI_CHROMATIC_ABERRATION:  # 🆕
-                    f.write(f"   - 紫边模拟: 已启用\n")
-
-                if AI_REALISTIC_NOISE:  # 🆕
-                    f.write(f"   - 真实噪点: 已启用 (ISO: {AI_NOISE_ISO_BASE})\n")
-
-                if AI_MINOR_CROP:  # 🆕
-                    f.write(f"   - 轻微裁剪: 已启用 ({AI_CROP_PERCENT*100:.1f}%)\n")        
+                    f.write(f"   - 风格检测: 素描/线稿 (⚠️ 跳过相机相关处理)\n")
+                    f.write(f"   - 照片真实化: ⏭️ 已跳过 (素描风格)\n")
+                    f.write(f"   - EXIF注入: ⏭️ 已跳过 (素描风格)\n")
+                    f.write(f"   - 紫边模拟: ⏭️ 已跳过 (素描风格)\n")
+                    f.write(f"   - 真实噪点: ⏭️ 已跳过 (素描风格)\n")
+                    f.write(f"   - 轻微裁剪: {'✅' if AI_MINOR_CROP else '❌'} ({AI_CROP_PERCENT*100:.1f}%)\n")
+                    f.write(f"   - 指纹混淆: {'✅' if AI_FINGERPRINT_OBFUSCATION else '❌'}\n")
+                else:
+                    f.write(f"   - 照片真实化: {'✅' if AI_REALISTIC else '❌'}\n")
+                    f.write(f"   - 相机型号: {AI_CAMERA}\n")
+                    f.write(f"   - 真实化强度: {AI_STRENGTH}\n")
+                    f.write(f"   - EXIF注入: {'✅' if AI_INJECT_EXIF else '❌'}\n")
+                    f.write(f"   - 紫边模拟: {'✅' if AI_CHROMATIC_ABERRATION else '❌'} (强度: {AI_CHROMATIC_STRENGTH})\n")
+                    f.write(f"   - 真实噪点: {'✅' if AI_REALISTIC_NOISE else '❌'} (ISO: {AI_NOISE_ISO_BASE})\n")
+                    f.write(f"   - 轻微裁剪: {'✅' if AI_MINOR_CROP else '❌'} ({AI_CROP_PERCENT*100:.1f}%)\n")
+                    f.write(f"   - 指纹混淆: {'✅' if AI_FINGERPRINT_OBFUSCATION else '❌'}\n")
         
         print(f"   📝 已生成提示词记录: {os.path.basename(metadata_filename)}")
     except Exception as e:

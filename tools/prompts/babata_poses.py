@@ -4,7 +4,7 @@
 STYLE = {
     "babata_poses": {
         "folder": "吞噬星空_巴巴塔",
-        "strength": 0.45,
+        "strength": 0.55,
         
         # ==================== 主体 (12种) ====================
         "subjects": [
