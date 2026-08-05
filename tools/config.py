@@ -1,6 +1,7 @@
 # ==================== 📋 全局配置中心 ====================
 import os
 import sys
+from .ai_clean_config import *
 
 # ✅ 核心修复：把当前脚本所在目录（tools）加入 Python 系统路径
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))

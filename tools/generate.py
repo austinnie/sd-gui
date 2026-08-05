@@ -393,9 +393,68 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
     # 保存图片
     result.images[0].save(output_filename, quality=95)
 
-    # ✨ ========== 新增：同步生成提示词记录文件 (.txt) ==========
+    # ========== 🆕 消除AI痕迹 - 后期处理 ==========
+    if REMOVE_AI_TRACES:
+        try:
+            print(f"\n📷 消除AI痕迹处理...")
+            final_path = output_filename
+            
+            # 1️⃣ 清除元数据（如果需要）
+            if AI_CLEAR_METADATA:
+                from utils.imagemeta_cleaner import smart_clean_image
+                # 转换为JPG并清除元数据
+                jpg_path = output_filename.replace('.png', '.jpg')
+                final_path = smart_clean_image(
+                    final_path, 
+                    output_path=jpg_path,
+                    method='jpg',
+                    jpg_quality=92
+                )
+                print(f"   ✅ 元数据已清除 -> JPG")
+            
+            # 2️⃣ 照片真实化（添加噪点、暗角、锐化）
+            if AI_REALISTIC:
+                from utils.photo_realistic import make_photo_realistic
+                final_path = make_photo_realistic(
+                    final_path,
+                    final_path,  # 覆盖原文件
+                    camera=AI_CAMERA,
+                    style="portrait",
+                    inject_exif_data=AI_INJECT_EXIF,  # 同时注入EXIF
+                    randomize=True,
+                    strength=AI_STRENGTH
+                )
+                print(f"   ✅ 照片真实化完成 (强度: {AI_STRENGTH})")
+            
+            # 3️⃣ 如果只注入EXIF（不开启照片真实化）
+            elif AI_INJECT_EXIF and not AI_REALISTIC:
+                from utils.exif_injector import inject_exif
+                final_path = inject_exif(
+                    final_path,
+                    final_path,
+                    camera=AI_CAMERA,
+                    style="portrait",
+                    randomize=True
+                )
+                print(f"   ✅ EXIF 已注入")
+            
+            # 如果最终路径改变了，更新文件名
+            if final_path != output_filename:
+                # 删除原始PNG（如果存在）
+                if os.path.exists(output_filename) and output_filename != final_path:
+                    try:
+                        os.remove(output_filename)
+                    except:
+                        pass
+                output_filename = final_path
+                
+        except Exception as e:
+            print(f"   ⚠️ 消除AI痕迹失败: {e}")
+    # ================================================
+    
+
     # 只要生成图片成功，就在同一目录下生成一个同名的 .txt 说明文件
-    metadata_filename = output_filename.replace(".png", ".txt")
+    metadata_filename = output_filename.replace('.png', '.txt').replace('.jpg', '.txt')
     try:
         with open(metadata_filename, "w", encoding="utf-8") as f:
             f.write(f"【生成时间】: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
@@ -406,11 +465,13 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
             f.write(f"【完整正向提示词】: \n{full_prompt}\n")
             if mode == "img2img":
                 f.write(f"【参考图路径】: {input_path if 'input_path' in locals() else '默认 input.jpg'}\n")
-        print(f"   📝 已生成对应提示词记录: {os.path.basename(metadata_filename)}")
+            if REMOVE_AI_TRACES:
+                f.write(f"【消除AI痕迹】: 已启用\n")
+                f.write(f"   - 相机: {AI_CAMERA}\n")
+                f.write(f"   - 强度: {AI_STRENGTH}\n")
+        print(f"   📝 已生成提示词记录: {os.path.basename(metadata_filename)}")
     except Exception as e:
         print(f"   ⚠️ 提示词记录文件写入失败: {e}")
-               
-    # ============================================================
     
  
     
@@ -429,6 +490,10 @@ def parse_arguments(args):
     search_keyword = None
     steps = None
     input_path = None
+
+    # 新增参数
+    clean_ai = True  # 默认启用
+    no_clean = False
     
     i = 1
     while i < len(args):
@@ -481,11 +546,14 @@ def parse_arguments(args):
             else:
                 print(f"❌ 参数 {arg} 需要指定搜索关键词")
                 sys.exit(1)
+        elif arg in ["--no-clean", "--noclean"]:
+            no_clean = True
+            i += 1                
         else:
             target_style = arg
             i += 1
     
-    return target_style, count, mode, search_keyword, steps, input_path
+    return target_style, count, mode, search_keyword, steps, input_path, no_clean
 
 def main():
     # ========== 处理无参数情况 ==========
@@ -494,7 +562,16 @@ def main():
         sys.exit(0)
     
     # ========== 解析参数 ==========
-    target_style, user_count, mode, search_keyword, user_steps, user_input = parse_arguments(sys.argv)
+    target_style, user_count, mode, search_keyword, user_steps, user_input, no_clean = parse_arguments(sys.argv)
+
+    # ========== 🆕 根据命令行参数控制消除AI痕迹 ==========
+    global REMOVE_AI_TRACES
+    if no_clean:
+        REMOVE_AI_TRACES = False
+        print(f"ℹ️ 已禁用消除AI痕迹 (--no-clean)")
+    else:
+        print(f"ℹ️ 消除AI痕迹已启用 (相机: {AI_CAMERA}, 强度: {AI_STRENGTH})")
+    # =====================================================
     
     # ========== 处理搜索 ==========
     if search_keyword:
@@ -523,7 +600,7 @@ def main():
         sys.exit(0)
     
     # ========== 解析参数 ==========
-    target_style, user_count, mode, search_keyword, user_steps, user_input = parse_arguments(sys.argv)
+    target_style, user_count, mode, search_keyword, user_steps, user_input, no_clean = parse_arguments(sys.argv)
     
     if target_style is None:
         print("❌ 请指定风格名称")
