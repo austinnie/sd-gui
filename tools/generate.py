@@ -113,13 +113,19 @@ def print_usage():
     print("  --steps <数字>      指定生成步数（不指定则使用 config.py 中的 STEPS）")
     print("\n图生图输入：")
     print("  --input <文件路径>  指定参考图（不指定则使用 config.py 中的默认 input.jpg）")
+    print("\n提示词库选择：")
+    print("  --use-old           使用旧版提示词库 (prompts/ 目录)")
+    print("  （默认使用新版安全提示词库 prompts_new/ 目录）")
     print("\n示例：")
     print("  python generate.py anime_xxx_v3 --steps 30 -n 5   # 30步生成5张")
     print("  python generate.py anime_xxx_v3 --txt2img         # 使用config默认步数")
     print("  python generate.py anime_xxx_v3 --img2img --input my_pic.png -n 3 # 用指定图生图")
+    print("  python generate.py --use-old babata_poses -n 3    # 使用旧版提示词库")
     print("\n其他命令：")
     print("  python generate.py --list     显示所有可用风格（分屏）")
     print("  python generate.py -l         显示所有可用风格（分屏）")
+    print("  python generate.py --search <关键词>  搜索风格")
+    print("  python generate.py -s <关键词>       搜索风格")
     print("\n💡 提示：")
     print("  - 图生图模式：需要 input.jpg 作为参考图")
     print("  - 文生图模式：不需要参考图，完全根据提示词生成")
@@ -822,13 +828,16 @@ def parse_arguments(args):
                 sys.exit(1)
         elif arg in ["--no-clean", "--noclean"]:
             no_clean = True
-            i += 1                
+            i += 1
+        elif arg in ["--use-old", "--use_old"]:
+            # 这个参数在 prompts_config.py 中处理，这里直接跳过
+            i += 1
         else:
             target_style = arg
             i += 1
     
     return target_style, count, mode, search_keyword, steps, input_path, no_clean
-
+    
 def main():
     # ========== 处理无参数情况 ==========
     if len(sys.argv) < 2:
