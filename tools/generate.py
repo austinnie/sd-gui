@@ -211,19 +211,29 @@ def remove_watermark(image_path):
 def setup_pipeline():
     print(f"\n[系统] 正在加载 AI 模型...")
     model_path = SD_MODEL_PATH
-
-    pipe = StableDiffusionPipeline.from_single_file(
-        model_path,
-        torch_dtype=torch.float32,
-        safety_checker=None,
-        requires_safety_checker=False,
-        use_safetensors=True
-    )
-    pipe.to("cpu")
+    
+    try:
+        from optimum.intel import OVStableDiffusionPipeline
+        print("⚡ 使用 OpenVINO 加速...")
+        pipe = OVStableDiffusionPipeline.from_pretrained(
+            model_path,
+            compile=False  # 先不编译，看看能不能加载
+        )
+        pipe.compile()  # 编译优化
+    except Exception as e:
+        print(f"⚠️ OpenVINO 加载失败: {e}")
+        print("   回退到普通模式...")
+        pipe = StableDiffusionPipeline.from_single_file(
+            model_path,
+            torch_dtype=torch.float32,
+            safety_checker=None,
+            requires_safety_checker=False,
+            use_safetensors=True
+        )
+        pipe.to("cpu")
+    
     pipe.enable_vae_slicing()
     pipe.enable_attention_slicing()
-    pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
-    print("[系统] 模型加载完成！")
     return pipe
 
 def build_prompt(config):
