@@ -38,11 +38,17 @@ from PIL import Image
 from datetime import datetime
 from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
 
-# 加载全局配置与提示词库
-from config import SD_MODEL_PATH, STEPS, MAX_LIMIT, INPUT_IMAGE_NAME
-from prompts_config import STYLE_PROMPTS
 
+# 确保 tools 目录在路径中
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+if CURRENT_DIR not in sys.path:
+    sys.path.insert(0, CURRENT_DIR)
+
+
+# 加载全局配置与提示词库
+#from config import SD_MODEL_PATH, STEPS, MAX_LIMIT, INPUT_IMAGE_NAME
+from config import *
+from prompts_config import STYLE_PROMPTS
 
 # ==================== ⚙️ 安全开关 ====================
 SAFE_MODE = True  
@@ -230,6 +236,7 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
     mode: "img2img" 或 "txt2img"
     steps: 当前生成使用的步数
     """
+    import random  # ✅ 添加这一行    
     max_limit = MAX_LIMIT
     
     if mode == "img2img":
