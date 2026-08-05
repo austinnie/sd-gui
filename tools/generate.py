@@ -438,6 +438,35 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
                 )
                 print(f"   ✅ EXIF 已注入")
             
+
+            # ========== 🆕 图像指纹混淆 ==========
+            if AI_FINGERPRINT_OBFUSCATION:
+                try:
+                    print(f"   🔍 图像指纹混淆...")
+                    from PIL import Image
+                    import random
+                    
+                    img = Image.open(final_path)
+                    w, h = img.size
+                    strength = AI_DISTORTION_STRENGTH
+                    
+                    # 微小透视扭曲（破坏AI像素规律）
+                    coeffs = [
+                        1 + random.uniform(-strength, strength),   # a
+                        random.uniform(-strength * 0.5, strength * 0.5),  # b
+                        random.uniform(-2, 2),                      # c
+                        random.uniform(-strength * 0.5, strength * 0.5),  # d
+                        1 + random.uniform(-strength, strength),   # e
+                        random.uniform(-2, 2),                      # f
+                    ]
+                    img = img.transform((w, h), Image.AFFINE, coeffs, Image.Resampling.BILINEAR)
+                    img.save(final_path, quality=92)
+                    print(f"   ✅ 指纹混淆完成")
+                    
+                except Exception as e:
+                    print(f"   ⚠️ 指纹混淆失败: {e}")
+            # =============================================
+            
             # 如果最终路径改变了，更新文件名
             if final_path != output_filename:
                 # 删除原始PNG（如果存在）
@@ -447,6 +476,7 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
                     except:
                         pass
                 output_filename = final_path
+
                 
         except Exception as e:
             print(f"   ⚠️ 消除AI痕迹失败: {e}")
@@ -469,6 +499,8 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
                 f.write(f"【消除AI痕迹】: 已启用\n")
                 f.write(f"   - 相机: {AI_CAMERA}\n")
                 f.write(f"   - 强度: {AI_STRENGTH}\n")
+                if AI_FINGERPRINT_OBFUSCATION:
+                    f.write(f"   - 指纹混淆: 已启用\n")                
         print(f"   📝 已生成提示词记录: {os.path.basename(metadata_filename)}")
     except Exception as e:
         print(f"   ⚠️ 提示词记录文件写入失败: {e}")

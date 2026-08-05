@@ -18,3 +18,7 @@ AI_STYLE = "portrait"      # 风格: portrait, landscape, street, night
 
 # 是否随机化参数（让每张照片的EXIF略有不同）
 AI_RANDOMIZE = True
+
+# ==================== 🆕 图像指纹混淆 ====================
+AI_FINGERPRINT_OBFUSCATION = True   # 图像指纹混淆
+AI_DISTORTION_STRENGTH = 0.002      # 扭曲强度 (0.001-0.005)
