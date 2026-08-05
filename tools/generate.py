@@ -534,12 +534,13 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
                 
                 final_path = make_photo_realistic(
                     final_path,
-                    final_path,  # 覆盖原文件
+                    final_path,
                     camera=AI_CAMERA,
                     style="portrait",
-                    inject_exif_data=False,  # 这里不注入EXIF，交给后面单独做
+                    inject_exif_data=False,
                     randomize=True,
-                    strength=AI_STRENGTH
+                    strength=AI_STRENGTH,
+                    add_noise_flag=AI_REALISTIC_NOISE  # 👈 把 config.py 里的配置真实地传进去
                 )
                 print(f"   ✅ 照片真实化完成 (强度: {AI_STRENGTH})")
             

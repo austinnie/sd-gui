@@ -115,25 +115,13 @@ def make_photo_realistic(
     custom_params: Optional[Dict] = None,
     inject_exif_data: bool = True,
     randomize: bool = True,
-    strength: str = "medium"  # ✅ 新增
+    strength: str = "medium",
+    add_noise_flag: bool = True  # 👈 新增：这里是控制加噪的入口
 ) -> str:
     """
     让 AI 图片看起来像真实相机照片
     结合：图像处理 + EXIF 注入
-    
-    参数:
-        input_path: 输入图片路径
-        output_path: 输出路径（可选）
-        camera: 相机预设
-        style: 照片风格
-        custom_params: 自定义参数
-        inject_exif_data: 是否注入 EXIF
-        randomize: 是否随机参数
-    
-    返回:
-        输出路径
     """
-    # 映射 strength 到 ISO 等参数
     strength_map = {
         "light": {"iso": 200, "noise": 0.3, "vignette": 0.15},
         "medium": {"iso": 400, "noise": 0.5, "vignette": 0.25},
@@ -143,7 +131,6 @@ def make_photo_realistic(
     if custom_params is None:
         custom_params = {}
     
-    # 如果 custom_params 没有指定，使用 strength 映射
     if "ISO" not in custom_params:
         custom_params["ISO"] = strength_map.get(strength, strength_map["medium"])["iso"]
         
@@ -151,16 +138,13 @@ def make_photo_realistic(
         base, ext = os.path.splitext(input_path)
         output_path = f"{base}_realistic.jpg"
     
-    # 加载图片
     image = Image.open(input_path).convert('RGB')
     
-    # 获取参数
     from .exif_injector import CAMERA_PRESETS, PHOTO_STYLES
     
     camera_preset = CAMERA_PRESETS.get(camera, CAMERA_PRESETS["sony_a7iv"])
     style_preset = PHOTO_STYLES.get(style, PHOTO_STYLES["portrait"])
     
-    # 确定参数
     if custom_params:
         iso = custom_params.get("ISO", 400)
         fnumber = custom_params.get("FNumber", 2.8)
@@ -176,23 +160,21 @@ def make_photo_realistic(
     
     logger.info(f"📷 真实化处理: ISO={iso}, F={fnumber}, 焦距={focal_length}mm")
     
-    # 添加真实相机特征
+    # 🛡️ 这里把传进来的 add_noise_flag 传递给底层函数，不再强制写死 True
     image = add_realistic_features(
         image,
         iso=iso,
         fnumber=fnumber,
         focal_length=focal_length,
-        add_noise=True,
+        add_noise=add_noise_flag,   # 👈 这里由外部参数决定是否加噪！
         add_vignette=True,
         add_lens_distortion=True,
         add_sharpening=True
     )
     
-    # 保存为 JPG
     image.save(output_path, format='JPEG', quality=92, optimize=True)
     logger.info(f"✅ 图片已保存: {output_path}")
     
-    # 注入 EXIF
     if inject_exif_data:
         exif_params = custom_params.copy() if custom_params else {}
         exif_params["ISO"] = iso
@@ -209,7 +191,7 @@ def make_photo_realistic(
         )
     
     return output_path
-
+    
 
 if __name__ == "__main__":
     # 测试
