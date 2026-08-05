@@ -33,6 +33,7 @@ import time
 import cv2
 import numpy as np
 import torch
+import time
 import random
 from PIL import Image
 from datetime import datetime
@@ -552,19 +553,22 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
                 
                 # 3️⃣ 如果只注入EXIF（不开启照片真实化）
                 elif AI_INJECT_EXIF and not AI_REALISTIC:
-                    # 🛡️ [容错机制] 检查 exiftool.exe 是否存在，不存在则跳过
-                    if os.path.exists(EXIFTOOL_PATH):                    
+                    # ⏳ 强制等待 0.5 秒，确保前一步的 opencv/PIL 文件句柄彻底释放
+                    
+                    time.sleep(0.5)
+                    
+                    # 使用 try 包裹，防止底层 shutil 依然引发 WinError
+                    try:
                         final_path = inject_exif(
                             final_path,
                             final_path,
                             camera=AI_CAMERA,
                             style="portrait",
-                            randomize=True,
-                            exiftool_path=EXIFTOOL_PATH  # 这里会正确读取到 config 里的路径
+                            randomize=True
                         )
                         print(f"   ✅ EXIF 已注入")
-                    else:
-                        print(f"   ⚠️ 跳过 EXIF 注入：找不到 exiftool.exe，请检查路径: {EXIFTOOL_PATH}")                
+                    except Exception as e:
+                        print(f"   ⚠️ EXIF 注入过程抛异常，已跳过: {e}")
 
                 # ========== 🆕 图像指纹混淆 ==========
                 if AI_FINGERPRINT_OBFUSCATION:

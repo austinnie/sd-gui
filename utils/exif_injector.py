@@ -222,7 +222,8 @@ def inject_exif(
     exif_params["Copyright"] = custom_params.get("Copyright", "") if custom_params else ""
     
     # 构建 ExifTool 命令
-    cmd = f'exiftool -overwrite_original'
+    # 🛡️ 核心修复：使用绝对路径调用，并将输入路径用双引号包裹防止路径带空格被解析错误
+    cmd = f'"exiftool" -overwrite_original'
     
     for key, value in exif_params.items():
         if value:
@@ -232,17 +233,8 @@ def inject_exif(
     
     # 执行命令
     try:
-        # 检查 exiftool 是否可用
-        check = subprocess.run("exiftool -ver", shell=True, capture_output=True, timeout=5)
-        if check.returncode != 0:
-            logger.info(f"⚠️ ExifTool 未安装，请安装: https://exiftool.org/")
-            logger.info(f"   跳过 EXIF 注入")
-            # 直接复制文件
-            import shutil
-            shutil.copy2(input_path, output_path)
-            return output_path
-        
-        # 执行 EXIF 注入
+        # 🛡️ 核心修复：直接执行 EXIF 注入，不再进行多余的 exiftool -ver 检测
+        # 因为 exiftool 已经在系统的 PATH 环境变量中，直接调用即可。
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
         
         if result.returncode != 0:

@@ -11,10 +11,6 @@ if CURRENT_DIR not in sys.path:
 # ==================== 基础路径 ====================
 PROJECT_ROOT = os.path.dirname(os.path.dirname(CURRENT_DIR))
 
-# 👇 在这里定义 ExifTool 的路径（使用 os.path.join 拼接）
-EXIFTOOL_ROOT = os.path.join(PROJECT_ROOT, "models", "exiftool-13.59_64")
-EXIFTOOL_PATH = os.path.join(EXIFTOOL_ROOT, "exiftool.exe")
-
 # ==================== 🔵 模型选择主开关 ====================
 # 核心开关：True=使用 OpenVINO 模型，False=使用普通模型
 USE_OPENVINO_MODEL = False  
