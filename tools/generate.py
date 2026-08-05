@@ -198,7 +198,24 @@ def remove_watermark(image_path):
         return Image.open(image_path).convert('RGB')
     
     print("\n[AI预处理] 检测并去除图片水印...")
-    img = cv2.imread(image_path)
+    
+    # ✅ 修复中文路径：使用 imdecode 代替 imread
+    try:
+        # 方法1：用 imdecode 读取
+        with open(image_path, 'rb') as f:
+            img_bytes = np.frombuffer(f.read(), np.uint8)
+        img = cv2.imdecode(img_bytes, cv2.IMREAD_COLOR)
+        
+        if img is None:
+            # 方法2：降级使用 PIL
+            pil_img = Image.open(image_path).convert('RGB')
+            img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+            if img is None:
+                raise ValueError("无法读取图片")
+    except Exception as e:
+        print(f"⚠️ 读取图片失败，跳过水印检测: {e}")
+        return Image.open(image_path).convert('RGB')
+    
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     
     # 检测白色/亮色区域（常见水印特征）
@@ -218,7 +235,7 @@ def remove_watermark(image_path):
     result = cv2.inpaint(img, mask, 3, cv2.INPAINT_TELEA)
     print("✅ 水印去除完成！")
     return Image.fromarray(cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
-
+    
 # ==================== 🚀 核心：加载模型管道 ====================
 def setup_pipeline():
     print(f"\n[系统] 正在加载 AI 模型...")
@@ -339,7 +356,8 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
     mode: "img2img" 或 "txt2img"
     steps: 当前生成使用的步数
     """
-    import random  # ✅ 添加这一行    
+    import random  # ✅ 添加这一行  
+    from PIL import Image    
     max_limit = MAX_LIMIT
     
     if mode == "img2img":
@@ -352,7 +370,13 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
                 scale = max_limit / h
             w, h = int(w * scale), int(h * scale)
         w, h = ((w+31)//64)*64, ((h+31)//64)*64
-        image = init_image.resize((w, h), Image.Resampling.LANCZOS)
+        
+        # ✅ 使用兼容写法
+        try:
+            image = init_image.resize((w, h), Image.Resampling.LANCZOS)
+        except AttributeError:
+            image = init_image.resize((w, h), Image.LANCZOS)
+            
         print(f"[图生图] {os.path.basename(output_filename)} ({w}x{h})")
     else:
         # 文生图：随机选择尺寸，增加多样性
