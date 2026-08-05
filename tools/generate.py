@@ -416,6 +416,8 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
     
 # ==================== 🚀 主入口 ====================
 
+# ==================== 🚀 主入口 ====================
+
 def parse_arguments(args):
     """
     解析命令行参数
@@ -608,30 +610,55 @@ def main():
     output_root = os.path.join(CURRENT_DIR, "output", f"{folder_name}_{timestamp}")
     os.makedirs(output_root, exist_ok=True)
 
+    # ========== 📁 新增：子文件夹分组逻辑 ==========
+    # 每5张图片放一个子文件夹
+    BATCH_SIZE = 5
+    
+    # 预计算需要创建多少个子文件夹
+    total_batches = (total_count + BATCH_SIZE - 1) // BATCH_SIZE  # 向上取整
+    
+    # 预创建所有子文件夹
+    subfolders = []
+    for batch_idx in range(total_batches):
+        subfolder_name = f"{batch_idx + 1:04d}"  # 从 0001 开始，四位数字
+        subfolder_path = os.path.join(output_root, subfolder_name)
+        os.makedirs(subfolder_path, exist_ok=True)
+        subfolders.append(subfolder_path)
+        print(f"📁 已创建子文件夹: {subfolder_name} (存放第 {batch_idx * BATCH_SIZE + 1} - {min((batch_idx + 1) * BATCH_SIZE, total_count)} 张)")
+    
+    print(f"\n📊 共 {total_count} 张图片，将分到 {total_batches} 个子文件夹中（每 {BATCH_SIZE} 张一组）\n")
+    # ===============================================
+
     # ========== 生成循环 ==========
     from tqdm import tqdm
     for i in tqdm(range(total_count), desc="生成进度"):
         prompt, prompt_mode = build_prompt(config)
         
-        print(f"\n🔄 进度：第 {i+1}/{total_count} 张 [{prompt_mode}]")
+        # 🆕 计算当前图片属于哪个子文件夹（从 0 开始计数）
+        batch_index = i // BATCH_SIZE
+        current_subfolder = subfolders[batch_index]
+        
+        print(f"\n🔄 进度：第 {i+1}/{total_count} 张 [{prompt_mode}] → 子文件夹 {batch_index + 1:04d}")
         
         # ✨ 生成带前缀的文件名，避免重名冲突
         safe_prefix = folder_name.replace(" ", "_").replace("/", "_")
         filename = f"{target_style}_{i+1:02d}.png"
         
+        # 🆕 修改：将图片保存到子文件夹
         generate_style(
             pipe, 
             init_image, 
             prompt, 
-            os.path.join(output_root, filename), 
+            os.path.join(current_subfolder, filename),  # 👈 保存到子文件夹
             config["strength"],
             mode,
-            actual_steps,  # 👈 传递最终确定的步数
-            target_style   # 👈 补充传递这个变量
+            actual_steps,
+            target_style
         )
     # =================================
 
     print(f"\n✅ 全部完成！共 {total_count} 张图片，保存在: {output_root}")
+    print(f"📁 图片已按每 {BATCH_SIZE} 张分到 {total_batches} 个子文件夹中")
 
 if __name__ == "__main__":
     main()
