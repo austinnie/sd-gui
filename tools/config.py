@@ -11,6 +11,9 @@ if CURRENT_DIR not in sys.path:
 # ==================== 基础路径 ====================
 PROJECT_ROOT = os.path.dirname(os.path.dirname(CURRENT_DIR))
 
+# 👇 在这里定义 ExifTool 的路径（使用 os.path.join 拼接）
+EXIFTOOL_ROOT = os.path.join(PROJECT_ROOT, "models", "exiftool-13.59_64")
+EXIFTOOL_PATH = os.path.join(EXIFTOOL_ROOT, "exiftool.exe")
 
 # ==================== 🔵 模型选择主开关 ====================
 # 核心开关：True=使用 OpenVINO 模型，False=使用普通模型
@@ -56,14 +59,14 @@ DEFAULT_STRENGTH = 0.35
 # 总开关
 REMOVE_AI_TRACES = True
 
-# 各功能开关
+# 各功能开关 (全部保持 True，保证 generate.py 能正常导入)
 AI_CLEAR_METADATA = True   # 清除元数据（转换为JPG）
 AI_INJECT_EXIF = True      # 注入EXIF信息
 AI_REALISTIC = True        # 照片真实化
 
 # 参数配置
 AI_CAMERA = "sony_a7iv"    # 相机预设: sony_a7iv, canon_r5, nikon_z8, iphone_15
-AI_STRENGTH = "medium"     # 强度: light / medium / strong
+AI_STRENGTH = "light"      # 强度: light / medium / strong （已调低）
 AI_STYLE = "portrait"      # 风格: portrait, landscape, street, night
 
 # 是否随机化参数（让每张照片的EXIF略有不同）
@@ -71,20 +74,20 @@ AI_RANDOMIZE = True
 
 # 图像指纹混淆
 AI_FINGERPRINT_OBFUSCATION = True   # 图像指纹混淆
-AI_DISTORTION_STRENGTH = 0.002      # 扭曲强度 (0.001-0.005)
+AI_DISTORTION_STRENGTH = 0.0005     # 【调低】扭曲强度 (0.001-0.005) -> 改为 0.0005，几乎看不出变形，但已打乱AI底层像素
 
-# 紫边模拟
+# 紫边模拟 (依然打开，但强度设为极致微弱)
 AI_CHROMATIC_ABERRATION = True      # 紫边/色散模拟（真实镜头特征）
-AI_CHROMATIC_STRENGTH = 0.3         # 紫边强度 (0.1-0.8)
+AI_CHROMATIC_STRENGTH = 0.05        # 【调低】紫边强度 (0.1-0.8) -> 改为 0.05，仅保留淡淡的镜头色散特质，避免变成彩噪
 
 # 真实噪点
 AI_REALISTIC_NOISE = True           # 真实噪点（基于ISO的噪声模型）
-AI_NOISE_ISO_BASE = 400             # 噪点ISO基准值 (200-1600)
+AI_NOISE_ISO_BASE = 100             # 【已调低】噪点ISO基准值 (200-1600) -> 改为 100，模拟极其干净的环境光
 AI_NOISE_RANDOMIZE = True           # 随机化ISO值（每张照片不同）
 
 # 轻微裁剪
 AI_MINOR_CROP = True                # 轻微裁剪（改变构图，破坏像素排列）
-AI_CROP_PERCENT = 0.015             # 裁剪比例 (0.005-0.03，即0.5%-3%)
+AI_CROP_PERCENT = 0.005             # 【调低】裁剪比例 (0.005-0.03) -> 改为 0.005，即 0.5% 的裁剪，画面几乎无损失
 
 # 风格自动检测
 AUTO_DETECT_STYLE = True            # 自动检测素描/线稿风格

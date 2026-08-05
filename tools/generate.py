@@ -68,8 +68,9 @@ from tools.config import (
     AI_MINOR_CROP, AI_CROP_PERCENT,
     AUTO_DETECT_STYLE, SKETCH_KEYWORDS,
     # ========== 🆕 导入互斥开关（去掉 0~3 死路径导入） ==========
-    USE_OPENVINO_MODEL, ACTIVE_MODEL
+    USE_OPENVINO_MODEL, ACTIVE_MODEL,
     # 🛑 注意：不要在这里导入 SD_OV_MODEL_PATH, SD_MODEL_PATH_0/1/2/3
+    EXIFTOOL_PATH
 )
 
 print(f"📊 STEPS = {STEPS}")
@@ -551,16 +552,19 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
                 
                 # 3️⃣ 如果只注入EXIF（不开启照片真实化）
                 elif AI_INJECT_EXIF and not AI_REALISTIC:
-                    
-                    final_path = inject_exif(
-                        final_path,
-                        final_path,
-                        camera=AI_CAMERA,
-                        style="portrait",
-                        randomize=True
-                    )
-                    print(f"   ✅ EXIF 已注入")
-                
+                    # 🛡️ [容错机制] 检查 exiftool.exe 是否存在，不存在则跳过
+                    if os.path.exists(EXIFTOOL_PATH):                    
+                        final_path = inject_exif(
+                            final_path,
+                            final_path,
+                            camera=AI_CAMERA,
+                            style="portrait",
+                            randomize=True,
+                            exiftool_path=EXIFTOOL_PATH  # 这里会正确读取到 config 里的路径
+                        )
+                        print(f"   ✅ EXIF 已注入")
+                    else:
+                        print(f"   ⚠️ 跳过 EXIF 注入：找不到 exiftool.exe，请检查路径: {EXIFTOOL_PATH}")                
 
                 # ========== 🆕 图像指纹混淆 ==========
                 if AI_FINGERPRINT_OBFUSCATION:
