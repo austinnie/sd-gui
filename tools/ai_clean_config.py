@@ -22,3 +22,7 @@ AI_RANDOMIZE = True
 # ==================== 🆕 图像指纹混淆 ====================
 AI_FINGERPRINT_OBFUSCATION = True   # 图像指纹混淆
 AI_DISTORTION_STRENGTH = 0.002      # 扭曲强度 (0.001-0.005)
+
+# ==================== 🆕 紫边模拟 ====================
+AI_CHROMATIC_ABERRATION = True      # 紫边/色散模拟（真实镜头特征）
+AI_CHROMATIC_STRENGTH = 0.3         # 紫边强度 (0.1-0.8)

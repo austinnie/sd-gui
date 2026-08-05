@@ -445,27 +445,55 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
                     print(f"   🔍 图像指纹混淆...")
                     from PIL import Image
                     import random
+                    import numpy as np
                     
                     img = Image.open(final_path)
                     w, h = img.size
-                    strength = AI_DISTORTION_STRENGTH
                     
-                    # 微小透视扭曲（破坏AI像素规律）
+                    # 1️⃣ 微小透视扭曲（破坏AI像素规律）
+                    strength = AI_DISTORTION_STRENGTH
                     coeffs = [
-                        1 + random.uniform(-strength, strength),   # a
-                        random.uniform(-strength * 0.5, strength * 0.5),  # b
-                        random.uniform(-2, 2),                      # c
-                        random.uniform(-strength * 0.5, strength * 0.5),  # d
-                        1 + random.uniform(-strength, strength),   # e
-                        random.uniform(-2, 2),                      # f
+                        1 + random.uniform(-strength, strength),
+                        random.uniform(-strength * 0.5, strength * 0.5),
+                        random.uniform(-2, 2),
+                        random.uniform(-strength * 0.5, strength * 0.5),
+                        1 + random.uniform(-strength, strength),
+                        random.uniform(-2, 2),
                     ]
                     img = img.transform((w, h), Image.AFFINE, coeffs, Image.Resampling.BILINEAR)
+                    print(f"      ✅ 微小扭曲完成")
+                    
+                    # ========== 🆕 2️⃣ 紫边模拟（真实镜头特征） ==========
+                    if AI_CHROMATIC_ABERRATION:
+                        # 转为numpy数组处理
+                        arr = np.array(img).astype(np.float32)
+                        h, w = arr.shape[:2]
+                        strength = AI_CHROMATIC_STRENGTH
+                        
+                        # 在图像边缘添加红/蓝通道偏移（紫边特征）
+                        for y in range(h):
+                            for x in range(w):
+                                # 计算距离边缘的距离
+                                dist_from_edge = min(x, w-1-x, y, h-1-y)
+                                if dist_from_edge < 40:
+                                    # 越靠近边缘，紫边越明显
+                                    shift_factor = (40 - dist_from_edge) / 40
+                                    shift = shift_factor * strength * random.uniform(0.5, 1.0)
+                                    # 红色通道偏移（紫色倾向）
+                                    arr[y, x, 0] += random.uniform(-shift, shift * 0.5)  # R
+                                    arr[y, x, 2] += random.uniform(-shift * 0.5, shift)  # B
+                        
+                        # 裁剪到有效范围
+                        arr = np.clip(arr, 0, 255).astype(np.uint8)
+                        img = Image.fromarray(arr)
+                        print(f"      ✅ 紫边模拟完成 (强度: {strength})")
+                    # ===================================================
+                    
                     img.save(final_path, quality=92)
                     print(f"   ✅ 指纹混淆完成")
                     
                 except Exception as e:
                     print(f"   ⚠️ 指纹混淆失败: {e}")
-            # =============================================
             
             # 如果最终路径改变了，更新文件名
             if final_path != output_filename:
@@ -499,8 +527,13 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
                 f.write(f"【消除AI痕迹】: 已启用\n")
                 f.write(f"   - 相机: {AI_CAMERA}\n")
                 f.write(f"   - 强度: {AI_STRENGTH}\n")
+                
                 if AI_FINGERPRINT_OBFUSCATION:
-                    f.write(f"   - 指纹混淆: 已启用\n")                
+                    f.write(f"   - 指纹混淆: 已启用\n")  
+                    
+                if AI_CHROMATIC_ABERRATION:  # 🆕
+                    f.write(f"   - 紫边模拟: 已启用\n")
+        
         print(f"   📝 已生成提示词记录: {os.path.basename(metadata_filename)}")
     except Exception as e:
         print(f"   ⚠️ 提示词记录文件写入失败: {e}")
