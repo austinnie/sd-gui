@@ -35,3 +35,14 @@ AI_NOISE_RANDOMIZE = True           # 随机化ISO值（每张照片不同）
 # ==================== 🆕 轻微裁剪 ====================
 AI_MINOR_CROP = True                # 轻微裁剪（改变构图，破坏像素排列）
 AI_CROP_PERCENT = 0.015             # 裁剪比例 (0.005-0.03，即0.5%-3%)
+
+# ==================== 🆕 风格自动检测 ====================
+AUTO_DETECT_STYLE = True            # 自动检测素描/线稿风格
+
+# 素描/线稿类风格关键词（检测到则跳过相机相关处理）
+SKETCH_KEYWORDS = [
+    "sketch", "pencil", "lineart", "baimiao", "ink", "wash",
+    "draft", "monochrome", "black and white", "drawing",
+    "charcoal", "graphite", "outline", "contour", "tiger_sketch",
+    "素描", "线稿", "白描", "水墨", "铅笔", "炭笔", "速写"
+]
