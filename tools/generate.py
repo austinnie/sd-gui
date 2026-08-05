@@ -488,7 +488,48 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
                         img = Image.fromarray(arr)
                         print(f"      ✅ 紫边模拟完成 (强度: {strength})")
                     # ===================================================
-                    
+
+                    # ========== 🆕 3️⃣ 真实噪点 ==========
+                    if AI_REALISTIC_NOISE:
+                        import cv2
+                        import numpy as np
+                        
+                        # 确定ISO值
+                        if AI_NOISE_RANDOMIZE:
+                            # 在基准值附近随机变化 ±200
+                            iso = AI_NOISE_ISO_BASE + random.randint(-200, 200)
+                            iso = max(100, min(1600, iso))  # 限制范围
+                        else:
+                            iso = AI_NOISE_ISO_BASE
+                        
+                        # 转换为OpenCV格式
+                        img_cv = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+                        
+                        # 基于ISO的噪声强度
+                        noise_std = 0.005 * (iso / 100) ** 0.5
+                        
+                        # 高斯噪声（模拟传感器热噪声）
+                        gaussian_noise = np.random.normal(0, noise_std * 255, img_cv.shape)
+                        
+                        # 散粒噪声（泊松分布模拟，光子噪声）
+                        shot_noise = np.random.poisson(np.abs(img_cv) * 0.005) * 0.1
+                        
+                        # 合并噪声
+                        img_cv = img_cv + gaussian_noise + shot_noise
+                        
+                        # 暗部噪点增强（真实相机特征：暗部噪点更明显）
+                        gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
+                        dark_mask = gray < 80
+                        if np.any(dark_mask):
+                            dark_noise = np.random.normal(0, noise_std * 255 * 0.5, img_cv.shape)
+                            img_cv[dark_mask] = img_cv[dark_mask] + dark_noise[dark_mask]
+                        
+                        # 裁剪到有效范围
+                        img_cv = np.clip(img_cv, 0, 255).astype(np.uint8)
+                        img = Image.fromarray(cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB))
+                        print(f"      ✅ 真实噪点添加完成 (ISO: {iso})")
+                    # ================================================
+        
                     img.save(final_path, quality=92)
                     print(f"   ✅ 指纹混淆完成")
                     
@@ -533,6 +574,10 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
                     
                 if AI_CHROMATIC_ABERRATION:  # 🆕
                     f.write(f"   - 紫边模拟: 已启用\n")
+
+                if AI_REALISTIC_NOISE:  # 🆕
+                    f.write(f"   - 真实噪点: 已启用 (ISO: {AI_NOISE_ISO_BASE})\n")
+        
         
         print(f"   📝 已生成提示词记录: {os.path.basename(metadata_filename)}")
     except Exception as e:

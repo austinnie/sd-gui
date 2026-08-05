@@ -26,3 +26,8 @@ AI_DISTORTION_STRENGTH = 0.002      # 扭曲强度 (0.001-0.005)
 # ==================== 🆕 紫边模拟 ====================
 AI_CHROMATIC_ABERRATION = True      # 紫边/色散模拟（真实镜头特征）
 AI_CHROMATIC_STRENGTH = 0.3         # 紫边强度 (0.1-0.8)
+
+# ==================== 🆕 真实噪点 ====================
+AI_REALISTIC_NOISE = True           # 真实噪点（基于ISO的噪声模型）
+AI_NOISE_ISO_BASE = 400             # 噪点ISO基准值 (200-1600)
+AI_NOISE_RANDOMIZE = True           # 随机化ISO值（每张照片不同）
