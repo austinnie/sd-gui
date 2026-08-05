@@ -56,35 +56,17 @@ from utils.imagemeta_cleaner import smart_clean_image
 from utils.exif_injector import inject_exif
 from utils.photo_realistic import make_photo_realistic
 
-# ========== ✅ 改用绝对导入，明确指定 config 位置 ==========
-# 确保 tools 目录在路径中，然后从 config 导入
-try:
-    from tools.config import SD_MODEL_PATH, STEPS, MAX_LIMIT, INPUT_IMAGE_NAME, DEFAULT_STRENGTH
-    from tools.config import (
-        REMOVE_AI_TRACES,
-        AI_CLEAR_METADATA,
-        AI_INJECT_EXIF,
-        AI_REALISTIC,
-        AI_CAMERA,
-        AI_STRENGTH,
-        AI_STYLE,
-        AI_RANDOMIZE,
-        AI_FINGERPRINT_OBFUSCATION,
-        AI_DISTORTION_STRENGTH,
-        AI_CHROMATIC_ABERRATION,
-        AI_CHROMATIC_STRENGTH,
-        AI_REALISTIC_NOISE,
-        AI_NOISE_ISO_BASE,
-        AI_NOISE_RANDOMIZE,
-        AI_MINOR_CROP,
-        AI_CROP_PERCENT,
-        AUTO_DETECT_STYLE,
-        SKETCH_KEYWORDS,
-    )
-except ImportError as e:
-    print(f"❌ 导入 config 失败: {e}")
-    print(f"   sys.path: {sys.path[:5]}")
-    sys.exit(1)
+# ========== ✅ 导入配置（合并后只有一个 config.py） ==========
+from tools.config import (
+    SD_MODEL_PATH, STEPS, MAX_LIMIT, INPUT_IMAGE_NAME, DEFAULT_STRENGTH,
+    REMOVE_AI_TRACES, AI_CLEAR_METADATA, AI_INJECT_EXIF, AI_REALISTIC,
+    AI_CAMERA, AI_STRENGTH, AI_STYLE, AI_RANDOMIZE,
+    AI_FINGERPRINT_OBFUSCATION, AI_DISTORTION_STRENGTH,
+    AI_CHROMATIC_ABERRATION, AI_CHROMATIC_STRENGTH,
+    AI_REALISTIC_NOISE, AI_NOISE_ISO_BASE, AI_NOISE_RANDOMIZE,
+    AI_MINOR_CROP, AI_CROP_PERCENT,
+    AUTO_DETECT_STYLE, SKETCH_KEYWORDS
+)
 
 print(f"📊 STEPS = {STEPS}")
 print(f"📷 AI_CAMERA = {AI_CAMERA}")
@@ -100,7 +82,6 @@ SAFE_MODE_STRATEGY = "filter"  # 可选: "simple" 或 "filter"
 
 # 是否启用去水印
 REMOVE_WATERMARK = True
-
 
 # ==================== ⚙️ 内容文本开关 ====================
 # 是否启用 content_texts 字段（将文本内容添加到提示词中）
@@ -697,8 +678,6 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
     
  
     
-# ==================== 🚀 主入口 ====================
-
 # ==================== 🚀 主入口 ====================
 
 def parse_arguments(args):
