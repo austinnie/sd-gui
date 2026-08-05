@@ -8,42 +8,51 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 if CURRENT_DIR not in sys.path:
     sys.path.insert(0, CURRENT_DIR)
 
-# ==================== 模型配置 ====================
+# ==================== 基础路径 ====================
 PROJECT_ROOT = os.path.dirname(os.path.dirname(CURRENT_DIR))
 
-# 模型路径配置
-SD_MODEL_PATH_0 = os.path.join(PROJECT_ROOT, "models/sd-v1-5/aiiiiii01_v10.safetensors")
-SD_MODEL_PATH_1 = os.path.join(PROJECT_ROOT, "models/sd-v1-5/anytimeRealistic_v10.safetensors")
-SD_MODEL_PATH_2 = os.path.join(PROJECT_ROOT, "models/sd-v1-5/henmixreal_v10_henmixrealV10.safetensors")
-SD_MODEL_PATH_3 = os.path.join(PROJECT_ROOT, "models/sd-v1-5/sd-v1-5-tiny.safetensors")
 
-# ✅ 新增 OpenVINO 模型路径
-SD_OV_MODEL_PATH = os.path.join(PROJECT_ROOT, "models/sd-v1-5/official")
+# ==================== 🔵 模型选择主开关 ====================
+# 核心开关：True=使用 OpenVINO 模型，False=使用普通模型
+USE_OPENVINO_MODEL = False  
+ACTIVE_MODEL = 1
 
 
-# 选择使用的模型
-USE_OPENVINO_MODEL = True  # True=使用 OpenVINO 模型，False=使用普通模型
-#ACTIVE_MODEL = 0
+# ==================== 🔴 终极物理隔离：决定最终路径 ====================
+# ==================== 🔴 终极物理隔离：决定最终路径 ====================
+if USE_OPENVINO_MODEL:
+    # 【分支 A：仅当开启 OpenVINO 时】
+    SD_OV_MODEL_PATH = os.path.join(PROJECT_ROOT, "models/sd-v1-5/official")
+    SD_MODEL_PATH = SD_OV_MODEL_PATH
+    
+else:
+    # 【分支 B：普通模型（无论你怎么改，这里的 0~3 必须在 else 内部定义）】
+    SD_MODEL_PATH_0 = os.path.join(PROJECT_ROOT, "models/sd-v1-5/aiiiiii01_v10.safetensors")
+    SD_MODEL_PATH_1 = os.path.join(PROJECT_ROOT, "models/sd-v1-5/anytimeRealistic_v10.safetensors")
+    SD_MODEL_PATH_2 = os.path.join(PROJECT_ROOT, "models/sd-v1-5/henmixreal_v10_henmixrealV10.safetensors")
+    SD_MODEL_PATH_3 = os.path.join(PROJECT_ROOT, "models/sd-v1-5/sd-v1-5-tiny.safetensors")
 
+    if ACTIVE_MODEL == 0:
+        SD_MODEL_PATH = SD_MODEL_PATH_0
+    elif ACTIVE_MODEL == 1:
+        SD_MODEL_PATH = SD_MODEL_PATH_1
+    elif ACTIVE_MODEL == 2:
+        SD_MODEL_PATH = SD_MODEL_PATH_2
+    elif ACTIVE_MODEL == 3:
+        SD_MODEL_PATH = SD_MODEL_PATH_3
+    else:
+        SD_MODEL_PATH = SD_MODEL_PATH_0
+# ==================================================================
+
+
+# ==================== ⚙️ 生成与图像处理参数 ====================
 STEPS = 25
 MAX_LIMIT = 576
 INPUT_IMAGE_NAME = "input"
 DEFAULT_STRENGTH = 0.35
 
-if USE_OPENVINO_MODEL:
-    SD_MODEL_PATH = SD_OV_MODEL_PATH
-elif ACTIVE_MODEL == 0:
-    SD_MODEL_PATH = SD_MODEL_PATH_0
-elif ACTIVE_MODEL == 1:
-    SD_MODEL_PATH = SD_MODEL_PATH_1
-elif ACTIVE_MODEL == 2:
-    SD_MODEL_PATH = SD_MODEL_PATH_2
-elif ACTIVE_MODEL == 3:
-    SD_MODEL_PATH = SD_MODEL_PATH_3
-else:
-    SD_MODEL_PATH = SD_MODEL_PATH_0
 
-# ==================== 消除AI痕迹配置 ====================
+# ==================== 📷 消除AI痕迹配置 ====================
 # 总开关
 REMOVE_AI_TRACES = True
 

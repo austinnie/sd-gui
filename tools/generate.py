@@ -56,7 +56,8 @@ from utils.imagemeta_cleaner import smart_clean_image
 from utils.exif_injector import inject_exif
 from utils.photo_realistic import make_photo_realistic
 
-# ========== ✅ 导入配置（合并后只有一个 config.py） ==========
+
+# ========== ✅ 导入配置 ==========
 from tools.config import (
     SD_MODEL_PATH, STEPS, MAX_LIMIT, INPUT_IMAGE_NAME, DEFAULT_STRENGTH,
     REMOVE_AI_TRACES, AI_CLEAR_METADATA, AI_INJECT_EXIF, AI_REALISTIC,
@@ -65,7 +66,10 @@ from tools.config import (
     AI_CHROMATIC_ABERRATION, AI_CHROMATIC_STRENGTH,
     AI_REALISTIC_NOISE, AI_NOISE_ISO_BASE, AI_NOISE_RANDOMIZE,
     AI_MINOR_CROP, AI_CROP_PERCENT,
-    AUTO_DETECT_STYLE, SKETCH_KEYWORDS
+    AUTO_DETECT_STYLE, SKETCH_KEYWORDS,
+    # ========== 🆕 导入互斥开关（去掉 0~3 死路径导入） ==========
+    USE_OPENVINO_MODEL, ACTIVE_MODEL
+    # 🛑 注意：不要在这里导入 SD_OV_MODEL_PATH, SD_MODEL_PATH_0/1/2/3
 )
 
 print(f"📊 STEPS = {STEPS}")
@@ -208,57 +212,94 @@ def remove_watermark(image_path):
     print("✅ 水印去除完成！")
     return Image.fromarray(cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
 
-# tools/generate.py - setup_pipeline() 函数
-
+# ==================== 🚀 核心：加载模型管道 ====================
 def setup_pipeline():
     print(f"\n[系统] 正在加载 AI 模型...")
-    model_path = SD_MODEL_PATH
-    
-    try:
-        from optimum.intel import OVStableDiffusionPipeline
-        print("⚡ 使用 OpenVINO 加速...")
+
+    # ========== 🆕 明确双系统互斥的最终模型路径选择 ==========
+    if USE_OPENVINO_MODEL:
+        # 【开】OpenVINO 分支
+        try:
+            from tools.config import SD_OV_MODEL_PATH
+            model_path = SD_OV_MODEL_PATH
+        except ImportError:
+            print("❌ 错误：试图使用 OpenVINO，但 config.py 中没有定义 SD_OV_MODEL_PATH。")
+            sys.exit(1)
+
+        print(f"⚡ [配置] 使用 OpenVINO 加速模式")
+        print(f"   📂 模型路径: {model_path}")
         
-        # ✅ 检查是否是 OpenVINO 模型目录（包含 .xml 文件）
-        import os
-        if os.path.isdir(model_path) and any(f.endswith('.xml') for f in os.listdir(model_path)):
-            # 加载 OpenVINO 模型目录
+        try:
+            from optimum.intel import OVStableDiffusionPipeline
+            print("⚡ 尝试加载 OpenVINO 接口...")
+            
+            if not (os.path.isdir(model_path) and any(f.endswith('.xml') for f in os.listdir(model_path))):
+                raise FileNotFoundError(f"指定路径不是有效的 OpenVINO 模型目录: {model_path}")
+                
             pipe = OVStableDiffusionPipeline.from_pretrained(model_path)
-            print("✅ OpenVINO 模型加载成功")
-        else:
-            # 不是 OpenVINO 格式，回退到普通模式
-            print("   ⚠️ 模型不是 OpenVINO 格式，回退到普通模式...")
-            raise Exception("Not an OpenVINO model")
+            print("✅ OpenVINO 模型加载成功！")
+            
+        except Exception as e:
+            print(f"❌ OpenVINO 加载失败: {e}")
+            sys.exit(1)
+
+    else:
+        # 【关】普通模型分支
+        # 👑 核心修改：动态去 config.py 里面拿对应的 0~3 路径，只在进入这个分支时才触发
+        try:
+            from tools.config import SD_MODEL_PATH_0, SD_MODEL_PATH_1, SD_MODEL_PATH_2, SD_MODEL_PATH_3
+            model_paths = [SD_MODEL_PATH_0, SD_MODEL_PATH_1, SD_MODEL_PATH_2, SD_MODEL_PATH_3]
+            
+            if 0 <= ACTIVE_MODEL < len(model_paths):
+                model_path = model_paths[ACTIVE_MODEL]
+            else:
+                print(f"⚠️ [警告] ACTIVE_MODEL = {ACTIVE_MODEL} 超出范围，默认使用 SD_MODEL_PATH_0")
+                model_path = SD_MODEL_PATH_0
+        except ImportError:
+            # 既然进入了 else 分支，说明在 config.py 里 USE_OPENVINO_MODEL=False，
+            # 但即便这样，如果出现异常，也是以防万一的兜底。
+            print("❌ 错误：普通模型分支无法加载路径。请检查 config.py 的 else 分支。")
+            sys.exit(1)
+            
+        print(f"⚡ [配置] 使用普通模型模式 (ACTIVE_MODEL = {ACTIVE_MODEL})")
+        print(f"   📂 模型路径: {model_path}")
         
-    except Exception as e:
-        print(f"⚠️ OpenVINO 加载失败: {e}")
-        print(f"   回退到普通模式...")
-        
-        # 普通模式加载
         if os.path.isdir(model_path):
-            # 如果是目录，找 .safetensors 文件
             import glob
             safetensors_files = glob.glob(os.path.join(model_path, "*.safetensors"))
             if safetensors_files:
                 model_path = safetensors_files[0]
+                print(f"   🔍 自动定位到目录内的模型文件: {os.path.basename(model_path)}")
             else:
-                print("❌ 找不到可用的模型文件")
-                raise
-        
-        pipe = StableDiffusionPipeline.from_single_file(
-            model_path,
-            torch_dtype=torch.float32,
-            safety_checker=None,
-            requires_safety_checker=False,
-            use_safetensors=True
-        )
-        pipe.to("cpu")
+                print(f"❌ 错误：在目录 {model_path} 中找不到任何 .safetensors 文件。")
+                sys.exit(1)
+                
+        try:
+            pipe = StableDiffusionPipeline.from_single_file(
+                model_path,
+                torch_dtype=torch.float32,
+                safety_checker=None,
+                requires_safety_checker=False,
+                use_safetensors=True
+            )
+            pipe.to("cpu")
+            print("✅ 普通模型加载成功！")
+            
+        except Exception as e:
+            print(f"❌ 普通模型加载失败: {e}")
+            sys.exit(1)
     
-    pipe.enable_vae_slicing()
-    pipe.enable_attention_slicing()
-    pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
-    print("[系统] 模型加载完成！")
+    # 公共配置
+    try:
+        pipe.enable_vae_slicing()
+        pipe.enable_attention_slicing()
+        pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
+    except Exception as e:
+        print(f"⚠️ 注意：模型后处理优化失败，但不影响主功能。错误: {e}")
+        
+    print("[系统] 模型管道已就绪！")
     return pipe
-
+    
 def build_prompt(config):
     """
     分层构建提示词
