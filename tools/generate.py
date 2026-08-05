@@ -529,187 +529,172 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
                 )
                 print(f"   ✅ 元数据已清除 -> JPG")
 
-            # ========== 🆕 素描风格：跳过相机相关处理 ==========
-            if is_sketch:
-                print(f"   🎨 素描风格，跳过: 照片真实化 / EXIF注入 / 紫边模拟 / 真实噪点")
-                # 跳过所有相机相关处理
-                pass
-            else:
-                    
-                # 2️⃣ 照片真实化（添加噪点、暗角、锐化）
-                if AI_REALISTIC:
-                    
-                    final_path = make_photo_realistic(
+            # 2️⃣ 照片真实化（添加噪点、暗角、锐化）- 由 photo_realistic 单独处理
+            if AI_REALISTIC:
+                
+                final_path = make_photo_realistic(
+                    final_path,
+                    final_path,  # 覆盖原文件
+                    camera=AI_CAMERA,
+                    style="portrait",
+                    inject_exif_data=False,  # 这里不注入EXIF，交给后面单独做
+                    randomize=True,
+                    strength=AI_STRENGTH
+                )
+                print(f"   ✅ 照片真实化完成 (强度: {AI_STRENGTH})")
+            
+            # 3️⃣ 注入 EXIF（如果开启了，且之前没有注入）
+            if AI_INJECT_EXIF:
+                time.sleep(0.5) # 等待 0.5 秒避免文件锁
+                try:
+                    final_path = inject_exif(
                         final_path,
-                        final_path,  # 覆盖原文件
+                        final_path,
                         camera=AI_CAMERA,
                         style="portrait",
-                        inject_exif_data=AI_INJECT_EXIF,  # 同时注入EXIF
-                        randomize=True,
-                        strength=AI_STRENGTH
+                        randomize=True
                     )
-                    print(f"   ✅ 照片真实化完成 (强度: {AI_STRENGTH})")
-                
-                # 3️⃣ 如果只注入EXIF（不开启照片真实化）
-                elif AI_INJECT_EXIF and not AI_REALISTIC:
-                    # ⏳ 强制等待 0.5 秒，确保前一步的 opencv/PIL 文件句柄彻底释放
+                    print(f"   ✅ EXIF 已注入")
+                except Exception as e:
+                    print(f"   ⚠️ EXIF 注入过程抛异常，已跳过: {e}")
+
+            # ====== 下面是完全独立的 3 个图像处理滤镜 ======
+            # 它们不再被捆绑在“指纹混淆”下，各自独立运作
+
+            # 4️⃣ 紫边模拟（独立）
+            if AI_CHROMATIC_ABERRATION:
+                try:
+                    print(f"   🔬 模拟紫边...")
+                    from PIL import Image
+                    import numpy as np
                     
-                    time.sleep(0.5)
+                    img = Image.open(final_path)
+                    # 转为numpy数组处理
+                    arr = np.array(img).astype(np.float32)
+                    h, w = arr.shape[:2]
+                    strength = AI_CHROMATIC_STRENGTH
                     
-                    # 使用 try 包裹，防止底层 shutil 依然引发 WinError
-                    try:
-                        final_path = inject_exif(
-                            final_path,
-                            final_path,
-                            camera=AI_CAMERA,
-                            style="portrait",
-                            randomize=True
-                        )
-                        print(f"   ✅ EXIF 已注入")
-                    except Exception as e:
-                        print(f"   ⚠️ EXIF 注入过程抛异常，已跳过: {e}")
+                    # 在图像边缘添加红/蓝通道偏移（紫边特征）
+                    for y in range(h):
+                        for x in range(w):
+                            # 计算距离边缘的距离
+                            dist_from_edge = min(x, w-1-x, y, h-1-y)
+                            if dist_from_edge < 40:
+                                # 越靠近边缘，紫边越明显
+                                shift_factor = (40 - dist_from_edge) / 40
+                                shift = shift_factor * strength * random.uniform(0.5, 1.0)
+                                # 红色通道偏移（紫色倾向）
+                                arr[y, x, 0] += random.uniform(-shift, shift * 0.5)  # R
+                                arr[y, x, 2] += random.uniform(-shift * 0.5, shift)  # B
+                    
+                    # 裁剪到有效范围
+                    arr = np.clip(arr, 0, 255).astype(np.uint8)
+                    
+                    # 确保维度是 HWC 且转为 RGB 标准格式
+                    if arr.ndim == 3 and arr.shape[2] == 3:
+                        img = Image.fromarray(arr).convert('RGB')
+                    else:
+                        img = Image.fromarray(arr[:, :, :3]).convert('RGB')
+                    
+                    img.save(final_path, quality=92)
+                    print(f"      ✅ 紫边模拟完成 (强度: {strength})")
+                    
+                except Exception as e:
+                    print(f"   ⚠️ 紫边模拟失败: {e}")
 
-                # ========== 🆕 图像指纹混淆 ==========
-                if AI_FINGERPRINT_OBFUSCATION:
-                    try:
-                        print(f"   🔍 图像指纹混淆...")
-                        from PIL import Image
-                        import random
-                        import numpy as np
-                        
-                        img = Image.open(final_path)
-                        w, h = img.size
-                        
-                        # 1️⃣ 微小透视扭曲（破坏AI像素规律）
-                        strength = AI_DISTORTION_STRENGTH
-                        coeffs = [
-                            1 + random.uniform(-strength, strength),
-                            random.uniform(-strength * 0.5, strength * 0.5),
-                            random.uniform(-2, 2),
-                            random.uniform(-strength * 0.5, strength * 0.5),
-                            1 + random.uniform(-strength, strength),
-                            random.uniform(-2, 2),
-                        ]
-                        img = img.transform((w, h), Image.AFFINE, coeffs, Image.Resampling.BILINEAR)
-                        print(f"      ✅ 微小扭曲完成")
-                        
-                        # ========== 🆕 2️⃣ 紫边模拟（真实镜头特征） ==========
-                        if AI_CHROMATIC_ABERRATION:
-                            # 转为numpy数组处理
-                            arr = np.array(img).astype(np.float32)
-                            h, w = arr.shape[:2]
-                            strength = AI_CHROMATIC_STRENGTH
-                            
-                            # 在图像边缘添加红/蓝通道偏移（紫边特征）
-                            for y in range(h):
-                                for x in range(w):
-                                    # 计算距离边缘的距离
-                                    dist_from_edge = min(x, w-1-x, y, h-1-y)
-                                    if dist_from_edge < 40:
-                                        # 越靠近边缘，紫边越明显
-                                        shift_factor = (40 - dist_from_edge) / 40
-                                        shift = shift_factor * strength * random.uniform(0.5, 1.0)
-                                        # 红色通道偏移（紫色倾向）
-                                        arr[y, x, 0] += random.uniform(-shift, shift * 0.5)  # R
-                                        arr[y, x, 2] += random.uniform(-shift * 0.5, shift)  # B
-                            
-                            # 裁剪到有效范围
-                            arr = np.clip(arr, 0, 255).astype(np.uint8)
-                            
-                            # 🛡️ 修复：确保维度是 HWC 且转为 RGB 标准格式，防止 OpenCV 读取到 CV_64F
-                            if arr.ndim == 3 and arr.shape[2] == 3:
-                                img = Image.fromarray(arr).convert('RGB')
-                            else:
-                                # 兜底，如果是 RGBA，扔掉透明通道
-                                img = Image.fromarray(arr[:, :, :3]).convert('RGB')
-                            print(f"      ✅ 紫边模拟完成 (强度: {strength})")
-                        # ===================================================
+            # 5️⃣ 真实噪点（独立，不会因为紫边失败而受影响）
+            if AI_REALISTIC_NOISE:
+                try:
+                    print(f"   📸 添加真实噪点...")
+                    import cv2
+                    import numpy as np
+                    from PIL import Image
+                    
+                    # 确定ISO值
+                    if AI_NOISE_RANDOMIZE:
+                        iso = AI_NOISE_ISO_BASE + random.randint(-200, 200)
+                        iso = max(100, min(1600, iso))
+                    else:
+                        iso = AI_NOISE_ISO_BASE
+                    
+                    img = Image.open(final_path)
+                    # 强制转换为 uint8，绝对防止 OpenCV 报错
+                    img_np = np.array(img).astype(np.uint8)
+                    # 如果是 4 通道（RGBA），扔掉透明通道
+                    if img_np.ndim == 3 and img_np.shape[2] == 4:
+                        img_np = img_np[:, :, :3]
+                    
+                    # 转换为OpenCV格式
+                    img_cv = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
+                    
+                    # 基于ISO的噪声强度
+                    noise_std = 0.005 * (iso / 100) ** 0.5
+                    
+                    # 高斯噪声（模拟传感器热噪声）
+                    gaussian_noise = np.random.normal(0, noise_std * 255, img_cv.shape)
+                    
+                    # 散粒噪声（泊松分布模拟，光子噪声）
+                    shot_noise = np.random.poisson(np.abs(img_cv) * 0.005) * 0.1
+                    
+                    # 合并噪声
+                    img_cv = img_cv + gaussian_noise + shot_noise
+                    
+                    # 暗部噪点增强
+                    gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
+                    dark_mask = gray < 80
+                    if np.any(dark_mask):
+                        dark_noise = np.random.normal(0, noise_std * 255 * 0.5, img_cv.shape)
+                        img_cv[dark_mask] = img_cv[dark_mask] + dark_noise[dark_mask]
+                    
+                    # 裁剪到有效范围
+                    img_cv = np.clip(img_cv, 0, 255).astype(np.uint8)
+                    img = Image.fromarray(cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB))
+                    img.save(final_path, quality=92)
+                    print(f"      ✅ 真实噪点添加完成 (ISO: {iso})")
+                    
+                except Exception as e:
+                    print(f"   ⚠️ 真实噪点添加失败: {e}")
 
-                        # ========== 🆕 3️⃣ 真实噪点 ==========
-                        if AI_REALISTIC_NOISE:
-                            import cv2
-                            import numpy as np
-                            
-                            # 确定ISO值
-                            if AI_NOISE_RANDOMIZE:
-                                # 在基准值附近随机变化 ±200
-                                iso = AI_NOISE_ISO_BASE + random.randint(-200, 200)
-                                iso = max(100, min(1600, iso))  # 限制范围
-                            else:
-                                iso = AI_NOISE_ISO_BASE
-                            
-                            # 🛡️ 终极修复：强制转换为 uint8 类型，阻止 OpenCV 误判为 CV_64F
-                            img_cv = cv2.cvtColor(np.array(img).astype(np.uint8), cv2.COLOR_RGB2BGR)
-                            
-                            # 基于ISO的噪声强度
-                            noise_std = 0.005 * (iso / 100) ** 0.5
-                            
-                            # 高斯噪声（模拟传感器热噪声）
-                            gaussian_noise = np.random.normal(0, noise_std * 255, img_cv.shape)
-                            
-                            # 散粒噪声（泊松分布模拟，光子噪声）
-                            shot_noise = np.random.poisson(np.abs(img_cv) * 0.005) * 0.1
-                            
-                            # 合并噪声
-                            img_cv = img_cv + gaussian_noise + shot_noise
-                            
-                            # 暗部噪点增强（真实相机特征：暗部噪点更明显）
-                            gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
-                            dark_mask = gray < 80
-                            if np.any(dark_mask):
-                                dark_noise = np.random.normal(0, noise_std * 255 * 0.5, img_cv.shape)
-                                img_cv[dark_mask] = img_cv[dark_mask] + dark_noise[dark_mask]
-                            
-                            # 裁剪到有效范围
-                            img_cv = np.clip(img_cv, 0, 255).astype(np.uint8)
-                            img = Image.fromarray(cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB))
-                            print(f"      ✅ 真实噪点添加完成 (ISO: {iso})")
-                        # ================================================
-
-                        # ========== 🆕 4️⃣ 轻微裁剪 ==========
-                        if AI_MINOR_CROP:
-                            import random
-                            
-                            crop_pct = AI_CROP_PERCENT * random.uniform(0.5, 1.5)
-                            crop_w = int(w * crop_pct)
-                            crop_h = int(h * crop_pct)
-                            
-                            # 确保裁剪量合理
-                            crop_w = max(5, min(crop_w, int(w * 0.05)))
-                            crop_h = max(5, min(crop_h, int(h * 0.05)))
-                            
-                            # 随机选择裁剪位置（从左上、右上、左下、右下中选）
-                            corners = [
-                                (0, 0),                      # 左上
-                                (0, crop_h),                 # 左下
-                                (crop_w, 0),                 # 右上
-                                (crop_w, crop_h),            # 右下
-                            ]
-                            # 也可以使用随机位置
-                            if random.random() < 0.5:
-                                left = random.randint(0, crop_w)
-                                top = random.randint(0, crop_h)
-                            else:
-                                left, top = random.choice(corners)
-                            
-                            right = w - random.randint(0, crop_w)
-                            bottom = h - random.randint(0, crop_h)
-                            
-                            # 确保裁剪区域有效
-                            if right > left + 50 and bottom > top + 50:
-                                img = img.crop((left, top, right, bottom))
-                                # 重新缩放回原尺寸（保持一致性）
-                                img = img.resize((w, h), Image.Resampling.LANCZOS)
-                                print(f"      ✅ 轻微裁剪完成 (裁切: {crop_pct*100:.1f}%, 位置: {left},{top})")
-                            else:
-                                print(f"      ⚠️ 裁剪跳过 (区域无效)")
-                        # ================================================
-        
+            # 6️⃣ 轻微裁剪（独立）
+            if AI_MINOR_CROP:
+                try:
+                    print(f"   ✂️ 轻微裁剪...")
+                    from PIL import Image
+                    import random
+                    
+                    img = Image.open(final_path)
+                    w, h = img.size
+                    
+                    crop_pct = AI_CROP_PERCENT * random.uniform(0.5, 1.5)
+                    crop_w = int(w * crop_pct)
+                    crop_h = int(h * crop_pct)
+                    
+                    crop_w = max(5, min(crop_w, int(w * 0.05)))
+                    crop_h = max(5, min(crop_h, int(h * 0.05)))
+                    
+                    # 随机选择裁剪位置
+                    corners = [
+                        (0, 0), (0, crop_h), (crop_w, 0), (crop_w, crop_h),
+                    ]
+                    if random.random() < 0.5:
+                        left = random.randint(0, crop_w)
+                        top = random.randint(0, crop_h)
+                    else:
+                        left, top = random.choice(corners)
+                    
+                    right = w - random.randint(0, crop_w)
+                    bottom = h - random.randint(0, crop_h)
+                    
+                    if right > left + 50 and bottom > top + 50:
+                        img = img.crop((left, top, right, bottom))
+                        img = img.resize((w, h), Image.Resampling.LANCZOS)
                         img.save(final_path, quality=92)
-                        print(f"   ✅ 指纹混淆完成")
+                        print(f"      ✅ 轻微裁剪完成 (裁切: {crop_pct*100:.1f}%, 位置: {left},{top})")
+                    else:
+                        print(f"      ⚠️ 裁剪跳过 (区域无效)")
                         
-                    except Exception as e:
-                        print(f"   ⚠️ 指纹混淆失败: {e}")
+                except Exception as e:
+                    print(f"   ⚠️ 轻微裁剪失败: {e}")
             
             # 如果最终路径改变了，更新文件名
             if final_path != output_filename:
@@ -723,7 +708,7 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
 
                 
         except Exception as e:
-            print(f"   ⚠️ 消除AI痕迹失败: {e}")
+            print(f"   ⚠️ 消除AI痕迹整体流程失败: {e}")
     # ================================================
     
 
