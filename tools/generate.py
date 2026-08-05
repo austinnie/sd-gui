@@ -69,9 +69,8 @@ from tools.config import (
     AI_MINOR_CROP, AI_CROP_PERCENT,
     AUTO_DETECT_STYLE, SKETCH_KEYWORDS,
     # ========== 🆕 导入互斥开关（去掉 0~3 死路径导入） ==========
-    USE_OPENVINO_MODEL, ACTIVE_MODEL,
-    # 🛑 注意：不要在这里导入 SD_OV_MODEL_PATH, SD_MODEL_PATH_0/1/2/3
-    EXIFTOOL_PATH
+    USE_OPENVINO_MODEL, ACTIVE_MODEL
+    # 🛑 注意：不要在这里导入 SD_OV_MODEL_PATH, SD_MODEL_PATH_0/1/2/3 
 )
 
 print(f"📊 STEPS = {STEPS}")
@@ -616,7 +615,13 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
                             
                             # 裁剪到有效范围
                             arr = np.clip(arr, 0, 255).astype(np.uint8)
-                            img = Image.fromarray(arr)
+                            
+                            # 🛡️ 修复：确保维度是 HWC 且转为 RGB 标准格式，防止 OpenCV 读取到 CV_64F
+                            if arr.ndim == 3 and arr.shape[2] == 3:
+                                img = Image.fromarray(arr).convert('RGB')
+                            else:
+                                # 兜底，如果是 RGBA，扔掉透明通道
+                                img = Image.fromarray(arr[:, :, :3]).convert('RGB')
                             print(f"      ✅ 紫边模拟完成 (强度: {strength})")
                         # ===================================================
 
@@ -633,8 +638,8 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
                             else:
                                 iso = AI_NOISE_ISO_BASE
                             
-                            # 转换为OpenCV格式
-                            img_cv = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+                            # 🛡️ 终极修复：强制转换为 uint8 类型，阻止 OpenCV 误判为 CV_64F
+                            img_cv = cv2.cvtColor(np.array(img).astype(np.uint8), cv2.COLOR_RGB2BGR)
                             
                             # 基于ISO的噪声强度
                             noise_std = 0.005 * (iso / 100) ** 0.5

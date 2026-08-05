@@ -221,31 +221,45 @@ def inject_exif(
     exif_params["Artist"] = custom_params.get("Artist", "Photographer") if custom_params else "Photographer"
     exif_params["Copyright"] = custom_params.get("Copyright", "") if custom_params else ""
     
-    # 构建 ExifTool 命令
-    # 🛡️ 核心修复：使用绝对路径调用，并将输入路径用双引号包裹防止路径带空格被解析错误
-    cmd = f'"exiftool" -overwrite_original'
+    # ==================== 🔥 绝杀修复 ====================
+    # 不用 "exiftool"，而是找到这个程序在本地的真实路径！绕过CMD通配符解析！
+    import shutil
+    import os
+    
+    # 在系统 PATH 中查找 exiftool.exe 的绝对物理路径
+    exiftool_executable = shutil.which("exiftool")
+    
+    # 如果死活找不到，直接跳过注入
+    if exiftool_executable is None:
+        logger.info(f"⚠️ 系统 PATH 中找不到 exiftool，跳过 EXIF 注入")
+        return output_path if output_path else input_path
+        
+    # 严格标准化路径，防止歧义
+    normalized_input = os.path.normpath(input_path)
+    
+    # 构建最终命令（使用找到的绝对路径调用）
+    cmd = f'"{exiftool_executable}" -overwrite_original'
     
     for key, value in exif_params.items():
         if value:
             cmd += f' -{key}="{value}"'
-    
-    cmd += f' "{input_path}"'
+    cmd += f' "{normalized_input}"'
+    # ====================================================
     
     # 执行命令
     try:
-        # 🛡️ 核心修复：直接执行 EXIF 注入，不再进行多余的 exiftool -ver 检测
-        # 因为 exiftool 已经在系统的 PATH 环境变量中，直接调用即可。
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
+        # 直接运行命令，不给任何 shell 介入的机会
+        result = subprocess.run(cmd, shell=False, capture_output=True, text=True, timeout=30)
         
         if result.returncode != 0:
             logger.info(f"⚠️ EXIF 注入失败: {result.stderr}")
-            import shutil
-            shutil.copy2(input_path, output_path)
+            # 即使失败也把图复制过去，确保不丢文件
+            if output_path != input_path:
+                shutil.copy2(input_path, output_path)
             return output_path
         
         # 如果输出路径不同，重命名
         if output_path != input_path:
-            import shutil
             shutil.move(input_path, output_path)
         
         logger.info(f"✅ EXIF 已注入: {output_path}")
@@ -257,13 +271,13 @@ def inject_exif(
         
     except subprocess.TimeoutExpired:
         logger.info(f"⚠️ ExifTool 超时")
-        import shutil
-        shutil.copy2(input_path, output_path)
+        if output_path != input_path:
+            shutil.copy2(input_path, output_path)
         return output_path
     except Exception as e:
         logger.info(f"⚠️ EXIF 注入异常: {e}")
-        import shutil
-        shutil.copy2(input_path, output_path)
+        if output_path != input_path:
+            shutil.copy2(input_path, output_path)
         return output_path
 
 
