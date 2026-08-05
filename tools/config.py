@@ -17,13 +17,22 @@ SD_MODEL_PATH_1 = os.path.join(PROJECT_ROOT, "models/sd-v1-5/anytimeRealistic_v1
 SD_MODEL_PATH_2 = os.path.join(PROJECT_ROOT, "models/sd-v1-5/henmixreal_v10_henmixrealV10.safetensors")
 SD_MODEL_PATH_3 = os.path.join(PROJECT_ROOT, "models/sd-v1-5/sd-v1-5-tiny.safetensors")
 
-ACTIVE_MODEL = 0
+# ✅ 新增 OpenVINO 模型路径
+SD_OV_MODEL_PATH = os.path.join(PROJECT_ROOT, "models/sd-v1-5/official")
+
+
+# 选择使用的模型
+USE_OPENVINO_MODEL = True  # True=使用 OpenVINO 模型，False=使用普通模型
+#ACTIVE_MODEL = 0
+
 STEPS = 25
 MAX_LIMIT = 576
 INPUT_IMAGE_NAME = "input"
 DEFAULT_STRENGTH = 0.35
 
-if ACTIVE_MODEL == 0:
+if USE_OPENVINO_MODEL:
+    SD_MODEL_PATH = SD_OV_MODEL_PATH
+elif ACTIVE_MODEL == 0:
     SD_MODEL_PATH = SD_MODEL_PATH_0
 elif ACTIVE_MODEL == 1:
     SD_MODEL_PATH = SD_MODEL_PATH_1

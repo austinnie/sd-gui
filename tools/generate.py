@@ -208,6 +208,8 @@ def remove_watermark(image_path):
     print("✅ 水印去除完成！")
     return Image.fromarray(cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
 
+# tools/generate.py - setup_pipeline() 函数
+
 def setup_pipeline():
     print(f"\n[系统] 正在加载 AI 模型...")
     model_path = SD_MODEL_PATH
@@ -215,14 +217,33 @@ def setup_pipeline():
     try:
         from optimum.intel import OVStableDiffusionPipeline
         print("⚡ 使用 OpenVINO 加速...")
-        pipe = OVStableDiffusionPipeline.from_pretrained(
-            model_path,
-            compile=False  # 先不编译，看看能不能加载
-        )
-        pipe.compile()  # 编译优化
+        
+        # ✅ 检查是否是 OpenVINO 模型目录（包含 .xml 文件）
+        import os
+        if os.path.isdir(model_path) and any(f.endswith('.xml') for f in os.listdir(model_path)):
+            # 加载 OpenVINO 模型目录
+            pipe = OVStableDiffusionPipeline.from_pretrained(model_path)
+            print("✅ OpenVINO 模型加载成功")
+        else:
+            # 不是 OpenVINO 格式，回退到普通模式
+            print("   ⚠️ 模型不是 OpenVINO 格式，回退到普通模式...")
+            raise Exception("Not an OpenVINO model")
+        
     except Exception as e:
         print(f"⚠️ OpenVINO 加载失败: {e}")
-        print("   回退到普通模式...")
+        print(f"   回退到普通模式...")
+        
+        # 普通模式加载
+        if os.path.isdir(model_path):
+            # 如果是目录，找 .safetensors 文件
+            import glob
+            safetensors_files = glob.glob(os.path.join(model_path, "*.safetensors"))
+            if safetensors_files:
+                model_path = safetensors_files[0]
+            else:
+                print("❌ 找不到可用的模型文件")
+                raise
+        
         pipe = StableDiffusionPipeline.from_single_file(
             model_path,
             torch_dtype=torch.float32,
@@ -234,6 +255,8 @@ def setup_pipeline():
     
     pipe.enable_vae_slicing()
     pipe.enable_attention_slicing()
+    pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
+    print("[系统] 模型加载完成！")
     return pipe
 
 def build_prompt(config):
