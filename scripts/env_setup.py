@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-通用人物生成器 - 全自动环境安装脚本
+环境安装脚本 - 为项目创建独立虚拟环境
 自动检测 CUDA（如果有显卡），否则自动安装 CPU 版
 """
 
@@ -36,50 +36,46 @@ MIRRORS = [
     "https://mirrors.aliyun.com/pypi/simple/",
 ]
 
-# ===== 核心依赖列表（使用 DWposeDetector，不需要 mediapipe） =====
+# ===== 依赖列表 =====
 REQUIRED_PACKAGES = [
-    # PyTorch (CPU 版本)
-    "torch==2.4.0",
-    "torchvision==0.19.0",
-    
-    # ===== 核心库 =====
-    "diffusers==0.26.0",
-    "transformers==4.40.0",
+    # 核心库
+    "diffusers==0.26.3",
+    "transformers==4.44.0",
     "huggingface-hub==0.24.0",
     "accelerate==1.14.0",
     "safetensors==0.8.0",
     "peft==0.10.0",
     
-    # ===== 图像处理与数据分析 =====
+    # 图像处理与数据分析
     "numpy==1.26.4",
     "pillow==11.2.1",
-    "opencv-python==4.9.0.80",
+    "opencv-python==4.10.0.84",
     "scipy==1.13.1",
     "scikit-image==0.24.0",
     
-    # ===== 工具 =====
+    # 工具
     "psutil==7.0.0",
     "packaging==25.0",
     "tqdm==4.67.1",
     "requests==2.32.5",
     "filelock==3.19.1",
     
-    # ===== 遮罩与背景去除 =====
+    # ControlNet 依赖
+    "controlnet_aux==0.0.10",
+    "protobuf==3.20.3",
+    
+    # 遮罩与背景去除
     "rembg==2.0.76",
     
-    # ===== CLIP 反推 =====
+    # CLIP 反推
     "open_clip_torch==3.3.0",
     
-    # ===== Janus-Pro 依赖 =====
+    # Janus-Pro 依赖
     "attrdict==2.0.1",
     "einops==0.8.2",
     "timm==1.0.27",
     "ftfy==6.3.1",
     "sentencepiece==0.2.1",
-    
-    # ===== ✅ ControlNet 依赖（使用 DWposeDetector，不依赖 mediapipe） =====
-    "controlnet_aux==0.0.10",
-    "protobuf==3.20.3",
 ]
 
 # ===== 验证模块列表 =====
@@ -106,51 +102,6 @@ VERIFY_MODULES = [
     ("sentencepiece", "sentencepiece.__version__"),
     ("controlnet_aux", "controlnet_aux.__version__"),
 ]
-
-# ===== 测试 DWposeDetector =====
-def test_dwpose_detector(venv_python):
-    """测试 DWposeDetector 是否可用"""
-    print_cyan("\n🔧 测试 DWposeDetector...")
-    
-    cmd = f'"{venv_python}" -c "from controlnet_aux import DWposeDetector; print(\'OK\')"'
-    success, output, _ = run_cmd(cmd, timeout=10)
-    
-    if success:
-        print_green("   ✅ DWposeDetector 可用（推荐使用）")
-        return True
-    else:
-        print_yellow("   ⚠️ DWposeDetector 不可用，将使用普通模式")
-        return False
-
-# ===== 测试所有检测器 =====
-def test_all_detectors(venv_python):
-    """测试所有 ControlNet 检测器"""
-    print_cyan("\n🔧 测试 ControlNet 检测器...")
-    
-    detectors = [
-        "CannyDetector",
-        "HEDdetector",
-        "MLSDdetector",
-        "MidasDetector",
-        "NormalBaeDetector",
-        "LineartDetector",
-        "PidiNetDetector",
-        "ZoeDetector",
-        "DWposeDetector",
-        "OpenposeDetector",
-        "MediapipeFaceDetector",
-    ]
-    
-    available = []
-    for det in detectors:
-        cmd = f'"{venv_python}" -c "from controlnet_aux import {det}; print(\'OK\')"'
-        success, _, _ = run_cmd(cmd, timeout=10)
-        if success:
-            available.append(det)
-            print(f"   ✅ {det}")
-    
-    print(f"\n   📊 可用检测器: {len(available)}/{len(detectors)}")
-    return available
 
 
 def run_cmd(cmd, capture=True, timeout=600, cwd=None):
@@ -232,7 +183,7 @@ def install_pytorch(venv_python):
     print()
     
     if has_cuda:
-        cmd = 'install torch==2.4.0 torchvision==0.19.0'
+        cmd = 'install torch==2.4.0 torchvision==0.19.0 --index-url https://download.pytorch.org/whl/cu118'
     else:
         cmd = f'install torch==2.4.0+cpu torchvision==0.19.0+cpu --index-url {PYTORCH_CPU}'
     
@@ -318,12 +269,59 @@ def verify_installation(venv_python):
     return all_ok
 
 
+# ===== 测试 DWposeDetector =====
+def test_dwpose_detector(venv_python):
+    """测试 DWposeDetector 是否可用"""
+    print_cyan("\n🔧 测试 DWposeDetector...")
+    
+    cmd = f'"{venv_python}" -c "from controlnet_aux import DWposeDetector; print(\'OK\')"'
+    success, output, _ = run_cmd(cmd, timeout=10)
+    
+    if success:
+        print_green("   ✅ DWposeDetector 可用（推荐使用）")
+        return True
+    else:
+        print_yellow("   ⚠️ DWposeDetector 不可用，将使用普通模式")
+        return False
+
+
+# ===== 测试所有检测器 =====
+def test_all_detectors(venv_python):
+    """测试所有 ControlNet 检测器"""
+    print_cyan("\n🔧 测试 ControlNet 检测器...")
+    
+    detectors = [
+        "CannyDetector",
+        "HEDdetector",
+        "MLSDdetector",
+        "MidasDetector",
+        "NormalBaeDetector",
+        "LineartDetector",
+        "PidiNetDetector",
+        "ZoeDetector",
+        "DWposeDetector",
+        "OpenposeDetector",
+        "MediapipeFaceDetector",
+    ]
+    
+    available = []
+    for det in detectors:
+        cmd = f'"{venv_python}" -c "from controlnet_aux import {det}; print(\'OK\')"'
+        success, _, _ = run_cmd(cmd, timeout=10)
+        if success:
+            available.append(det)
+            print(f"   ✅ {det}")
+    
+    print(f"\n   📊 可用检测器: {len(available)}/{len(detectors)}")
+    return available
+
+
 def generate_requirements(project_dir):
     """生成 requirements.txt"""
     req_path = project_dir / "requirements.txt"
     
     content = "# ============================================================\n"
-    content += "# 通用人物生成器 - 依赖清单 (完整版)\n"
+    content += "# 项目依赖清单\n"
     content += "# 生成时间: " + __import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M:%S') + "\n"
     content += "# ============================================================\n\n"
     
@@ -332,10 +330,9 @@ def generate_requirements(project_dir):
     content += "# 如果是 CPU 环境，请改为:\n"
     content += "# pip install torch==2.4.0+cpu torchvision==0.19.0+cpu --index-url https://download.pytorch.org/whl/cpu\n\n"
     
-    content += "# 核心依赖\n"
+    content += "# 所有依赖\n"
     for pkg in REQUIRED_PACKAGES:
-        if not pkg.startswith("torch"):
-            content += f"{pkg}\n"
+        content += f"{pkg}\n"
     
     req_path.write_text(content, encoding='utf-8')
     print_green(f"   ✅ requirements.txt 已生成: {req_path}")
@@ -343,12 +340,14 @@ def generate_requirements(project_dir):
 
 
 def main():
-    print_header("通用人物生成器 - 全自动环境安装")
-    print("  自动检测 CUDA，完美兼容 CPU 环境")
-    print("  ✅ 使用 DWposeDetector（不依赖 mediapipe）")
+    print_header("环境安装脚本")
+    print("  ✅ 独立虚拟环境")
+    print("  ✅ 自动检测 CUDA，完美兼容 CPU 环境")
+    print("  ✅ 包含 ControlNet (DWposeDetector)")
     print()
     
-    project_dir = Path(__file__).parent.parent.absolute()
+    # 项目目录：当前脚本所在目录
+    project_dir = Path(__file__).parent.absolute()
     venv_python = get_venv_python(project_dir)
     
     print(f"[1/6] 项目目录: {project_dir}")
@@ -400,10 +399,11 @@ def main():
     
     if all_ok and dwpose_ok:
         print_green("   🎉 环境安装成功！DWposeDetector 可用！")
-        print_cyan("   💡 推荐使用 DWposeDetector（比 OpenPose 更精准）")
+        print_cyan(f"   📊 可用检测器: {len(available)} 个")
+        print_cyan("   💡 独立虚拟环境已就绪")
     elif all_ok:
         print_yellow("   ⚠️ 基础环境安装成功，但 DWposeDetector 不可用")
-        print("   💡 将使用普通图生图模式")
+        print("   💡 将使用普通模式")
     else:
         print_yellow("   ⚠️ 部分包验证失败，请检查")
     
@@ -411,10 +411,7 @@ def main():
     print("   启动程序:")
     print(f"   cd {project_dir}")
     print("   venv\\Scripts\\activate")
-    print("   python main.py")
-    print()
-    print("   或者直接运行:")
-    print(f"   {venv_python} main.py")
+    print("   python tools/generate.py <风格名称>")
     print()
     print("=" * 60)
     print()

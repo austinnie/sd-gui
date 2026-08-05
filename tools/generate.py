@@ -38,11 +38,40 @@ from PIL import Image
 from datetime import datetime
 from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
 
-# 加载全局配置与提示词库
-from config import SD_MODEL_PATH, STEPS, MAX_LIMIT, INPUT_IMAGE_NAME
-from prompts_config import STYLE_PROMPTS
-
+# 确保 tools 目录在路径中
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+if CURRENT_DIR not in sys.path:
+    sys.path.insert(0, CURRENT_DIR)
+
+# ✅ 添加项目根目录到路径（让 utils 可以被导入）
+PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+# ✅ 验证路径
+print(f"📁 PROJECT_ROOT: {PROJECT_ROOT}")
+
+# ✅ 导入 utils
+from utils.imagemeta_cleaner import smart_clean_image
+from utils.exif_injector import inject_exif
+from utils.photo_realistic import make_photo_realistic
+
+# ========== ✅ 导入配置（合并后只有一个 config.py） ==========
+from tools.config import (
+    SD_MODEL_PATH, STEPS, MAX_LIMIT, INPUT_IMAGE_NAME, DEFAULT_STRENGTH,
+    REMOVE_AI_TRACES, AI_CLEAR_METADATA, AI_INJECT_EXIF, AI_REALISTIC,
+    AI_CAMERA, AI_STRENGTH, AI_STYLE, AI_RANDOMIZE,
+    AI_FINGERPRINT_OBFUSCATION, AI_DISTORTION_STRENGTH,
+    AI_CHROMATIC_ABERRATION, AI_CHROMATIC_STRENGTH,
+    AI_REALISTIC_NOISE, AI_NOISE_ISO_BASE, AI_NOISE_RANDOMIZE,
+    AI_MINOR_CROP, AI_CROP_PERCENT,
+    AUTO_DETECT_STYLE, SKETCH_KEYWORDS
+)
+
+print(f"📊 STEPS = {STEPS}")
+print(f"📷 AI_CAMERA = {AI_CAMERA}")
+
+from prompts_config import STYLE_PROMPTS
 
 # ==================== ⚙️ 安全开关 ====================
 SAFE_MODE = True  
@@ -53,7 +82,6 @@ SAFE_MODE_STRATEGY = "filter"  # 可选: "simple" 或 "filter"
 
 # 是否启用去水印
 REMOVE_WATERMARK = True
-
 
 # ==================== ⚙️ 内容文本开关 ====================
 # 是否启用 content_texts 字段（将文本内容添加到提示词中）
@@ -180,18 +208,51 @@ def remove_watermark(image_path):
     print("✅ 水印去除完成！")
     return Image.fromarray(cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
 
+# tools/generate.py - setup_pipeline() 函数
+
 def setup_pipeline():
     print(f"\n[系统] 正在加载 AI 模型...")
     model_path = SD_MODEL_PATH
-
-    pipe = StableDiffusionPipeline.from_single_file(
-        model_path,
-        torch_dtype=torch.float32,
-        safety_checker=None,
-        requires_safety_checker=False,
-        use_safetensors=True
-    )
-    pipe.to("cpu")
+    
+    try:
+        from optimum.intel import OVStableDiffusionPipeline
+        print("⚡ 使用 OpenVINO 加速...")
+        
+        # ✅ 检查是否是 OpenVINO 模型目录（包含 .xml 文件）
+        import os
+        if os.path.isdir(model_path) and any(f.endswith('.xml') for f in os.listdir(model_path)):
+            # 加载 OpenVINO 模型目录
+            pipe = OVStableDiffusionPipeline.from_pretrained(model_path)
+            print("✅ OpenVINO 模型加载成功")
+        else:
+            # 不是 OpenVINO 格式，回退到普通模式
+            print("   ⚠️ 模型不是 OpenVINO 格式，回退到普通模式...")
+            raise Exception("Not an OpenVINO model")
+        
+    except Exception as e:
+        print(f"⚠️ OpenVINO 加载失败: {e}")
+        print(f"   回退到普通模式...")
+        
+        # 普通模式加载
+        if os.path.isdir(model_path):
+            # 如果是目录，找 .safetensors 文件
+            import glob
+            safetensors_files = glob.glob(os.path.join(model_path, "*.safetensors"))
+            if safetensors_files:
+                model_path = safetensors_files[0]
+            else:
+                print("❌ 找不到可用的模型文件")
+                raise
+        
+        pipe = StableDiffusionPipeline.from_single_file(
+            model_path,
+            torch_dtype=torch.float32,
+            safety_checker=None,
+            requires_safety_checker=False,
+            use_safetensors=True
+        )
+        pipe.to("cpu")
+    
     pipe.enable_vae_slicing()
     pipe.enable_attention_slicing()
     pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
@@ -230,6 +291,7 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
     mode: "img2img" 或 "txt2img"
     steps: 当前生成使用的步数
     """
+    import random  # ✅ 添加这一行    
     max_limit = MAX_LIMIT
     
     if mode == "img2img":
@@ -393,9 +455,226 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
     # 保存图片
     result.images[0].save(output_filename, quality=95)
 
-    # ✨ ========== 新增：同步生成提示词记录文件 (.txt) ==========
+    # ========== 🆕 检测风格 ==========
+    prompt_lower = prompt.lower()
+    is_sketch = False
+    if AUTO_DETECT_STYLE:
+        is_sketch = any(kw in prompt_lower for kw in SKETCH_KEYWORDS)
+        # 也检查目标风格名称
+        if not is_sketch:
+            is_sketch = any(kw in target_style.lower() for kw in SKETCH_KEYWORDS)
+    
+    if is_sketch:
+        print(f"\n🎨 检测到素描/线稿风格，仅清除元数据，跳过相机相关处理")
+    # ================================
+    
+    # ========== 🆕 消除AI痕迹 - 后期处理 ==========
+    if REMOVE_AI_TRACES:
+        try:
+            print(f"\n📷 消除AI痕迹处理...")
+            final_path = output_filename
+            
+            # 1️⃣ 清除元数据（如果需要）
+            if AI_CLEAR_METADATA:
+
+                # 转换为JPG并清除元数据
+                jpg_path = output_filename.replace('.png', '.jpg')
+                final_path = smart_clean_image(
+                    final_path, 
+                    output_path=jpg_path,
+                    method='jpg',
+                    jpg_quality=92
+                )
+                print(f"   ✅ 元数据已清除 -> JPG")
+
+            # ========== 🆕 素描风格：跳过相机相关处理 ==========
+            if is_sketch:
+                print(f"   🎨 素描风格，跳过: 照片真实化 / EXIF注入 / 紫边模拟 / 真实噪点")
+                # 跳过所有相机相关处理
+                pass
+            else:
+                    
+                # 2️⃣ 照片真实化（添加噪点、暗角、锐化）
+                if AI_REALISTIC:
+                    
+                    final_path = make_photo_realistic(
+                        final_path,
+                        final_path,  # 覆盖原文件
+                        camera=AI_CAMERA,
+                        style="portrait",
+                        inject_exif_data=AI_INJECT_EXIF,  # 同时注入EXIF
+                        randomize=True,
+                        strength=AI_STRENGTH
+                    )
+                    print(f"   ✅ 照片真实化完成 (强度: {AI_STRENGTH})")
+                
+                # 3️⃣ 如果只注入EXIF（不开启照片真实化）
+                elif AI_INJECT_EXIF and not AI_REALISTIC:
+                    
+                    final_path = inject_exif(
+                        final_path,
+                        final_path,
+                        camera=AI_CAMERA,
+                        style="portrait",
+                        randomize=True
+                    )
+                    print(f"   ✅ EXIF 已注入")
+                
+
+                # ========== 🆕 图像指纹混淆 ==========
+                if AI_FINGERPRINT_OBFUSCATION:
+                    try:
+                        print(f"   🔍 图像指纹混淆...")
+                        from PIL import Image
+                        import random
+                        import numpy as np
+                        
+                        img = Image.open(final_path)
+                        w, h = img.size
+                        
+                        # 1️⃣ 微小透视扭曲（破坏AI像素规律）
+                        strength = AI_DISTORTION_STRENGTH
+                        coeffs = [
+                            1 + random.uniform(-strength, strength),
+                            random.uniform(-strength * 0.5, strength * 0.5),
+                            random.uniform(-2, 2),
+                            random.uniform(-strength * 0.5, strength * 0.5),
+                            1 + random.uniform(-strength, strength),
+                            random.uniform(-2, 2),
+                        ]
+                        img = img.transform((w, h), Image.AFFINE, coeffs, Image.Resampling.BILINEAR)
+                        print(f"      ✅ 微小扭曲完成")
+                        
+                        # ========== 🆕 2️⃣ 紫边模拟（真实镜头特征） ==========
+                        if AI_CHROMATIC_ABERRATION:
+                            # 转为numpy数组处理
+                            arr = np.array(img).astype(np.float32)
+                            h, w = arr.shape[:2]
+                            strength = AI_CHROMATIC_STRENGTH
+                            
+                            # 在图像边缘添加红/蓝通道偏移（紫边特征）
+                            for y in range(h):
+                                for x in range(w):
+                                    # 计算距离边缘的距离
+                                    dist_from_edge = min(x, w-1-x, y, h-1-y)
+                                    if dist_from_edge < 40:
+                                        # 越靠近边缘，紫边越明显
+                                        shift_factor = (40 - dist_from_edge) / 40
+                                        shift = shift_factor * strength * random.uniform(0.5, 1.0)
+                                        # 红色通道偏移（紫色倾向）
+                                        arr[y, x, 0] += random.uniform(-shift, shift * 0.5)  # R
+                                        arr[y, x, 2] += random.uniform(-shift * 0.5, shift)  # B
+                            
+                            # 裁剪到有效范围
+                            arr = np.clip(arr, 0, 255).astype(np.uint8)
+                            img = Image.fromarray(arr)
+                            print(f"      ✅ 紫边模拟完成 (强度: {strength})")
+                        # ===================================================
+
+                        # ========== 🆕 3️⃣ 真实噪点 ==========
+                        if AI_REALISTIC_NOISE:
+                            import cv2
+                            import numpy as np
+                            
+                            # 确定ISO值
+                            if AI_NOISE_RANDOMIZE:
+                                # 在基准值附近随机变化 ±200
+                                iso = AI_NOISE_ISO_BASE + random.randint(-200, 200)
+                                iso = max(100, min(1600, iso))  # 限制范围
+                            else:
+                                iso = AI_NOISE_ISO_BASE
+                            
+                            # 转换为OpenCV格式
+                            img_cv = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+                            
+                            # 基于ISO的噪声强度
+                            noise_std = 0.005 * (iso / 100) ** 0.5
+                            
+                            # 高斯噪声（模拟传感器热噪声）
+                            gaussian_noise = np.random.normal(0, noise_std * 255, img_cv.shape)
+                            
+                            # 散粒噪声（泊松分布模拟，光子噪声）
+                            shot_noise = np.random.poisson(np.abs(img_cv) * 0.005) * 0.1
+                            
+                            # 合并噪声
+                            img_cv = img_cv + gaussian_noise + shot_noise
+                            
+                            # 暗部噪点增强（真实相机特征：暗部噪点更明显）
+                            gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
+                            dark_mask = gray < 80
+                            if np.any(dark_mask):
+                                dark_noise = np.random.normal(0, noise_std * 255 * 0.5, img_cv.shape)
+                                img_cv[dark_mask] = img_cv[dark_mask] + dark_noise[dark_mask]
+                            
+                            # 裁剪到有效范围
+                            img_cv = np.clip(img_cv, 0, 255).astype(np.uint8)
+                            img = Image.fromarray(cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB))
+                            print(f"      ✅ 真实噪点添加完成 (ISO: {iso})")
+                        # ================================================
+
+                        # ========== 🆕 4️⃣ 轻微裁剪 ==========
+                        if AI_MINOR_CROP:
+                            import random
+                            
+                            crop_pct = AI_CROP_PERCENT * random.uniform(0.5, 1.5)
+                            crop_w = int(w * crop_pct)
+                            crop_h = int(h * crop_pct)
+                            
+                            # 确保裁剪量合理
+                            crop_w = max(5, min(crop_w, int(w * 0.05)))
+                            crop_h = max(5, min(crop_h, int(h * 0.05)))
+                            
+                            # 随机选择裁剪位置（从左上、右上、左下、右下中选）
+                            corners = [
+                                (0, 0),                      # 左上
+                                (0, crop_h),                 # 左下
+                                (crop_w, 0),                 # 右上
+                                (crop_w, crop_h),            # 右下
+                            ]
+                            # 也可以使用随机位置
+                            if random.random() < 0.5:
+                                left = random.randint(0, crop_w)
+                                top = random.randint(0, crop_h)
+                            else:
+                                left, top = random.choice(corners)
+                            
+                            right = w - random.randint(0, crop_w)
+                            bottom = h - random.randint(0, crop_h)
+                            
+                            # 确保裁剪区域有效
+                            if right > left + 50 and bottom > top + 50:
+                                img = img.crop((left, top, right, bottom))
+                                # 重新缩放回原尺寸（保持一致性）
+                                img = img.resize((w, h), Image.Resampling.LANCZOS)
+                                print(f"      ✅ 轻微裁剪完成 (裁切: {crop_pct*100:.1f}%, 位置: {left},{top})")
+                            else:
+                                print(f"      ⚠️ 裁剪跳过 (区域无效)")
+                        # ================================================
+        
+                        img.save(final_path, quality=92)
+                        print(f"   ✅ 指纹混淆完成")
+                        
+                    except Exception as e:
+                        print(f"   ⚠️ 指纹混淆失败: {e}")
+            
+            # 如果最终路径改变了，更新文件名
+            if final_path != output_filename:
+                # 删除原始PNG（如果存在）
+                if os.path.exists(output_filename) and output_filename != final_path:
+                    try:
+                        os.remove(output_filename)
+                    except:
+                        pass
+                output_filename = final_path
+
+                
+        except Exception as e:
+            print(f"   ⚠️ 消除AI痕迹失败: {e}")
+    # ================================================
+    
+
     # 只要生成图片成功，就在同一目录下生成一个同名的 .txt 说明文件
-    metadata_filename = output_filename.replace(".png", ".txt")
+    metadata_filename = output_filename.replace('.png', '.txt').replace('.jpg', '.txt')
     try:
         with open(metadata_filename, "w", encoding="utf-8") as f:
             f.write(f"【生成时间】: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
@@ -406,11 +685,29 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
             f.write(f"【完整正向提示词】: \n{full_prompt}\n")
             if mode == "img2img":
                 f.write(f"【参考图路径】: {input_path if 'input_path' in locals() else '默认 input.jpg'}\n")
-        print(f"   📝 已生成对应提示词记录: {os.path.basename(metadata_filename)}")
+            if REMOVE_AI_TRACES:
+                f.write(f"【消除AI痕迹】: 已启用\n")
+                f.write(f"   - 相机: {AI_CAMERA}\n")
+                f.write(f"   - 强度: {AI_STRENGTH}\n")
+                
+                if is_sketch:
+                    f.write(f"   - 风格: 素描/线稿 (跳过相机相关处理)\n")
+            
+                if AI_FINGERPRINT_OBFUSCATION:
+                    f.write(f"   - 指纹混淆: 已启用\n")  
+                    
+                if AI_CHROMATIC_ABERRATION:  # 🆕
+                    f.write(f"   - 紫边模拟: 已启用\n")
+
+                if AI_REALISTIC_NOISE:  # 🆕
+                    f.write(f"   - 真实噪点: 已启用 (ISO: {AI_NOISE_ISO_BASE})\n")
+
+                if AI_MINOR_CROP:  # 🆕
+                    f.write(f"   - 轻微裁剪: 已启用 ({AI_CROP_PERCENT*100:.1f}%)\n")        
+        
+        print(f"   📝 已生成提示词记录: {os.path.basename(metadata_filename)}")
     except Exception as e:
         print(f"   ⚠️ 提示词记录文件写入失败: {e}")
-               
-    # ============================================================
     
  
     
@@ -427,6 +724,10 @@ def parse_arguments(args):
     search_keyword = None
     steps = None
     input_path = None
+
+    # 新增参数
+    clean_ai = True  # 默认启用
+    no_clean = False
     
     i = 1
     while i < len(args):
@@ -479,11 +780,14 @@ def parse_arguments(args):
             else:
                 print(f"❌ 参数 {arg} 需要指定搜索关键词")
                 sys.exit(1)
+        elif arg in ["--no-clean", "--noclean"]:
+            no_clean = True
+            i += 1                
         else:
             target_style = arg
             i += 1
     
-    return target_style, count, mode, search_keyword, steps, input_path
+    return target_style, count, mode, search_keyword, steps, input_path, no_clean
 
 def main():
     # ========== 处理无参数情况 ==========
@@ -492,7 +796,16 @@ def main():
         sys.exit(0)
     
     # ========== 解析参数 ==========
-    target_style, user_count, mode, search_keyword, user_steps, user_input = parse_arguments(sys.argv)
+    target_style, user_count, mode, search_keyword, user_steps, user_input, no_clean = parse_arguments(sys.argv)
+
+    # ========== 🆕 根据命令行参数控制消除AI痕迹 ==========
+    global REMOVE_AI_TRACES
+    if no_clean:
+        REMOVE_AI_TRACES = False
+        print(f"ℹ️ 已禁用消除AI痕迹 (--no-clean)")
+    else:
+        print(f"ℹ️ 消除AI痕迹已启用 (相机: {AI_CAMERA}, 强度: {AI_STRENGTH})")
+    # =====================================================
     
     # ========== 处理搜索 ==========
     if search_keyword:
@@ -521,7 +834,7 @@ def main():
         sys.exit(0)
     
     # ========== 解析参数 ==========
-    target_style, user_count, mode, search_keyword, user_steps, user_input = parse_arguments(sys.argv)
+    target_style, user_count, mode, search_keyword, user_steps, user_input, no_clean = parse_arguments(sys.argv)
     
     if target_style is None:
         print("❌ 请指定风格名称")
@@ -608,30 +921,55 @@ def main():
     output_root = os.path.join(CURRENT_DIR, "output", f"{folder_name}_{timestamp}")
     os.makedirs(output_root, exist_ok=True)
 
+    # ========== 📁 新增：子文件夹分组逻辑 ==========
+    # 每5张图片放一个子文件夹
+    BATCH_SIZE = 5
+    
+    # 预计算需要创建多少个子文件夹
+    total_batches = (total_count + BATCH_SIZE - 1) // BATCH_SIZE  # 向上取整
+    
+    # 预创建所有子文件夹
+    subfolders = []
+    for batch_idx in range(total_batches):
+        subfolder_name = f"{batch_idx + 1:04d}"  # 从 0001 开始，四位数字
+        subfolder_path = os.path.join(output_root, subfolder_name)
+        os.makedirs(subfolder_path, exist_ok=True)
+        subfolders.append(subfolder_path)
+        print(f"📁 已创建子文件夹: {subfolder_name} (存放第 {batch_idx * BATCH_SIZE + 1} - {min((batch_idx + 1) * BATCH_SIZE, total_count)} 张)")
+    
+    print(f"\n📊 共 {total_count} 张图片，将分到 {total_batches} 个子文件夹中（每 {BATCH_SIZE} 张一组）\n")
+    # ===============================================
+
     # ========== 生成循环 ==========
     from tqdm import tqdm
     for i in tqdm(range(total_count), desc="生成进度"):
         prompt, prompt_mode = build_prompt(config)
         
-        print(f"\n🔄 进度：第 {i+1}/{total_count} 张 [{prompt_mode}]")
+        # 🆕 计算当前图片属于哪个子文件夹（从 0 开始计数）
+        batch_index = i // BATCH_SIZE
+        current_subfolder = subfolders[batch_index]
+        
+        print(f"\n🔄 进度：第 {i+1}/{total_count} 张 [{prompt_mode}] → 子文件夹 {batch_index + 1:04d}")
         
         # ✨ 生成带前缀的文件名，避免重名冲突
         safe_prefix = folder_name.replace(" ", "_").replace("/", "_")
         filename = f"{target_style}_{i+1:02d}.png"
         
+        # 🆕 修改：将图片保存到子文件夹
         generate_style(
             pipe, 
             init_image, 
             prompt, 
-            os.path.join(output_root, filename), 
+            os.path.join(current_subfolder, filename),  # 👈 保存到子文件夹
             config["strength"],
             mode,
-            actual_steps,  # 👈 传递最终确定的步数
-            target_style   # 👈 补充传递这个变量
+            actual_steps,
+            target_style
         )
     # =================================
 
     print(f"\n✅ 全部完成！共 {total_count} 张图片，保存在: {output_root}")
+    print(f"📁 图片已按每 {BATCH_SIZE} 张分到 {total_batches} 个子文件夹中")
 
 if __name__ == "__main__":
     main()
