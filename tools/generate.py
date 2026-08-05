@@ -529,6 +529,45 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
                         img = Image.fromarray(cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB))
                         print(f"      ✅ 真实噪点添加完成 (ISO: {iso})")
                     # ================================================
+
+                    # ========== 🆕 4️⃣ 轻微裁剪 ==========
+                    if AI_MINOR_CROP:
+                        import random
+                        
+                        crop_pct = AI_CROP_PERCENT * random.uniform(0.5, 1.5)
+                        crop_w = int(w * crop_pct)
+                        crop_h = int(h * crop_pct)
+                        
+                        # 确保裁剪量合理
+                        crop_w = max(5, min(crop_w, int(w * 0.05)))
+                        crop_h = max(5, min(crop_h, int(h * 0.05)))
+                        
+                        # 随机选择裁剪位置（从左上、右上、左下、右下中选）
+                        corners = [
+                            (0, 0),                      # 左上
+                            (0, crop_h),                 # 左下
+                            (crop_w, 0),                 # 右上
+                            (crop_w, crop_h),            # 右下
+                        ]
+                        # 也可以使用随机位置
+                        if random.random() < 0.5:
+                            left = random.randint(0, crop_w)
+                            top = random.randint(0, crop_h)
+                        else:
+                            left, top = random.choice(corners)
+                        
+                        right = w - random.randint(0, crop_w)
+                        bottom = h - random.randint(0, crop_h)
+                        
+                        # 确保裁剪区域有效
+                        if right > left + 50 and bottom > top + 50:
+                            img = img.crop((left, top, right, bottom))
+                            # 重新缩放回原尺寸（保持一致性）
+                            img = img.resize((w, h), Image.Resampling.LANCZOS)
+                            print(f"      ✅ 轻微裁剪完成 (裁切: {crop_pct*100:.1f}%, 位置: {left},{top})")
+                        else:
+                            print(f"      ⚠️ 裁剪跳过 (区域无效)")
+                    # ================================================
         
                     img.save(final_path, quality=92)
                     print(f"   ✅ 指纹混淆完成")
@@ -577,7 +616,9 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
 
                 if AI_REALISTIC_NOISE:  # 🆕
                     f.write(f"   - 真实噪点: 已启用 (ISO: {AI_NOISE_ISO_BASE})\n")
-        
+
+                if AI_MINOR_CROP:  # 🆕
+                    f.write(f"   - 轻微裁剪: 已启用 ({AI_CROP_PERCENT*100:.1f}%)\n")        
         
         print(f"   📝 已生成提示词记录: {os.path.basename(metadata_filename)}")
     except Exception as e:

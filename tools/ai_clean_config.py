@@ -31,3 +31,7 @@ AI_CHROMATIC_STRENGTH = 0.3         # 紫边强度 (0.1-0.8)
 AI_REALISTIC_NOISE = True           # 真实噪点（基于ISO的噪声模型）
 AI_NOISE_ISO_BASE = 400             # 噪点ISO基准值 (200-1600)
 AI_NOISE_RANDOMIZE = True           # 随机化ISO值（每张照片不同）
+
+# ==================== 🆕 轻微裁剪 ====================
+AI_MINOR_CROP = True                # 轻微裁剪（改变构图，破坏像素排列）
+AI_CROP_PERCENT = 0.015             # 裁剪比例 (0.005-0.03，即0.5%-3%)
