@@ -1,18 +1,19 @@
 # tools/photo_to_sketch.py
 import os
 import sys
+import time
+import random
 import torch
+import numpy as np
 from PIL import Image
 from datetime import datetime
 from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
 
-# ========== 复用 generate.py 的核心环境 ==========
+# ========== 修复路径，确保可以导入 tools 模块 ==========
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-if CURRENT_DIR not in sys.path:
-    sys.path.insert(0, CURRENT_DIR)
+sys.path.insert(0, os.path.dirname(CURRENT_DIR))
 
-# ✅ 导入 generate.py 里导入的所有配置和工具
-# 这样就不用重复写 config 和 utils 了
+# ========== 复用 generate.py 的核心环境 ==========
 from tools.config import (
     SD_MODEL_PATH, STEPS, INPUT_IMAGE_NAME,
     REMOVE_AI_TRACES, AI_CLEAR_METADATA, AI_INJECT_EXIF, AI_REALISTIC,
@@ -27,6 +28,7 @@ from tools.config import (
 from utils.imagemeta_cleaner import smart_clean_image
 from utils.exif_injector import inject_exif
 from utils.photo_realistic import make_photo_realistic
+
 
 # ==================== 🚀 核心转换函数 ====================
 def convert_to_sketch(image_path, output_dir, strength=0.45):
@@ -113,7 +115,6 @@ def convert_to_sketch(image_path, output_dir, strength=0.45):
 
             # 3️⃣ EXIF 注入
             if AI_INJECT_EXIF:
-                import time
                 time.sleep(0.5)
                 try:
                     final_path = inject_exif(
@@ -130,8 +131,6 @@ def convert_to_sketch(image_path, output_dir, strength=0.45):
             # 4️⃣ 紫边模拟
             if AI_CHROMATIC_ABERRATION:
                 try:
-                    import numpy as np
-                    from PIL import Image
                     img = Image.open(final_path)
                     arr = np.array(img).astype(np.float32)
                     h, w = arr.shape[:2]
@@ -157,8 +156,6 @@ def convert_to_sketch(image_path, output_dir, strength=0.45):
             # 5️⃣ 轻微裁剪
             if AI_MINOR_CROP:
                 try:
-                    import random
-                    from PIL import Image
                     img = Image.open(final_path)
                     w, h = img.size
                     crop_pct = AI_CROP_PERCENT * random.uniform(0.5, 1.5)
@@ -218,5 +215,4 @@ if __name__ == "__main__":
         
     os.makedirs(output_folder, exist_ok=True)
     
-    # 🔥 将素描强度设定为 0.45 (你可以在代码里随时修改)
     convert_to_sketch(input_file, output_folder, strength=0.45)
