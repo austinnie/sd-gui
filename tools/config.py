@@ -14,7 +14,7 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(CURRENT_DIR))
 # ==================== 🔵 模型选择主开关 ====================
 # 核心开关：True=使用 OpenVINO 模型，False=使用普通模型
 USE_OPENVINO_MODEL = False  
-ACTIVE_MODEL = 1
+ACTIVE_MODEL = 0
 
 
 # ==================== 🔴 终极物理隔离：决定最终路径 ====================
