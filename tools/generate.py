@@ -812,7 +812,12 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
             
             # ========== 📊 详细记录所有 strength 参数 ==========
             f.write(f"\n【📊 Strength 参数详情】:\n")
-            f.write(f"  ├─ 图生图强度 (img2img strength): {strength}\n")
+            # 🛡️ 修复：如果使用了默认强度，txt 里就如实记录默认值；如果是自定义的，就记录自定义值
+            import tools.config as cfg
+            if strength == 0.35 and not any('--strength' in arg or '-strength' in arg for arg in sys.argv):
+                f.write(f"  ├─ 图生图强度 (img2img strength): {cfg.DEFAULT_STRENGTH} (默认值)\n")
+            else:
+                f.write(f"  ├─ 图生图强度 (img2img strength): {strength}\n")
             f.write(f"  ├─ 照片真实化强度 (AI_STRENGTH): {AI_STRENGTH}\n")
             f.write(f"  ├─ 紫边模拟强度 (AI_CHROMATIC_STRENGTH): {AI_CHROMATIC_STRENGTH}\n")
             f.write(f"  └─ 消除AI痕迹总开关: {'✅ 已启用' if REMOVE_AI_TRACES else '❌ 已禁用'}\n")
