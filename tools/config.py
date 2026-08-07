@@ -54,23 +54,23 @@ else:
 # 你可以在此定义多个 LoRA，并决定同时启用哪几个。
 
 # 默认启用哪些 LoRA（填入上面的索引号，如 [0, 1] 表示同时启用 0号和1号）
-LORA_ACTIVE_INDICES = [0]  # 例如 [0] 启用第一个，[0, 1] 同时启用前两个
+LORA_ACTIVE_INDICES = [1]  # 例如 [0] 启用第一个，[0, 1] 同时启用前两个
 
 # 来源链接（仅供备忘）
-# [0] Mecha Musume A: https://civitai.com/models/15464/a-mecha-musume-a
-# [1] Mecha Musume Gundam Slider: https://civitai.com/models/78090/mecha-musume-gundam-mecha-slider-lora
-# [2] Mecha Style: https://civitai.com/models/65851/mecha-style
-# [3] Mecha Girl Figure: https://civitai.com/models/93394/mechagirlfigure
-# [4] Mecha Girl: https://civitai.com/models/85652/mechagirl
-# [5] Mecha Girl (227168): https://civitai.com/models/227168/mecha-girl
+# [0] Mecha Musume A: https://civitai.com/models/15464/a-mecha-musume-a                                  #AMechaSSS.safetensors 素体机娘
+# [1] Mecha Girl Figure: https://civitai.com/models/93394/mechagirlfigure                                #MechaGirlFigure_v1.safetensors
+# [2] Mecha Musume Gundam Slider: https://civitai.com/models/78090/mecha-musume-gundam-mecha-slider-lora #mecha_offset.safetensors
+# [3] Mecha Style: https://civitai.com/models/65851/mecha-style                                          #Mechav2_1.0.safetensors
+# [4] Mecha Girl: https://civitai.com/models/85652/mechagirl                                             #MechaGirl_v1 .safetensors
+# [5] Mecha Girl (227168): https://civitai.com/models/227168/mecha-girl                                  #mecha_girl.safetensors
 
 LORA_PATHS = [
-    os.path.join(PROJECT_ROOT, "models", "sd15-lora", "Mechav2_1.0.safetensors"),        # [0] 重型机甲/动态战斗姿态（推荐入门）
-    os.path.join(PROJECT_ROOT, "models", "sd15-lora", "MechaGirlFigure_v1.safetensors"), # [1] 机娘手办/涂装质感
-    os.path.join(PROJECT_ROOT, "models", "sd15-lora", "mecha_offset.safetensors"),       # [2] 重装甲/近未来科幻/细节拉满
-    os.path.join(PROJECT_ROOT, "models", "sd15-lora", "MechaGirl_v1.safetensors"),       # [3] 美少女+机械装备/人设立绘
-    os.path.join(PROJECT_ROOT, "models", "sd15-lora", "AMechaSSS.safetensors"),          # [4] 超级系/高爆发力/夸张透视
-    os.path.join(PROJECT_ROOT, "models", "sd15-lora", "mecha_girl.safetensors")          # [5] 机娘/轻装甲/日常机械
+    os.path.join(PROJECT_ROOT, "models", "sd15-lora", "AMechaSSS.safetensors"),          # [0] 对应 Civitai 15464 (Mecha Musume A)
+    os.path.join(PROJECT_ROOT, "models", "sd15-lora", "MechaGirlFigure_v1.safetensors"), # [1] 对应 Civitai 93394 (Mecha Girl Figure)
+    os.path.join(PROJECT_ROOT, "models", "sd15-lora", "mecha_offset.safetensors"),       # [2] 对应 Civitai 78090 (Gundam Slider)
+    os.path.join(PROJECT_ROOT, "models", "sd15-lora", "Mechav2_1.0.safetensors"),        # [3] 对应 Civitai 65851 (Mecha Style)
+    os.path.join(PROJECT_ROOT, "models", "sd15-lora", "MechaGirl_v1.safetensors"),       # [4] 对应 Civitai 85652 (Mecha Girl)
+    os.path.join(PROJECT_ROOT, "models", "sd15-lora", "mecha_girl.safetensors")          # [5] 对应 Civitai 227168 (Mecha Girl 227168)
 ]
 
 # 每个 LoRA 对应的权重（索引和上面 LORA_PATHS 一一对应）
