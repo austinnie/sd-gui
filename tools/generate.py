@@ -1113,20 +1113,22 @@ def main():
         # ====================================================================
         # 🎨 使用 SD-GUI 自带的 BLIP 看图 + 生成中文鉴赏
         # ====================================================================
+        # 1. 先定义好 caption 变量兜底
+        caption = prompt
+        
         try:
             # 实例化 BLIP 后端（无需 UI 界面）
             blip = BlipBackend(tab=None) 
             # 让 BLIP 仔细看图，生成英文描述
-            caption = blip.interrogate(full_path, model_name="BLIP-large (详细)")
-            
-            if not caption:
-                caption = prompt # 兜底
+            blip_result = blip.interrogate(full_path, model_name="BLIP-large (详细)")
+            if blip_result:
+                caption = blip_result
         except Exception as e:
-            # 如果调用失败，降级使用提示词
+            # 如果调用失败，降级使用提示词（已经提前定义好 caption = prompt 了）
             print(f"   ⚠️ BLIP 看图失败，降级为提示词分析。错误: {e}")
-            caption = prompt
+        # ====================================================================
 
-        # 2. 根据 BLIP 看图结果，生成中文鉴赏
+        # 2. 根据 caption 结果，生成中文鉴赏（这段必须在 try 外部，确保绝对能运行）
         lower_c = caption.lower()
         content_desc = caption[:40] + "..." if len(caption) > 40 else caption
         
@@ -1168,6 +1170,7 @@ def main():
             f"无论是在光影处理还是色彩搭配上，都展现出相当高的审美水准。"
         )
         # ====================================================================
+
 
         # 收集当前图片的点评
         batch_reviews.append(f"【第 {len(batch_reviews)+1} 张作品】\n{review_paragraph}")
