@@ -123,7 +123,7 @@ class LoraHandler:
                 return
         
         self.app.update_status(f"🔗 正在加载 LoRA: {lora_display}...")
-	import tkinter as tk 
+        import tkinter as tk 
         self.app.load_lora_btn.config(state=tk.DISABLED)
         
         def load_thread():

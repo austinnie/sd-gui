@@ -56,6 +56,14 @@ else:
 # 默认启用哪些 LoRA（填入上面的索引号，如 [0, 1] 表示同时启用 0号和1号）
 LORA_ACTIVE_INDICES = [0]  # 例如 [0] 启用第一个，[0, 1] 同时启用前两个
 
+# 来源链接（仅供备忘）
+# [0] Mecha Musume A: https://civitai.com/models/15464/a-mecha-musume-a
+# [1] Mecha Musume Gundam Slider: https://civitai.com/models/78090/mecha-musume-gundam-mecha-slider-lora
+# [2] Mecha Style: https://civitai.com/models/65851/mecha-style
+# [3] Mecha Girl Figure: https://civitai.com/models/93394/mechagirlfigure
+# [4] Mecha Girl: https://civitai.com/models/85652/mechagirl
+# [5] Mecha Girl (227168): https://civitai.com/models/227168/mecha-girl
+
 LORA_PATHS = [
     os.path.join(PROJECT_ROOT, "models", "sd15-lora", "Mechav2_1.0.safetensors"),        # [0] 重型机甲/动态战斗姿态（推荐入门）
     os.path.join(PROJECT_ROOT, "models", "sd15-lora", "MechaGirlFigure_v1.safetensors"), # [1] 机娘手办/涂装质感

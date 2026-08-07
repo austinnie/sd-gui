@@ -36,6 +36,9 @@ import torch
 import time
 import random
 from PIL import Image
+
+
+
 from datetime import datetime
 from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
 
@@ -51,6 +54,9 @@ if PROJECT_ROOT not in sys.path:
 
 # ✅ 验证路径
 print(f"📁 PROJECT_ROOT: {PROJECT_ROOT}")
+
+# ✅ 引入你项目内置的 BLIP 后端
+from gui.tabs.interrogate.backends.blip import BlipBackend
 
 # ✅ 导入 utils
 from utils.imagemeta_cleaner import smart_clean_image
@@ -1102,7 +1108,93 @@ def main():
             actual_steps,
             target_style
         )
-    # =================================
+        # =================================
+
+        # ====================================================================
+        # 🎨 使用 SD-GUI 自带的 BLIP 看图 + 生成中文鉴赏
+        # ====================================================================
+        try:
+            # 实例化 BLIP 后端（无需 UI 界面）
+            blip = BlipBackend(tab=None) 
+            # 让 BLIP 仔细看图，生成英文描述
+            caption = blip.interrogate(full_path, model_name="BLIP-large (详细)")
+            
+            if not caption:
+                caption = prompt # 兜底
+        except Exception as e:
+            # 如果调用失败，降级使用提示词
+            print(f"   ⚠️ BLIP 看图失败，降级为提示词分析。错误: {e}")
+            caption = prompt
+
+        # 2. 根据 BLIP 看图结果，生成中文鉴赏
+        lower_c = caption.lower()
+        content_desc = caption[:40] + "..." if len(caption) > 40 else caption
+        
+        # 根据实际画面自动判断风格与语气
+        if "figure" in lower_c or "statue" in lower_c or "resin" in lower_c:
+            tone_theme = "立体感极强，带有浓厚的模型收藏质感"
+            tone_material = "类似高级树脂涂装，光泽与暗部过渡平滑"
+            tone_pose = "姿态非常优雅自然"
+        elif "sketch" in lower_c or "lineart" in lower_c or "drawing" in lower_c:
+            tone_theme = "线条流畅干练，极具黑白素描的极简美感"
+            tone_material = "保留了铅笔或炭笔的原始质感"
+            tone_pose = "构图干净利落"
+        elif "mecha" in lower_c or "robot" in lower_c or "armor" in lower_c:
+            tone_theme = "充满硬核的工业设计感与机械张力"
+            tone_material = "金属反光与装甲细节刻画极为到位"
+            tone_pose = "展现出了极强的战斗姿态"
+        elif "hanfu" in lower_c or "chinese" in lower_c or "traditional" in lower_c:
+            tone_theme = "古风古韵，仿佛从古典画卷中走出来"
+            tone_material = "布料纹理与飘逸感极具东方美学"
+            tone_pose = "站姿端庄，神态温婉"
+        elif "bunny" in lower_c or "latex" in lower_c or "glossy" in lower_c:
+            tone_theme = "充满现代二次元流行气息"
+            tone_material = "高光与反光材质的渲染极具表现力"
+            tone_pose = "极富张力的动态造型"
+        elif "landscape" in lower_c or "mountain" in lower_c or "sea" in lower_c:
+            tone_theme = "意境深远，展现了非常开阔的画面层次"
+            tone_material = "光线的处理如同油画般细腻"
+            tone_pose = "构图宏大，极具沉浸感"
+        else:
+            tone_theme = "色彩和谐，具有极高的艺术完成度"
+            tone_material = "细节丰富且质感细腻"
+            tone_pose = "主体表达清晰明确"
+
+        # 最终拼装为 100 字左右的鉴赏文案
+        review_paragraph = (
+            f"本作品生动地描绘了“{content_desc}”这一视觉主题。\n"
+            f"整体画面{tone_theme}。在材质表现上，{tone_material}，\n"
+            f"并且{tone_pose}，赋予了画面极强的代入感。\n"
+            f"无论是在光影处理还是色彩搭配上，都展现出相当高的审美水准。"
+        )
+        # ====================================================================
+
+        # 收集当前图片的点评
+        batch_reviews.append(f"【第 {len(batch_reviews)+1} 张作品】\n{review_paragraph}")
+
+        # 🆕 判断当前子文件夹是否已经生成完毕（满 5 张，或者总体已经结束）
+        is_last_item = (i == total_count - 1)
+        is_batch_end = ((i + 1) % BATCH_SIZE == 0)
+        
+        if is_batch_end or is_last_item:
+            try:
+                summary_file = os.path.join(current_subfolder, "点评.txt")
+                with open(summary_file, "w", encoding="utf-8") as f:
+                    f.write(f"【{folder_name} AI 作品鉴赏合辑】\n")
+                    f.write(f"生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+                    f.write(f"本集共收录 {len(batch_reviews)} 件 AI 视觉创作：\n\n")
+                    
+                    for review in batch_reviews:
+                        f.write(f"{review}\n\n")
+                        
+                    f.write(f"—— 由 AI 视觉鉴赏系统自动书写 ——\n")
+                
+                print(f"      📝 已生成真实AI鉴赏文档：{os.path.basename(summary_file)}")
+                batch_reviews = []
+                
+            except Exception as e:
+                print(f"      ⚠️ 鉴赏文档写入失败：{e}")
+                
 
     print(f"\n✅ 全部完成！共 {total_count} 张图片，保存在: {output_root}")
     print(f"📁 图片已按每 {BATCH_SIZE} 张分到 {total_batches} 个子文件夹中")
