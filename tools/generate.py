@@ -1166,10 +1166,21 @@ def main():
                         from transformers import BlipProcessor, BlipForConditionalGeneration
                         from PIL import Image
                         
-                        # 🚀 核心修复：直接指定你截图里存在的 BLIP-large 目录
-                        local_blip_path = r"E:\hf_cache\.cache\hub\models--Salesforce--blip-image-captioning-large"
+                        # 🚀 核心修复：自动寻找 Hugging Face 的 snapshots 缓存目录
+                        base_blip_path = r"E:\hf_cache\.cache\hub\models--Salesforce--blip-image-captioning-large"
+                        snapshots_path = os.path.join(base_blip_path, "snapshots")
                         
-                        print(f"   📦 正在从本地加载 BLIP 模型 ({local_blip_path})...")
+                        # 获取 snapshots 目录下的第一个有效文件夹
+                        if os.path.exists(snapshots_path):
+                            subfolders = [f for f in os.listdir(snapshots_path) if os.path.isdir(os.path.join(snapshots_path, f))]
+                            if subfolders:
+                                local_blip_path = os.path.join(snapshots_path, subfolders[0])
+                                print(f"   📦 正在从本地加载 BLIP 模型 ({local_blip_path})...")
+                            else:
+                                raise FileNotFoundError("snapshots 目录为空")
+                        else:
+                            raise FileNotFoundError(f"找不到 snapshots 目录: {snapshots_path}")
+                        
                         processor = BlipProcessor.from_pretrained(local_blip_path)
                         model = BlipForConditionalGeneration.from_pretrained(local_blip_path)
                         
