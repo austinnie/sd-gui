@@ -1158,16 +1158,35 @@ def main():
                     caption = backend.interrogate(final_output_path, blip_model="BLIP-large (详细)", clip_mode="fast")
                     
                 elif appr_engine == "llm":
-                    # LLM 模式：需要额外调用本地 Ollama 进行中文润色
-                    from gui.tabs.interrogate.backends.llm import LLMBackend
-                    backend = LLMBackend(fake_tab)
-                    # 获取 BLIP 原始描述
-                    blip_caption = backend.blip_backend.interrogate(final_output_path, model_name="BLIP-large (详细)")
+                    print(f"   🧠 鉴赏引擎: 使用本地目录加载 BLIP + Ollama 润色")
+                    caption = prompt
                     
-                    # 如果你的本地 Ollama 已经运行，LLMBackend 会自动进行润色
+                    # ================= 1. 基于你截图中的真实路径，加载 BLIP =================
                     try:
-                        # 尝试使用 LLM 润色（复用 llm.py 的内部逻辑）
-                        llm_prompt = f"""
+                        from transformers import BlipProcessor, BlipForConditionalGeneration
+                        from PIL import Image
+                        
+                        # 🚀 核心修复：直接指定你截图里存在的 BLIP-large 目录
+                        local_blip_path = r"E:\hf_cache\.cache\hub\models--Salesforce--blip-image-captioning-large"
+                        
+                        print(f"   📦 正在从本地加载 BLIP 模型 ({local_blip_path})...")
+                        processor = BlipProcessor.from_pretrained(local_blip_path)
+                        model = BlipForConditionalGeneration.from_pretrained(local_blip_path)
+                        
+                        image = Image.open(final_output_path).convert('RGB')
+                        inputs = processor(image, return_tensors="pt")
+                        out = model.generate(**inputs, max_length=80, num_beams=3, repetition_penalty=1.1)
+                        blip_caption = processor.decode(out[0], skip_special_tokens=True)
+                        print(f"   📝 BLIP 基础描述: {blip_caption[:60]}...")
+                    except Exception as e:
+                        print(f"   ⚠️ 本地 BLIP 加载失败，将使用提示词作为降级。错误: {e}")
+                        blip_caption = prompt
+
+                    # ================= 2. 将描述提交给本地 Ollama =================
+                    if blip_caption and blip_caption != prompt:
+                        try:
+                            import requests
+                            llm_prompt = f"""
 请将以下图片描述转换为一段优美、带有艺术鉴赏性的中文赏析（约100字）：
 图片描述：{blip_caption}
 
@@ -1176,19 +1195,22 @@ def main():
 2. 强调这是一件极具收藏价值的二次元手办/雕像作品。
 3. 语言风格：优雅、专业、适合作为社交媒体发帖文案。
 """
-                        import requests
-                        response = requests.post(
-                            "http://localhost:11434/api/generate",
-                            json={"model": "qwen2.5:1.5b", "prompt": llm_prompt, "stream": False},
-                            timeout=45
-                        )
-                        if response.status_code == 200:
-                            caption = response.json().get("response", blip_caption)
-                            print(f"   ✅ LLM 润色完成！")
-                        else:
+                            print(f"   ⏳ 正在请求 Ollama (qwen2.5:1.5b) 润色...")
+                            response = requests.post(
+                                "http://localhost:11434/api/generate",
+                                json={"model": "qwen2.5:1.5b", "prompt": llm_prompt, "stream": False},
+                                timeout=45
+                            )
+                            if response.status_code == 200:
+                                caption = response.json().get("response", blip_caption)
+                                print(f"   ✅ LLM 润色完成！")
+                            else:
+                                print(f"   ⚠️ Ollama 返回错误，使用 BLIP 原始描述。")
+                                caption = blip_caption
+                        except Exception as e:
+                            print(f"   ⚠️ Ollama 连接失败。错误: {e}")
                             caption = blip_caption
-                    except Exception as e:
-                        print(f"   ⚠️ LLM 调用失败 (Ollama未启动？)，降级为 BLIP 原始描述。错误: {e}")
+                    else:
                         caption = blip_caption
 
                 else:
@@ -1209,7 +1231,11 @@ def main():
         # 📝 根据后端返回的 caption 生成鉴赏段落
         # ====================================================================
         # 将 AI 返回的图片描述截取前 100 个字，作为鉴赏的核心
-        content_desc = caption[:100] + "..." if len(caption) > 100 else caption
+        # 🛡️ 修复：如果 caption 是标签堆砌（含 masterpiece 等），则尝试用提示词替代
+        if "masterpiece" in caption or "best quality" in caption:
+            content_desc = prompt[:100] + "..." if len(prompt) > 100 else prompt
+        else:
+            content_desc = caption[:100] + "..." if len(caption) > 100 else caption
 
         # 这段文案就是发帖用的模板，你可以随时修改里面的字眼
         review_paragraph = (
