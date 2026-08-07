@@ -56,7 +56,7 @@ if PROJECT_ROOT not in sys.path:
 print(f"📁 PROJECT_ROOT: {PROJECT_ROOT}")
 
 # ✅ 引入你项目内置的 BLIP 后端
-from gui.tabs.interrogate.backends.blip import BlipBackend
+#from gui.tabs.interrogate.backends.blip import BlipBackend
 
 # ✅ 导入 utils
 from utils.imagemeta_cleaner import smart_clean_image
@@ -847,7 +847,9 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
         print(f"   📝 已生成提示词记录: {os.path.basename(metadata_filename)}")
     except Exception as e:
         print(f"   ⚠️ 提示词记录文件写入失败: {e}")
-    
+        
+    # 在函数最后，返回最终的文件路径
+    return output_filename  # ✅ 添加这行    
  
     
 # ==================== 🚀 主入口 ====================
@@ -1100,7 +1102,7 @@ def main():
         filename = f"{target_style}_{i+1:02d}.png"
         
         # 🆕 修改：将图片保存到子文件夹
-        generate_style(
+        final_output_path =generate_style(
             pipe, 
             init_image, 
             prompt, 
@@ -1113,22 +1115,36 @@ def main():
         # =================================
 
         # ====================================================================
-        # 🎨 使用 SD-GUI 自带的 BLIP 看图 + 生成中文鉴赏
+        # 🎨 使用 BLIP 直接看图生成描述 (无 GUI 依赖)
         # ====================================================================
-        # 1. 先定义好 caption 变量兜底
-        caption = prompt
-        
+        caption = prompt  # 默认使用提示词作为降级选项
+
+        blip_available = True  # 默认 True
         try:
-            # 实例化 BLIP 后端（无需 UI 界面）
-            blip = BlipBackend(tab=None) 
-            # 让 BLIP 仔细看图，生成英文描述
-            blip_result = blip.interrogate(full_path, model_name="BLIP-large (详细)")
-            if blip_result:
-                caption = blip_result
-        except Exception as e:
-            # 如果调用失败，降级使用提示词（已经提前定义好 caption = prompt 了）
-            print(f"   ⚠️ BLIP 看图失败，降级为提示词分析。错误: {e}")
-        # ====================================================================
+            from PIL import Image
+            from transformers import BlipProcessor, BlipForConditionalGeneration
+            
+            if 'blip_processor' not in locals() or 'blip_model' not in locals():
+                print("   📦 正在加载 BLIP 模型 (首次使用会自动下载)...")
+                blip_processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
+                blip_model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large")
+                print("   ✅ BLIP 模型加载完成")
+                
+        except Exception as load_err:
+            print(f"   ❌ BLIP 模型加载失败，将使用提示词作为描述: {load_err}")
+            blip_available = False  # 标记为不可用
+
+        # 后续使用时检查标志
+        if blip_available:
+            try:
+                image = Image.open(final_output_path).convert('RGB')
+                inputs = blip_processor(image, return_tensors="pt")
+                out = blip_model.generate(**inputs, max_length=80, num_beams=3, repetition_penalty=1.1)
+                caption = blip_processor.decode(out[0], skip_special_tokens=True)
+                print(f"   🖼️ BLIP 描述: {caption[:80]}...")
+            except Exception as e:
+                print(f"   ⚠️ BLIP 推理失败: {e}")
+        # 如果 blip_available 为 False，直接使用 prompt 作为 caption
 
         # 2. 根据 caption 结果，生成中文鉴赏（这段必须在 try 外部，确保绝对能运行）
         lower_c = caption.lower()
