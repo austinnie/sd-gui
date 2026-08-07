@@ -1084,6 +1084,8 @@ def main():
 
     # ========== 生成循环 ==========
     from tqdm import tqdm
+    # 🛡️ 核心修复：在循环开始前绝对初始化变量！
+    batch_reviews = []  # 缓存当前子文件夹的点评    
     for i in tqdm(range(total_count), desc="生成进度"):
         prompt, prompt_mode = build_prompt(config)
         
@@ -1171,6 +1173,9 @@ def main():
         )
         # ====================================================================
 
+        # 🛡️ 安全检查：确保 batch_reviews 是个列表
+        if 'batch_reviews' not in locals():
+            batch_reviews = []
 
         # 收集当前图片的点评
         batch_reviews.append(f"【第 {len(batch_reviews)+1} 张作品】\n{review_paragraph}")
@@ -1193,11 +1198,10 @@ def main():
                     f.write(f"—— 由 AI 视觉鉴赏系统自动书写 ——\n")
                 
                 print(f"      📝 已生成真实AI鉴赏文档：{os.path.basename(summary_file)}")
-                batch_reviews = []
+                batch_reviews = []  # 清空缓存，准备下一个文件夹
                 
             except Exception as e:
                 print(f"      ⚠️ 鉴赏文档写入失败：{e}")
-                
 
     print(f"\n✅ 全部完成！共 {total_count} 张图片，保存在: {output_root}")
     print(f"📁 图片已按每 {BATCH_SIZE} 张分到 {total_batches} 个子文件夹中")
