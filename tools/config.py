@@ -14,19 +14,23 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(CURRENT_DIR))
 # ==================== 🔵 模型选择主开关 ====================
 # 核心开关：True=使用 OpenVINO 模型，False=使用普通模型
 USE_OPENVINO_MODEL = False  
-ACTIVE_MODEL = 1
+ACTIVE_MODEL = 4
 
 
 # ==================== 🔴 终极物理隔离：决定最终路径 ====================
+#OpenVINO模型下载和转换方法
+#huggingface-cli download runwayml/stable-diffusion-v1-5 --local-dir D:\SD_OpenVINO\models\sd-v1-5\official
+#optimum-cli export openvino --model D:/SD_OpenVINO/models/sd-v1-5/official --task text-to-image D:/SD_OpenVINO/models/sd-v1-5/official_ov 
 # ==================== 🔴 终极物理隔离：决定最终路径 ====================
 if USE_OPENVINO_MODEL:
-    # 【分支 A：仅当开启 OpenVINO 时】
-    SD_OV_MODEL_PATH = os.path.join(PROJECT_ROOT, "models/sd-v1-5/official")
+    # 【分支 A：仅当开启 OpenVINO 时】   
+    # 使用 os.path.normpath 把混合斜杠清洗为标准反斜杠，彻底解决目录不可识别问题
+    SD_OV_MODEL_PATH = os.path.normpath(os.path.join(PROJECT_ROOT, "models", "sd-v1-5", "official_ov"))
     SD_MODEL_PATH = SD_OV_MODEL_PATH
     
 else:
     # 【分支 B：普通模型（无论你怎么改，这里的 0~3 必须在 else 内部定义）】
-    SD_MODEL_PATH_0 = os.path.join(PROJECT_ROOT, "models/sd-v1-5/aiiiiii01_v10.safetensors")
+    SD_MODEL_PATH_0 = os.path.join(PROJECT_ROOT, "models/sd-v1-5/aiiiiii01_v10.safetensors") 
     SD_MODEL_PATH_1 = os.path.join(PROJECT_ROOT, "models/sd-v1-5/anytimeRealistic_v10.safetensors")
     SD_MODEL_PATH_2 = os.path.join(PROJECT_ROOT, "models/sd-v1-5/henmixreal_v10_henmixrealV10.safetensors")
     SD_MODEL_PATH_3 = os.path.join(PROJECT_ROOT, "models/sd-v1-5/sd-v1-5-tiny.safetensors")
@@ -40,8 +44,46 @@ else:
     elif ACTIVE_MODEL == 3:
         SD_MODEL_PATH = SD_MODEL_PATH_3
     else:
+        SD_MODEL_PATH_0 = os.path.join(PROJECT_ROOT, "models/sd-v1-5/official/v1-5-pruned-emaonly.safetensors")
         SD_MODEL_PATH = SD_MODEL_PATH_0
 # ==================================================================
+
+
+# ==================== 🤖 LoRA 模型选择开关 ====================
+# 多 LoRA 配置模式：
+# 你可以在此定义多个 LoRA，并决定同时启用哪几个。
+
+# 默认启用哪些 LoRA（填入上面的索引号，如 [0, 1] 表示同时启用 0号和1号）
+LORA_ACTIVE_INDICES = [0]  # 例如 [0] 启用第一个，[0, 1] 同时启用前两个
+
+LORA_PATHS = [
+    os.path.join(PROJECT_ROOT, "models", "sd15-lora", "Mechav2_1.0.safetensors"),        # [0] 重型机甲/动态战斗姿态（推荐入门）
+    os.path.join(PROJECT_ROOT, "models", "sd15-lora", "MechaGirlFigure_v1.safetensors"), # [1] 机娘手办/涂装质感
+    os.path.join(PROJECT_ROOT, "models", "sd15-lora", "mecha_offset.safetensors"),       # [2] 重装甲/近未来科幻/细节拉满
+    os.path.join(PROJECT_ROOT, "models", "sd15-lora", "MechaGirl_v1.safetensors"),       # [3] 美少女+机械装备/人设立绘
+    os.path.join(PROJECT_ROOT, "models", "sd15-lora", "AMechaSSS.safetensors"),          # [4] 超级系/高爆发力/夸张透视
+    os.path.join(PROJECT_ROOT, "models", "sd15-lora", "mecha_girl.safetensors")          # [5] 机娘/轻装甲/日常机械
+]
+
+# 每个 LoRA 对应的权重（索引和上面 LORA_PATHS 一一对应）
+LORA_WEIGHTS = [
+    0.8,  # [0] 权重
+    0.7,  # [1] 权重
+    0.8,  # [2] 权重
+    0.7,  # [3] 权重
+    0.8,  # [4] 权重
+    0.7   # [5] 权重
+]
+
+# 以下代码根据设定自动生成最终需要加载的 LoRA 列表，无需改动
+FINAL_LORA_LIST = []
+if LORA_ACTIVE_INDICES:
+    for idx in LORA_ACTIVE_INDICES:
+        if 0 <= idx < len(LORA_PATHS):
+            FINAL_LORA_LIST.append({
+                "path": LORA_PATHS[idx],
+                "weight": LORA_WEIGHTS[idx] if idx < len(LORA_WEIGHTS) else 0.8
+            })
 
 
 # ==================== ⚙️ 生成与图像处理参数 ====================

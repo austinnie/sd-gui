@@ -254,19 +254,19 @@ def setup_pipeline():
         print(f"   📂 模型路径: {model_path}")
         
         try:
+            # 🛡️ 原生加载：无需手动判断文件，交给 OVStableDiffusionPipeline 自己处理
             from optimum.intel import OVStableDiffusionPipeline
             print("⚡ 尝试加载 OpenVINO 接口...")
             
-            if not (os.path.isdir(model_path) and any(f.endswith('.xml') for f in os.listdir(model_path))):
-                raise FileNotFoundError(f"指定路径不是有效的 OpenVINO 模型目录: {model_path}")
-                
-            pipe = OVStableDiffusionPipeline.from_pretrained(model_path)
+            # 使用 compile=False 让它在加载时直接解析模型结构
+            # 🛡️ 加载修复：使用 export=True 允许模型在加载时动态处理形状不匹配问题
+            pipe = OVStableDiffusionPipeline.from_pretrained(model_path, compile=False, export=True)
+            
             print("✅ OpenVINO 模型加载成功！")
             
         except Exception as e:
             print(f"❌ OpenVINO 加载失败: {e}")
             sys.exit(1)
-
     else:
         # 【关】普通模型分支
         # 👑 核心修改：动态去 config.py 里面拿对应的 0~3 路径，只在进入这个分支时才触发
@@ -308,6 +308,46 @@ def setup_pipeline():
             )
             pipe.to("cpu")
             print("✅ 普通模型加载成功！")
+
+            # ================= 🆕 新增：加载 LoRA (支持多 LoRA) =================
+            try:
+                # 从 config.py 导入多 LoRA 配置
+                from tools.config import FINAL_LORA_LIST
+                
+                if FINAL_LORA_LIST:
+                    print(f"   📦 准备加载 {len(FINAL_LORA_LIST)} 个 LoRA...")
+                    
+                    # 遍历并加载每个 LoRA
+                    adapter_names = []
+                    adapter_weights = []
+                    
+                    for i, lora_info in enumerate(FINAL_LORA_LIST):
+                        lora_path = lora_info['path']
+                        lora_weight = lora_info['weight']
+                        
+                        if os.path.exists(lora_path):
+                            adapter_name = f"lora_{i}"
+                            print(f"      🔗 加载 LoRA {i+1}: {os.path.basename(lora_path)} (权重: {lora_weight})")
+                            
+                            # 加载每个 LoRA
+                            pipe.load_lora_weights(lora_path, adapter_name=adapter_name)
+                            
+                            adapter_names.append(adapter_name)
+                            adapter_weights.append(lora_weight)
+                    
+                    # 统一应用所有加载的 LoRA
+                    if adapter_names:
+                        pipe.set_adapters(adapter_names, adapter_weights=adapter_weights)
+                        print(f"      ✅ 全部 {len(adapter_names)} 个 LoRA 加载成功！")
+                    else:
+                        print("   ⚠️ 没有找到任何有效的 LoRA 文件。")
+                else:
+                    print("   ℹ️ 未配置 LoRA，将使用裸模型出图")
+                    
+            except ImportError:
+                # 如果 config.py 没有 FINAL_LORA_LIST 变量
+                print("   ℹ️ config.py 未定义 LoRA 配置，跳过 LoRA 加载")
+            # ========================================================
             
         except Exception as e:
             print(f"❌ 普通模型加载失败: {e}")
