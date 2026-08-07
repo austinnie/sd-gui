@@ -1233,6 +1233,57 @@ def main():
         
         if is_batch_end or is_last_item:
             try:
+                # ========== 📄 生成 Word 文档 (严格按 5 张一组) ==========
+                from docx import Document
+                from docx.shared import Inches
+                from docx.enum.text import WD_ALIGN_PARAGRAPH
+                import glob
+
+                # 如果图片少于 BATCH_SIZE 但已经结束了，或者正好凑满 5 张，都会走到这里
+                valid_images = [img for img in glob.glob(os.path.join(current_subfolder, "*.jpg")) if os.path.exists(img)]
+                
+                if valid_images:
+                    doc = Document()
+                    
+                    # 设置标题
+                    title = doc.add_heading(f"【{folder_name} 作品合辑】", level=1)
+                    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    
+                    # 添加元数据
+                    meta = doc.add_paragraph(f"生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                    meta.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    meta.paragraph_format.space_after = Inches(0.2)
+                    
+                    # 遍历本批次的所有图片和点评
+                    for idx, img_path in enumerate(valid_images):
+                        review_text = f"【作品 {idx+1}】\n（请在此处微调你的专属评论）"
+                        if idx < len(batch_reviews):
+                            clean_review = batch_reviews[idx].replace("【", "").replace("】", "").strip()
+                            review_text = f"【作品 {idx+1}】\n{clean_review}"
+
+                        # 插入图片 (适应手机屏幕宽度)
+                        try:
+                            p = doc.add_paragraph()
+                            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            run = p.add_run()
+                            run.add_picture(img_path, width=Inches(5.5))
+                        except Exception as e:
+                            print(f"      ⚠️ Word 插入图片失败: {e}")
+
+                        # 插入图片下方的鉴赏文字
+                        review_p = doc.add_paragraph(review_text)
+                        review_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        review_p.paragraph_format.space_before = Inches(0.1)
+                        review_p.paragraph_format.space_after = Inches(0.3)
+
+                    # 保存 Word 文档
+                    docx_file = os.path.join(current_subfolder, "公众号草稿.docx")
+                    doc.save(docx_file)
+                    print(f"      📄 已生成可直接导入公众号的 Word 文档：{os.path.basename(docx_file)}")
+                else:
+                    print(f"      ⚠️ 本组未发现有效 JPG 图片，跳过 Word 生成。")
+
+                # ========== 📝 保留 Txt 备份 ==========
                 summary_file = os.path.join(current_subfolder, "点评.txt")
                 with open(summary_file, "w", encoding="utf-8") as f:
                     f.write(f"【{folder_name} AI 作品鉴赏合辑】\n")
@@ -1244,11 +1295,19 @@ def main():
                         
                     f.write(f"—— 由 AI 视觉鉴赏系统自动书写 ——\n")
                 
-                print(f"      📝 已生成真实AI鉴赏文档：{os.path.basename(summary_file)}")
-                batch_reviews = []  # 清空缓存，准备下一个文件夹
-                
+                print(f"      📝 已生成备份 Txt 文档：{os.path.basename(summary_file)}")
+
+                # 重置缓存，准备下一个文件夹
+                batch_reviews = []
+
+            except ImportError:
+                print(f"      ⚠️ 未安装 python-docx，跳过 Word 文档生成。请运行: pip install python-docx")
+                # 降级生成 Txt
+                summary_file = os.path.join(current_subfolder, "点评.txt")
+                with open(summary_file, "w", encoding="utf-8") as f:
+                    f.write(f"【{folder_name} AI 作品鉴赏合辑】\n生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             except Exception as e:
-                print(f"      ⚠️ 鉴赏文档写入失败：{e}")
+                print(f"      ⚠️ 文档生成失败：{e}")
 
     print(f"\n✅ 全部完成！共 {total_count} 张图片，保存在: {output_root}")
     print(f"📁 图片已按每 {BATCH_SIZE} 张分到 {total_batches} 个子文件夹中")
