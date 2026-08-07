@@ -75,8 +75,9 @@ from tools.config import (
     AI_MINOR_CROP, AI_CROP_PERCENT,
     AUTO_DETECT_STYLE, SKETCH_KEYWORDS,
     # ========== 🆕 导入互斥开关（去掉 0~3 死路径导入） ==========
-    USE_OPENVINO_MODEL, ACTIVE_MODEL
+    USE_OPENVINO_MODEL, ACTIVE_MODEL,
     # 🛑 注意：不要在这里导入 SD_OV_MODEL_PATH, SD_MODEL_PATH_0/1/2/3 
+    AI_APPRECIATION_ENGINE
 )
 
 print(f"📊 STEPS = {STEPS}")
@@ -1115,80 +1116,110 @@ def main():
         # =================================
 
         # ====================================================================
-        # 🎨 使用 BLIP 直接看图生成描述 (无 GUI 依赖)
+        # 🎨 多后端图片鉴赏系统 (复用 gui/backends 全部能力)
         # ====================================================================
         caption = prompt  # 默认使用提示词作为降级选项
+        appr_engine = AI_APPRECIATION_ENGINE  # 从 config.py 获取引擎配置
 
-        blip_available = True  # 默认 True
-        try:
-            from PIL import Image
-            from transformers import BlipProcessor, BlipForConditionalGeneration
-            
-            if 'blip_processor' not in locals() or 'blip_model' not in locals():
-                print("   📦 正在加载 BLIP 模型 (首次使用会自动下载)...")
-                blip_processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
-                blip_model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large")
-                print("   ✅ BLIP 模型加载完成")
-                
-        except Exception as load_err:
-            print(f"   ❌ BLIP 模型加载失败，将使用提示词作为描述: {load_err}")
-            blip_available = False  # 标记为不可用
+        # 1. 如果设置为 prompt，直接跳过所有模型
+        if appr_engine == "prompt":
+            print(f"   📝 鉴赏引擎: 仅使用提示词")
+            caption = prompt
 
-        # 后续使用时检查标志
-        if blip_available:
-            try:
-                image = Image.open(final_output_path).convert('RGB')
-                inputs = blip_processor(image, return_tensors="pt")
-                out = blip_model.generate(**inputs, max_length=80, num_beams=3, repetition_penalty=1.1)
-                caption = blip_processor.decode(out[0], skip_special_tokens=True)
-                print(f"   🖼️ BLIP 描述: {caption[:80]}...")
-            except Exception as e:
-                print(f"   ⚠️ BLIP 推理失败: {e}")
-        # 如果 blip_available 为 False，直接使用 prompt 作为 caption
-
-        # 2. 根据 caption 结果，生成中文鉴赏（这段必须在 try 外部，确保绝对能运行）
-        lower_c = caption.lower()
-        content_desc = caption[:40] + "..." if len(caption) > 40 else caption
-        
-        # 根据实际画面自动判断风格与语气
-        if "figure" in lower_c or "statue" in lower_c or "resin" in lower_c:
-            tone_theme = "立体感极强，带有浓厚的模型收藏质感"
-            tone_material = "类似高级树脂涂装，光泽与暗部过渡平滑"
-            tone_pose = "姿态非常优雅自然"
-        elif "sketch" in lower_c or "lineart" in lower_c or "drawing" in lower_c:
-            tone_theme = "线条流畅干练，极具黑白素描的极简美感"
-            tone_material = "保留了铅笔或炭笔的原始质感"
-            tone_pose = "构图干净利落"
-        elif "mecha" in lower_c or "robot" in lower_c or "armor" in lower_c:
-            tone_theme = "充满硬核的工业设计感与机械张力"
-            tone_material = "金属反光与装甲细节刻画极为到位"
-            tone_pose = "展现出了极强的战斗姿态"
-        elif "hanfu" in lower_c or "chinese" in lower_c or "traditional" in lower_c:
-            tone_theme = "古风古韵，仿佛从古典画卷中走出来"
-            tone_material = "布料纹理与飘逸感极具东方美学"
-            tone_pose = "站姿端庄，神态温婉"
-        elif "bunny" in lower_c or "latex" in lower_c or "glossy" in lower_c:
-            tone_theme = "充满现代二次元流行气息"
-            tone_material = "高光与反光材质的渲染极具表现力"
-            tone_pose = "极富张力的动态造型"
-        elif "landscape" in lower_c or "mountain" in lower_c or "sea" in lower_c:
-            tone_theme = "意境深远，展现了非常开阔的画面层次"
-            tone_material = "光线的处理如同油画般细腻"
-            tone_pose = "构图宏大，极具沉浸感"
+        # 2. 其他所有引擎：伪装 GUI 界面，复用 backend 类
         else:
-            tone_theme = "色彩和谐，具有极高的艺术完成度"
-            tone_material = "细节丰富且质感细腻"
-            tone_pose = "主体表达清晰明确"
+            print(f"   🧠 鉴赏引擎: 正在加载 {appr_engine} 后端...")
+            try:
+                # 创建一个伪装的对象，让 backends 以为自己在 GUI 环境里
+                class FakeTab:
+                    def __init__(self):
+                        self.cancel_interrogate = False
+                        self.app = None  # 设为 None，因为我们在命令行下不需要 app
 
-        # 最终拼装为 100 字左右的鉴赏文案
-        review_paragraph = (
-            f"本作品生动地描绘了“{content_desc}”这一视觉主题。\n"
-            f"整体画面{tone_theme}。在材质表现上，{tone_material}，\n"
-            f"并且{tone_pose}，赋予了画面极强的代入感。\n"
-            f"无论是在光影处理还是色彩搭配上，都展现出相当高的审美水准。"
-        )
+                fake_tab = FakeTab()
+
+                # 根据配置动态导入后端
+                if appr_engine == "tag":
+                    from gui.tabs.interrogate.backends.tag import TagBackend
+                    backend = TagBackend(fake_tab)
+                    # 使用默认的快速标签模式
+                    caption = backend.interrogate(final_output_path, model_name="ViT-Large (准确)", threshold=0.02)
+                    
+                elif appr_engine == "blip":
+                    from gui.tabs.interrogate.backends.blip import BlipBackend
+                    backend = BlipBackend(fake_tab)
+                    # 使用详细模式
+                    caption = backend.interrogate(final_output_path, model_name="BLIP-large (详细)")
+                    
+                elif appr_engine == "combined":
+                    from gui.tabs.interrogate.backends.combined import CombinedBackend
+                    backend = CombinedBackend(fake_tab)
+                    # 组合模式：BLIP + CLIP 标签
+                    caption = backend.interrogate(final_output_path, blip_model="BLIP-large (详细)", clip_mode="fast")
+                    
+                elif appr_engine == "llm":
+                    # LLM 模式：需要额外调用本地 Ollama 进行中文润色
+                    from gui.tabs.interrogate.backends.llm import LLMBackend
+                    backend = LLMBackend(fake_tab)
+                    # 获取 BLIP 原始描述
+                    blip_caption = backend.blip_backend.interrogate(final_output_path, model_name="BLIP-large (详细)")
+                    
+                    # 如果你的本地 Ollama 已经运行，LLMBackend 会自动进行润色
+                    try:
+                        # 尝试使用 LLM 润色（复用 llm.py 的内部逻辑）
+                        llm_prompt = f"""
+请将以下图片描述转换为一段优美、带有艺术鉴赏性的中文赏析（约100字）：
+图片描述：{blip_caption}
+
+要求：
+1. 包含对人物服装、神态、材质质感的描写。
+2. 强调这是一件极具收藏价值的二次元手办/雕像作品。
+3. 语言风格：优雅、专业、适合作为社交媒体发帖文案。
+"""
+                        import requests
+                        response = requests.post(
+                            "http://localhost:11434/api/generate",
+                            json={"model": "qwen2.5:1.5b", "prompt": llm_prompt, "stream": False},
+                            timeout=45
+                        )
+                        if response.status_code == 200:
+                            caption = response.json().get("response", blip_caption)
+                            print(f"   ✅ LLM 润色完成！")
+                        else:
+                            caption = blip_caption
+                    except Exception as e:
+                        print(f"   ⚠️ LLM 调用失败 (Ollama未启动？)，降级为 BLIP 原始描述。错误: {e}")
+                        caption = blip_caption
+
+                else:
+                    print(f"   ⚠️ 未知的引擎配置，使用提示词降级。")
+                    caption = prompt
+
+                print(f"   ✅ {appr_engine} 后端推理完成")
+
+            except ImportError as ie:
+                print(f"   ❌ 缺少所需依赖，降级为提示词描述。错误: {ie}")
+                caption = prompt
+            except Exception as e:
+                print(f"   ❌ 后端调用失败，降级为提示词描述。错误: {e}")
+                caption = prompt
         # ====================================================================
 
+        # ====================================================================
+        # 📝 根据后端返回的 caption 生成鉴赏段落
+        # ====================================================================
+        # 将 AI 返回的图片描述截取前 100 个字，作为鉴赏的核心
+        content_desc = caption[:100] + "..." if len(caption) > 100 else caption
+
+        # 这段文案就是发帖用的模板，你可以随时修改里面的字眼
+        review_paragraph = (
+            f"本次 AI 艺术创作描绘了这样一幅画面：“{content_desc}”。\n"
+            f"在细腻的笔触和先进的大模型算法加持下，图片不仅呈现出逼真的手办质感，\n"
+            f"更通过精准的光影构图，传递出独特的视觉氛围与角色气质。\n"
+            f"这是一张兼具技术质感与艺术审美的精致作品。"
+        )
+        # ====================================================================
+        
         # 🛡️ 安全检查：确保 batch_reviews 是个列表
         if 'batch_reviews' not in locals():
             batch_reviews = []
