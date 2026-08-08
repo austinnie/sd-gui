@@ -1179,15 +1179,15 @@ def main():
                         if os.path.exists(snapshots_path):
                             subfolders = [f for f in os.listdir(snapshots_path) if os.path.isdir(os.path.join(snapshots_path, f))]
                             if subfolders:
-                                local_blip_path = os.path.join(snapshots_path, subfolders[0])
-                                print(f"   📦 正在从本地加载 BLIP 模型 ({local_blip_path})...")
+                                cached_blip_dir = os.path.join(snapshots_path, subfolders[0])
+                                print(f"   📦 正在从本地加载 BLIP 模型 ({cached_blip_dir})...")
                             else:
                                 raise FileNotFoundError("snapshots 目录为空")
                         else:
                             raise FileNotFoundError(f"找不到 snapshots 目录: {snapshots_path}")
                         
-                        processor = BlipProcessor.from_pretrained(local_blip_path)
-                        model = BlipForConditionalGeneration.from_pretrained(local_blip_path)
+                        processor = BlipProcessor.from_pretrained(cached_blip_dir)
+                        model = BlipForConditionalGeneration.from_pretrained(cached_blip_dir)
                         
                         image = Image.open(final_output_path).convert('RGB')
                         inputs = processor(image, return_tensors="pt")
