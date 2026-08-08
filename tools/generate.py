@@ -1122,7 +1122,19 @@ def main():
             
         # 🟢 [追踪点 1] 调用 generate_style 之前
         print(f"   📁 [追踪 1] 调用 generate_style 前，目标路径: {os.path.join(current_subfolder, filename)}")
-        
+
+
+        # 决定最终的 strength
+        final_strength = DEFAULT_STRENGTH
+        # 如果命令行传了 --strength，就用传进来的值
+        if user_steps is not None:
+            final_strength = DEFAULT_STRENGTH  # 步数是步数，别搞混了
+        # 如果命令行传了 --strength，就用传进来的值
+        if any('--strength' in arg or '-strength' in arg for arg in sys.argv):
+            final_strength = float([arg for arg in sys.argv if '--strength' in arg or '-strength' in arg][0].split('=')[-1].strip())
+        elif user_steps is not None:
+            final_strength = DEFAULT_STRENGTH
+    
         # 🆕 修改：将图片保存到子文件夹
         final_output_path =generate_style(
             pipe, 
