@@ -1118,6 +1118,7 @@ def main():
             actual_steps,
             target_style
         )
+        saved_img_file = final_output_path
         # =================================
 
         # ====================================================================
@@ -1148,19 +1149,19 @@ def main():
                     from gui.tabs.interrogate.backends.tag import TagBackend
                     backend = TagBackend(fake_tab)
                     # 使用默认的快速标签模式
-                    caption = backend.interrogate(final_output_path, model_name="ViT-Large (准确)", threshold=0.02)
+                    caption = backend.interrogate(saved_img_file, model_name="ViT-Large (准确)", threshold=0.02)
                     
                 elif appr_engine == "blip":
                     from gui.tabs.interrogate.backends.blip import BlipBackend
                     backend = BlipBackend(fake_tab)
                     # 使用详细模式
-                    caption = backend.interrogate(final_output_path, model_name="BLIP-large (详细)")
+                    caption = backend.interrogate(saved_img_file, model_name="BLIP-large (详细)")
                     
                 elif appr_engine == "combined":
                     from gui.tabs.interrogate.backends.combined import CombinedBackend
                     backend = CombinedBackend(fake_tab)
                     # 组合模式：BLIP + CLIP 标签
-                    caption = backend.interrogate(final_output_path, blip_model="BLIP-large (详细)", clip_mode="fast")
+                    caption = backend.interrogate(saved_img_file, blip_model="BLIP-large (详细)", clip_mode="fast")
                     
                 elif appr_engine == "llm":
                     print(f"   🧠 鉴赏引擎: 使用本地目录加载 BLIP + Ollama 润色")
@@ -1189,7 +1190,7 @@ def main():
                         processor = BlipProcessor.from_pretrained(cached_blip_dir)
                         model = BlipForConditionalGeneration.from_pretrained(cached_blip_dir)
                         
-                        image = Image.open(final_output_path).convert('RGB')
+                        image = Image.open(saved_img_file).convert('RGB')
                         inputs = processor(image, return_tensors="pt")
                         out = model.generate(**inputs, max_length=80, num_beams=3, repetition_penalty=1.1)
                         blip_caption = processor.decode(out[0], skip_special_tokens=True)
