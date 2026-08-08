@@ -1106,6 +1106,22 @@ def main():
         # ✨ 生成带前缀的文件名，避免重名冲突
         safe_prefix = folder_name.replace(" ", "_").replace("/", "_")
         filename = f"{target_style}_{i+1:02d}.png"
+
+        # 🛡️ 绝对防御：强行提取正确的子文件夹路径，防止被之前的缓存路径污染！
+        # 因为第二张图报错是路径变成了哈希，这里我们强制只要是在输出目录外，就重置。
+        if "hf_cache" in os.path.join(current_subfolder, filename) or "snapshots" in os.path.join(current_subfolder, filename):
+            # 如果发现目标路径是刚才的哈希缓存目录，直接把最终路径重定向回原来的文件夹！
+            print(f"   🛡️ [绝对防御] 检测到路径污染！强制重定向到安全路径...")
+            safe_output_dir = os.path.join(CURRENT_DIR, "output", f"{folder_name}_{timestamp}")
+            os.makedirs(safe_output_dir, exist_ok=True)
+            subfolder_name = f"{batch_index + 1:04d}"
+            safe_subfolder = os.path.join(safe_output_dir, subfolder_name)
+            os.makedirs(safe_subfolder, exist_ok=True)
+            current_subfolder = safe_subfolder
+            print(f"   ✅ [已重定向] 新路径: {safe_subfolder}")
+            
+        # 🟢 [追踪点 1] 调用 generate_style 之前
+        print(f"   📁 [追踪 1] 调用 generate_style 前，目标路径: {os.path.join(current_subfolder, filename)}")
         
         # 🆕 修改：将图片保存到子文件夹
         final_output_path =generate_style(
@@ -1119,6 +1135,11 @@ def main():
             target_style
         )
         saved_img_file = final_output_path
+
+        # 🟢 [追踪点 2] 刚生成完图片 (消除AI痕迹刚刚开始)
+        print(f"   ✅ [追踪 2] generate_style 返回的路径 (initial): {final_output_path}")
+        print(f"   ✅ [追踪 2] 备份路径 (saved_img_file): {saved_img_file}")
+        
         # =================================
 
         # ====================================================================
@@ -1144,6 +1165,9 @@ def main():
 
                 fake_tab = FakeTab()
 
+                # 🟢 [追踪点 3] 调用后端进行推理前
+                print(f"   🔍 [追踪 3] 即将传递给后端进行推理的图片路径: {saved_img_file}")
+                
                 # 根据配置动态导入后端
                 if appr_engine == "tag":
                     from gui.tabs.interrogate.backends.tag import TagBackend
@@ -1167,36 +1191,45 @@ def main():
                     print(f"   🧠 鉴赏引擎: 使用本地目录加载 BLIP + Ollama 润色")
                     caption = prompt
                     
-                    # ================= 1. 基于你截图中的真实路径，加载 BLIP =================
-                    try:
-                        from transformers import BlipProcessor, BlipForConditionalGeneration
-                        from PIL import Image
-                        
-                        # 🚀 核心修复：自动寻找 Hugging Face 的 snapshots 缓存目录
-                        base_blip_path = r"E:\hf_cache\.cache\hub\models--Salesforce--blip-image-captioning-large"
-                        snapshots_path = os.path.join(base_blip_path, "snapshots")
-                        
-                        # 获取 snapshots 目录下的第一个有效文件夹
-                        if os.path.exists(snapshots_path):
-                            subfolders = [f for f in os.listdir(snapshots_path) if os.path.isdir(os.path.join(snapshots_path, f))]
-                            if subfolders:
-                                cached_blip_dir = os.path.join(snapshots_path, subfolders[0])
-                                print(f"   📦 正在从本地加载 BLIP 模型 ({cached_blip_dir})...")
+                    # ================= 1. 懒加载 BLIP (只加载一次) =================
+                    # 检查当前函数作用域外是否已经加载了模型
+                    if 'blip_processor' not in locals() or 'blip_model' not in locals():
+                        try:
+                            from transformers import BlipProcessor, BlipForConditionalGeneration
+                            
+                            base_blip_path = r"E:\hf_cache\.cache\hub\models--Salesforce--blip-image-captioning-large"
+                            snapshots_path = os.path.join(base_blip_path, "snapshots")
+                            
+                            if os.path.exists(snapshots_path):
+                                subfolders = [f for f in os.listdir(snapshots_path) if os.path.isdir(os.path.join(snapshots_path, f))]
+                                if subfolders:
+                                    cached_blip_dir = os.path.join(snapshots_path, subfolders[0])
+                                    print(f"   📦 首次使用，正在加载 BLIP 模型 ({cached_blip_dir})...")
+                                    blip_processor = BlipProcessor.from_pretrained(cached_blip_dir)
+                                    blip_model = BlipForConditionalGeneration.from_pretrained(cached_blip_dir)
+                                    print(f"   ✅ BLIP 模型加载完成！")
+                                else:
+                                    raise FileNotFoundError("snapshots 目录为空")
                             else:
-                                raise FileNotFoundError("snapshots 目录为空")
-                        else:
-                            raise FileNotFoundError(f"找不到 snapshots 目录: {snapshots_path}")
-                        
-                        processor = BlipProcessor.from_pretrained(cached_blip_dir)
-                        model = BlipForConditionalGeneration.from_pretrained(cached_blip_dir)
-                        
-                        image = Image.open(saved_img_file).convert('RGB')
-                        inputs = processor(image, return_tensors="pt")
-                        out = model.generate(**inputs, max_length=80, num_beams=3, repetition_penalty=1.1)
-                        blip_caption = processor.decode(out[0], skip_special_tokens=True)
-                        print(f"   📝 BLIP 基础描述: {blip_caption[:60]}...")
-                    except Exception as e:
-                        print(f"   ⚠️ 本地 BLIP 加载失败，将使用提示词作为降级。错误: {e}")
+                                raise FileNotFoundError(f"找不到 snapshots 目录: {snapshots_path}")
+                        except Exception as e:
+                            print(f"   ⚠️ 本地 BLIP 加载失败，将使用提示词作为降级。错误: {e}")
+                            blip_processor = None
+                            blip_model = None
+
+                    # 如果加载成功，则进行推理
+                    if blip_processor is not None and blip_model is not None:
+                        try:
+                            from PIL import Image
+                            image = Image.open(saved_img_file).convert('RGB')
+                            inputs = blip_processor(image, return_tensors="pt")
+                            out = blip_model.generate(**inputs, max_length=80, num_beams=3, repetition_penalty=1.1)
+                            blip_caption = blip_processor.decode(out[0], skip_special_tokens=True)
+                            print(f"   📝 BLIP 基础描述: {blip_caption[:60]}...")
+                        except Exception as e:
+                            print(f"   ⚠️ BLIP 推理失败，使用提示词降级。错误: {e}")
+                            blip_caption = prompt
+                    else:
                         blip_caption = prompt
 
                     # ================= 2. 将描述提交给本地 Ollama =================
@@ -1229,7 +1262,6 @@ def main():
                             caption = blip_caption
                     else:
                         caption = blip_caption
-
                 else:
                     print(f"   ⚠️ 未知的引擎配置，使用提示词降级。")
                     caption = prompt
@@ -1336,7 +1368,7 @@ def main():
                     for review in batch_reviews:
                         f.write(f"{review}\n\n")
                         
-                    f.write(f"—— 由 AI 视觉鉴赏系统自动书写 ——\n")
+                    #f.write(f"—— 由 AI 视觉鉴赏系统自动书写 ——\n")
                 
                 print(f"      📝 已生成备份 Txt 文档：{os.path.basename(summary_file)}")
 
