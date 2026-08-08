@@ -1090,16 +1090,42 @@ def main():
     print(f"\n📊 共 {total_count} 张图片，将分到 {total_batches} 个子文件夹中（每 {BATCH_SIZE} 张一组）\n")
     # ===============================================
 
-    # ========== 生成循环 ==========
+    # ========== 生成循环 (终极稳定版) ==========
     from tqdm import tqdm
     # 🛡️ 核心修复：在循环开始前绝对初始化变量！
-    batch_reviews = []  # 缓存当前子文件夹的点评    
+    batch_reviews = []  # 缓存当前子文件夹的点评
+
+    # 提前检查 python-docx 是否安装，避免循环中报错导致程序崩溃
+    DOCX_AVAILABLE = True
+    try:
+        from docx import Document
+        from docx.shared import Inches
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+    except ImportError:
+        print("⚠️ [系统] 未安装 python-docx，将跳过 Word 文档生成。请运行: pip install python-docx")
+        DOCX_AVAILABLE = False
+    
     for i in tqdm(range(total_count), desc="生成进度"):
         prompt, prompt_mode = build_prompt(config)
         
+
         # 🆕 计算当前图片属于哪个子文件夹（从 0 开始计数）
         batch_index = i // BATCH_SIZE
         current_subfolder = subfolders[batch_index]
+
+        # 🛡️ 【终极绝对防御】：只要当前路径不在我们正常的 output 目录下，立刻重定向！
+        base_output_path = os.path.join(CURRENT_DIR, "output")
+        if not current_subfolder.startswith(base_output_path):
+            print(f"   🛡️ [终极绝对防御] 路径严重偏离正常输出目录！强制重定向！")
+            # 强制重建正确的输出目录
+            safe_output_dir = os.path.join(CURRENT_DIR, "output", f"{folder_name}_{timestamp}")
+            os.makedirs(safe_output_dir, exist_ok=True)
+            subfolder_name = f"{batch_index + 1:04d}"
+            safe_subfolder = os.path.join(safe_output_dir, subfolder_name)
+            os.makedirs(safe_subfolder, exist_ok=True)
+            current_subfolder = safe_subfolder
+            subfolders[batch_index] = current_subfolder  # 更新缓存
+            print(f"   ✅ [已重定向] 新路径: {current_subfolder}")
         
         print(f"\n🔄 进度：第 {i+1}/{total_count} 张 [{prompt_mode}] → 子文件夹 {batch_index + 1:04d}")
         
@@ -1123,25 +1149,30 @@ def main():
         # 🟢 [追踪点 1] 调用 generate_style 之前
         print(f"   📁 [追踪 1] 调用 generate_style 前，目标路径: {os.path.join(current_subfolder, filename)}")
 
-
-        # 决定最终的 strength
+        # 🛡️ 修复：决定最终的 strength，并确保传递给 generate_style
         final_strength = DEFAULT_STRENGTH
         # 如果命令行传了 --strength，就用传进来的值
-        if user_steps is not None:
-            final_strength = DEFAULT_STRENGTH  # 步数是步数，别搞混了
-        # 如果命令行传了 --strength，就用传进来的值
-        if any('--strength' in arg or '-strength' in arg for arg in sys.argv):
-            final_strength = float([arg for arg in sys.argv if '--strength' in arg or '-strength' in arg][0].split('=')[-1].strip())
-        elif user_steps is not None:
-            final_strength = DEFAULT_STRENGTH
-    
+        for arg in sys.argv:
+            if arg.startswith('--strength='):
+                try:
+                    final_strength = float(arg.split('=')[1])
+                    break
+                except:
+                    pass
+            elif arg == '--strength' and len(sys.argv) > sys.argv.index(arg) + 1:
+                try:
+                    final_strength = float(sys.argv[sys.argv.index(arg) + 1])
+                    break
+                except:
+                    pass
+
         # 🆕 修改：将图片保存到子文件夹
-        final_output_path =generate_style(
+        final_output_path = generate_style(
             pipe, 
             init_image, 
             prompt, 
             os.path.join(current_subfolder, filename),  # 👈 保存到子文件夹
-            config["strength"],
+            final_strength, # ✅ 这里必须传 final_strength！
             mode,
             actual_steps,
             target_style
@@ -1319,58 +1350,60 @@ def main():
         is_batch_end = ((i + 1) % BATCH_SIZE == 0)
         
         if is_batch_end or is_last_item:
-            try:
-                # ========== 📄 生成 Word 文档 (严格按 5 张一组) ==========
-                from docx import Document
-                from docx.shared import Inches
-                from docx.enum.text import WD_ALIGN_PARAGRAPH
-                import glob
-
-                # 如果图片少于 BATCH_SIZE 但已经结束了，或者正好凑满 5 张，都会走到这里
-                valid_images = [img for img in glob.glob(os.path.join(current_subfolder, "*.jpg")) if os.path.exists(img)]
-                
-                if valid_images:
+            # 📄 生成 Word 文档 (严格按 5 张一组)
+            if DOCX_AVAILABLE:
+                try:
+                    import glob
                     doc = Document()
                     
-                    # 设置标题
-                    title = doc.add_heading(f"【{folder_name} 作品合辑】", level=1)
-                    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    # 如果图片少于 BATCH_SIZE 但已经结束了，或者正好凑满 5 张，都会走到这里
+                    valid_images = [img for img in glob.glob(os.path.join(current_subfolder, "*.jpg")) if os.path.exists(img)]
                     
-                    # 添加元数据
-                    meta = doc.add_paragraph(f"生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-                    meta.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    meta.paragraph_format.space_after = Inches(0.2)
-                    
-                    # 遍历本批次的所有图片和点评
-                    for idx, img_path in enumerate(valid_images):
-                        review_text = f"【作品 {idx+1}】\n（请在此处微调你的专属评论）"
-                        if idx < len(batch_reviews):
-                            clean_review = batch_reviews[idx].replace("【", "").replace("】", "").strip()
-                            review_text = f"【作品 {idx+1}】\n{clean_review}"
+                    if valid_images:
+                        # 设置标题
+                        title = doc.add_heading(f"【{folder_name} 作品合辑】", level=1)
+                        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        
+                        # 添加元数据
+                        meta = doc.add_paragraph(f"生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                        meta.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        meta.paragraph_format.space_after = Inches(0.2)
+                        
+                        # 遍历本批次的所有图片和点评
+                        for idx, img_path in enumerate(valid_images):
+                            review_text = f"【作品 {idx+1}】\n（请在此处微调你的专属评论）"
+                            if idx < len(batch_reviews):
+                                clean_review = batch_reviews[idx].replace("【", "").replace("】", "").strip()
+                                review_text = f"【作品 {idx+1}】\n{clean_review}"
 
-                        # 插入图片 (适应手机屏幕宽度)
-                        try:
-                            p = doc.add_paragraph()
-                            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                            run = p.add_run()
-                            run.add_picture(img_path, width=Inches(5.5))
-                        except Exception as e:
-                            print(f"      ⚠️ Word 插入图片失败: {e}")
+                            # 插入图片 (适应手机屏幕宽度)
+                            try:
+                                p = doc.add_paragraph()
+                                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                                run = p.add_run()
+                                run.add_picture(img_path, width=Inches(5.5))
+                            except Exception as e:
+                                print(f"      ⚠️ Word 插入图片失败: {e}")
 
-                        # 插入图片下方的鉴赏文字
-                        review_p = doc.add_paragraph(review_text)
-                        review_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                        review_p.paragraph_format.space_before = Inches(0.1)
-                        review_p.paragraph_format.space_after = Inches(0.3)
+                            # 插入图片下方的鉴赏文字
+                            review_p = doc.add_paragraph(review_text)
+                            review_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            review_p.paragraph_format.space_before = Inches(0.1)
+                            review_p.paragraph_format.space_after = Inches(0.3)
 
-                    # 保存 Word 文档
-                    docx_file = os.path.join(current_subfolder, "公众号草稿.docx")
-                    doc.save(docx_file)
-                    print(f"      📄 已生成可直接导入公众号的 Word 文档：{os.path.basename(docx_file)}")
-                else:
-                    print(f"      ⚠️ 本组未发现有效 JPG 图片，跳过 Word 生成。")
+                        # 保存 Word 文档
+                        docx_file = os.path.join(current_subfolder, "公众号草稿.docx")
+                        doc.save(docx_file)
+                        print(f"      📄 已生成可直接导入公众号的 Word 文档：{os.path.basename(docx_file)}")
+                    else:
+                        print(f"      ⚠️ 本组未发现有效 JPG 图片，跳过 Word 生成。")
+                except Exception as e:
+                    print(f"      ⚠️ Word 文档生成失败：{e}")
+            else:
+                print(f"      ℹ️ 跳过 Word 生成 (python-docx 未安装)")
 
-                # ========== 📝 保留 Txt 备份 ==========
+            # ========== 📝 保留 Txt 备份 ==========
+            try:
                 summary_file = os.path.join(current_subfolder, "点评.txt")
                 with open(summary_file, "w", encoding="utf-8") as f:
                     f.write(f"【{folder_name} AI 作品鉴赏合辑】\n")
@@ -1383,18 +1416,11 @@ def main():
                     #f.write(f"—— 由 AI 视觉鉴赏系统自动书写 ——\n")
                 
                 print(f"      📝 已生成备份 Txt 文档：{os.path.basename(summary_file)}")
-
-                # 重置缓存，准备下一个文件夹
-                batch_reviews = []
-
-            except ImportError:
-                print(f"      ⚠️ 未安装 python-docx，跳过 Word 文档生成。请运行: pip install python-docx")
-                # 降级生成 Txt
-                summary_file = os.path.join(current_subfolder, "点评.txt")
-                with open(summary_file, "w", encoding="utf-8") as f:
-                    f.write(f"【{folder_name} AI 作品鉴赏合辑】\n生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             except Exception as e:
-                print(f"      ⚠️ 文档生成失败：{e}")
+                print(f"      ⚠️ Txt 备份文档写入失败：{e}")
+
+            # 重置缓存，准备下一个文件夹
+            batch_reviews = []
 
     print(f"\n✅ 全部完成！共 {total_count} 张图片，保存在: {output_root}")
     print(f"📁 图片已按每 {BATCH_SIZE} 张分到 {total_batches} 个子文件夹中")
