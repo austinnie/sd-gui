@@ -175,6 +175,42 @@ def resolve_model_path_from_index(model_entry):
 SD_MODEL_PATH = resolve_model_path()
 
 # ==================== 🤖 LoRA 模型选择开关 ====================
+
+# ==================== 📚 加载 LoRA 索引 ====================
+LORA_INDEX_FILE = os.path.join(SCRIPTS_DIR, "lora_index.json")
+
+def load_lora_index():
+    """加载 LoRA 索引文件"""
+    if not os.path.exists(LORA_INDEX_FILE):
+        print("⚠️ LoRA 索引不存在，正在自动生成...")
+        try:
+            import subprocess
+            lora_index_script = os.path.join(SCRIPTS_DIR, "lora_index.py")
+            if os.path.exists(lora_index_script):
+                subprocess.run(
+                    [sys.executable, lora_index_script],
+                    capture_output=True,
+                    text=True,
+                    cwd=SCRIPTS_DIR
+                )
+            else:
+                print(f"⚠️ 找不到 lora_index.py: {lora_index_script}")
+                return {"loras": [], "default": None}
+        except Exception as e:
+            print(f"⚠️ 自动生成 LoRA 索引失败: {e}")
+            return {"loras": [], "default": None}
+    
+    try:
+        with open(LORA_INDEX_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"⚠️ 加载 LoRA 索引失败: {e}")
+        return {"loras": [], "default": None}
+
+LORA_INDEX = load_lora_index()
+AVAILABLE_LORAS = LORA_INDEX.get("loras", [])
+
+
 # 多 LoRA 配置模式（完全保留原有配置）
 LORA_ACTIVE_INDICES = [1]  # 例如 [0] 启用第一个，[0, 1] 同时启用前两个
 
