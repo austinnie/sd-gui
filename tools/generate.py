@@ -244,10 +244,13 @@ def remove_watermark(image_path):
     return Image.fromarray(cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
     
 # ==================== 🚀 核心：加载模型管道 ====================
+# tools/generate.py
+# 在 setup_pipeline() 函数中，替换普通模型分支
+
 def setup_pipeline():
     print(f"\n[系统] 正在加载 AI 模型...")
 
-    # ========== 🆕 明确双系统互斥的最终模型路径选择 ==========
+    # ========== 🆕 统一使用 config.py 的 SD_MODEL_PATH ==========
     if USE_OPENVINO_MODEL:
         # 【开】OpenVINO 分支
         try:
@@ -261,40 +264,27 @@ def setup_pipeline():
         print(f"   📂 模型路径: {model_path}")
         
         try:
-            # 🛡️ 原生加载：无需手动判断文件，交给 OVStableDiffusionPipeline 自己处理
             from optimum.intel import OVStableDiffusionPipeline
             print("⚡ 尝试加载 OpenVINO 接口...")
-            
-            # 使用 compile=False 让它在加载时直接解析模型结构
-            # 🛡️ 加载修复：使用 export=True 允许模型在加载时动态处理形状不匹配问题
             pipe = OVStableDiffusionPipeline.from_pretrained(model_path, compile=False, export=True)
-            
             print("✅ OpenVINO 模型加载成功！")
-            
         except Exception as e:
             print(f"❌ OpenVINO 加载失败: {e}")
             sys.exit(1)
     else:
-        # 【关】普通模型分支
-        # 👑 核心修改：动态去 config.py 里面拿对应的 0~3 路径，只在进入这个分支时才触发
-        try:
-            from tools.config import SD_MODEL_PATH_0, SD_MODEL_PATH_1, SD_MODEL_PATH_2, SD_MODEL_PATH_3
-            model_paths = [SD_MODEL_PATH_0, SD_MODEL_PATH_1, SD_MODEL_PATH_2, SD_MODEL_PATH_3]
-            
-            if 0 <= ACTIVE_MODEL < len(model_paths):
-                model_path = model_paths[ACTIVE_MODEL]
-            else:
-                print(f"⚠️ [警告] ACTIVE_MODEL = {ACTIVE_MODEL} 超出范围，默认使用 SD_MODEL_PATH_0")
-                model_path = SD_MODEL_PATH_0
-        except ImportError:
-            # 既然进入了 else 分支，说明在 config.py 里 USE_OPENVINO_MODEL=False，
-            # 但即便这样，如果出现异常，也是以防万一的兜底。
-            print("❌ 错误：普通模型分支无法加载路径。请检查 config.py 的 else 分支。")
-            sys.exit(1)
-            
-        print(f"⚡ [配置] 使用普通模型模式 (ACTIVE_MODEL = {ACTIVE_MODEL})")
-        print(f"   📂 模型路径: {model_path}")
+        # 【关】普通模型分支 - 🆕 使用新的 SD_MODEL_PATH
+        print(f"⚡ [配置] 使用普通模型模式")
         
+        # 🆕 从 config.py 获取最终模型路径
+        try:
+            from tools.config import SD_MODEL_PATH
+            model_path = SD_MODEL_PATH
+            print(f"   📂 模型路径: {model_path}")
+        except ImportError:
+            print("❌ 错误：无法从 config.py 导入 SD_MODEL_PATH")
+            sys.exit(1)
+        
+        # 如果是目录，查找 .safetensors 文件
         if os.path.isdir(model_path):
             import glob
             safetensors_files = glob.glob(os.path.join(model_path, "*.safetensors"))
@@ -316,15 +306,13 @@ def setup_pipeline():
             pipe.to("cpu")
             print("✅ 普通模型加载成功！")
 
-            # ================= 🆕 新增：加载 LoRA (支持多 LoRA) =================
+            # ================= 🆕 加载 LoRA =================
             try:
-                # 从 config.py 导入多 LoRA 配置
                 from tools.config import FINAL_LORA_LIST
                 
                 if FINAL_LORA_LIST:
                     print(f"   📦 准备加载 {len(FINAL_LORA_LIST)} 个 LoRA...")
                     
-                    # 遍历并加载每个 LoRA
                     adapter_names = []
                     adapter_weights = []
                     
@@ -336,13 +324,11 @@ def setup_pipeline():
                             adapter_name = f"lora_{i}"
                             print(f"      🔗 加载 LoRA {i+1}: {os.path.basename(lora_path)} (权重: {lora_weight})")
                             
-                            # 加载每个 LoRA
                             pipe.load_lora_weights(lora_path, adapter_name=adapter_name)
                             
                             adapter_names.append(adapter_name)
                             adapter_weights.append(lora_weight)
                     
-                    # 统一应用所有加载的 LoRA
                     if adapter_names:
                         pipe.set_adapters(adapter_names, adapter_weights=adapter_weights)
                         print(f"      ✅ 全部 {len(adapter_names)} 个 LoRA 加载成功！")
@@ -352,7 +338,6 @@ def setup_pipeline():
                     print("   ℹ️ 未配置 LoRA，将使用裸模型出图")
                     
             except ImportError:
-                # 如果 config.py 没有 FINAL_LORA_LIST 变量
                 print("   ℹ️ config.py 未定义 LoRA 配置，跳过 LoRA 加载")
             # ========================================================
             
