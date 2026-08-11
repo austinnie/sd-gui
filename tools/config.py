@@ -3,6 +3,7 @@
 import os
 import sys
 import json
+import re  # 🆕 添加 re 模块导入
 from pathlib import Path
 
 # ✅ 核心修复：把当前脚本所在目录（tools）加入 Python 系统路径
@@ -12,6 +13,9 @@ if CURRENT_DIR not in sys.path:
 
 # ==================== 基础路径 ====================
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)  # v8_universal_generator/
+
+# 🆕 添加 CONFIG_FILE 定义（用于自动更新配置）
+CONFIG_FILE = os.path.join(CURRENT_DIR, "config.py")  # tools/config.py 自身
 
 # ==================== 📚 加载模型索引 ====================
 # 索引文件在 scripts/ 目录下（和 model_index.py 在一起）
@@ -51,6 +55,10 @@ MODEL_INDEX = load_model_index()
 AVAILABLE_MODELS = MODEL_INDEX.get("models", [])
 
 # ==================== 🔵 模型选择配置 ====================
+# 🆕 模型类型: "sd15" | "sdxl"（由 switch_model.py 自动管理）
+MODEL_TYPE = "sdxl"
+
+
 # 模式: "legacy" | "smart" | "manual"
 #   legacy: 使用原有的 ACTIVE_MODEL 方式（完全兼容旧代码）
 #   smart:  使用索引推荐的模型（自动选择最佳）
@@ -66,49 +74,92 @@ USE_OPENVINO_MODEL = False
 ACTIVE_MODEL = 0  # 仅在 legacy 模式下使用
 
 # ==================== 🔴 智能模型选择 ====================
+# tools/config.py
+# 替换原有的 resolve_model_path 函数
+
 def resolve_model_path():
-    """根据配置决定最终使用的模型路径（增强版）"""
+    """根据配置决定最终使用的模型路径（智能版）"""
     
-    # ---------- 1. OpenVINO 模式（优先） ----------
+    # ---------- 1. 从索引中智能查找 ----------
+    try:
+        import sys
+        import json
+        
+        # 加载索引
+        index_file = os.path.join(SCRIPTS_DIR, "models_index.json")
+        if os.path.exists(index_file):
+            with open(index_file, "r", encoding="utf-8") as f:
+                index_data = json.load(f)
+            
+            models = index_data.get("models", [])
+            
+            # 获取当前配置的模型类型
+            current_type = MODEL_TYPE if 'MODEL_TYPE' in globals() else "sd15"
+            
+            # 查找该类型的模型
+            type_models = [m for m in models if m.get("model_type") == current_type]
+            
+            if type_models:
+                # 优先使用默认模型
+                default_name = index_data.get("default")
+                if default_name:
+                    for m in type_models:
+                        if m["name"] == default_name:
+                            # 解析路径
+                            if "path" in m and m["path"]:
+                                abs_path = os.path.normpath(os.path.join(PROJECT_ROOT, m["path"]))
+                                if os.path.exists(abs_path):
+                                    print(f"🤖 智能加载: {m.get('model_type_icon', '')} {m['name']}")
+                                    return abs_path
+                            if "absolute_path" in m and m["absolute_path"]:
+                                if os.path.exists(m["absolute_path"]):
+                                    print(f"🤖 智能加载: {m.get('model_type_icon', '')} {m['name']}")
+                                    return m["absolute_path"]
+                
+                # 使用该类型第一个模型
+                m = type_models[0]
+                if "path" in m and m["path"]:
+                    abs_path = os.path.normpath(os.path.join(PROJECT_ROOT, m["path"]))
+                    if os.path.exists(abs_path):
+                        print(f"🤖 智能加载: {m.get('model_type_icon', '')} {m['name']}")
+                        return abs_path
+                if "absolute_path" in m and m["absolute_path"]:
+                    if os.path.exists(m["absolute_path"]):
+                        print(f"🤖 智能加载: {m.get('model_type_icon', '')} {m['name']}")
+                        return m["absolute_path"]
+            
+            # 如果当前类型没有模型，尝试其他类型
+            for model_type in ["sdxl", "sd15"]:
+                if model_type != current_type:
+                    type_models = [m for m in models if m.get("model_type") == model_type]
+                    if type_models:
+                        m = type_models[0]
+                        if "path" in m and m["path"]:
+                            abs_path = os.path.normpath(os.path.join(PROJECT_ROOT, m["path"]))
+                            if os.path.exists(abs_path):
+                                print(f"⚠️ {current_type} 无可用模型，自动使用 {model_type}: {m['name']}")
+                                # 自动更新 config.py
+                                try:
+                                    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                                        content = f.read()
+                                    # ✅ 正确写法
+                                    content = re.sub(r'MODEL_TYPE = ".*?"', f'MODEL_TYPE = "{model_type}"', content)
+                                    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+                                        f.write(content)
+                                except:
+                                    pass
+                                return abs_path
+    except Exception as e:
+        print(f"⚠️ 智能加载失败: {e}")
+    
+    # ---------- 2. OpenVINO 模式 ----------
     if USE_OPENVINO_MODEL:
         ov_path = os.path.normpath(os.path.join(PROJECT_ROOT, "models", "sd-v1-5", "official_ov"))
         if os.path.exists(ov_path):
             return ov_path
-        
-        # 尝试从索引中查找 OpenVINO 模型
-        for m in AVAILABLE_MODELS:
-            if m.get("is_ov"):
-                ov_abs_path = resolve_model_path_from_index(m)
-                if ov_abs_path:
-                    return ov_abs_path
         print("⚠️ 未找到 OpenVINO 模型，回退到普通模型")
     
-    # ---------- 2. manual 模式 ----------
-    if MODEL_SELECTION_MODE == "manual" and MANUAL_MODEL_NAME:
-        for m in AVAILABLE_MODELS:
-            if MANUAL_MODEL_NAME.lower() in m["name"].lower():
-                return resolve_model_path_from_index(m)
-        print(f"⚠️ 未找到模型: {MANUAL_MODEL_NAME}，使用默认模型")
-    
-    # ---------- 3. smart 模式 ----------
-    if MODEL_SELECTION_MODE == "smart":
-        if AVAILABLE_MODELS:
-            # 使用索引推荐的默认模型
-            default_name = MODEL_INDEX.get("default")
-            if default_name:
-                for m in AVAILABLE_MODELS:
-                    if m["name"] == default_name:
-                        abs_path = resolve_model_path_from_index(m)
-                        if abs_path:
-                            print(f"🤖 智能推荐: {m['name']} ({m['size_gb']}GB, 标签: {', '.join(m['tags'])})")
-                            return abs_path
-            # 回退：使用第一个模型
-            first_path = resolve_model_path_from_index(AVAILABLE_MODELS[0])
-            if first_path:
-                return first_path
-    
-    # ---------- 4. legacy 模式（完全兼容旧代码） ----------
-    # 使用原有的路径配置
+    # ---------- 3. legacy 模式 ----------
     SD_MODEL_PATH_0 = os.path.join(PROJECT_ROOT, "models/sd-v1-5/aiiiii01_v10.safetensors") 
     SD_MODEL_PATH_1 = os.path.join(PROJECT_ROOT, "models/sd-v1-5/anytimeRealistic_v10.safetensors")
     SD_MODEL_PATH_2 = os.path.join(PROJECT_ROOT, "models/sd-v1-5/henmixreal_v10_henmixrealV10.safetensors")
@@ -122,15 +173,20 @@ def resolve_model_path():
         return SD_MODEL_PATH_2
     elif ACTIVE_MODEL == 3:
         return SD_MODEL_PATH_3
-    else:
-        # 默认使用第一个
-        return SD_MODEL_PATH_0
+    
+    # 最终回退
+    return SD_MODEL_PATH_0 if os.path.exists(SD_MODEL_PATH_0) else SD_MODEL_PATH_1
+    
+    
+# tools/config.py
 
 def resolve_model_path_from_index(model_entry):
-    """从索引条目解析实际模型路径"""
+    """从索引条目解析实际模型路径（支持 SD1.5 + SDXL）"""
+    if not model_entry:
+        return None
+    
     # 1. 如果有相对路径，基于项目根目录解析
     if "path" in model_entry and model_entry["path"]:
-        # 相对路径（如 ../models/sd-v1-5/xxx.safetensors）
         abs_path = os.path.normpath(os.path.join(PROJECT_ROOT, model_entry["path"]))
         if os.path.exists(abs_path):
             return abs_path
@@ -145,24 +201,32 @@ def resolve_model_path_from_index(model_entry):
         if os.path.exists(model_entry["path"]):
             return model_entry["path"]
     
-    # 4. 回退：在模型目录中查找文件名
+    # 4. 回退：根据模型类型在对应目录中查找文件名
     if "filename" in model_entry:
-        # 尝试在 models_dir_relative 中查找
-        models_dir_rel = MODEL_INDEX.get("models_dir_relative", "")
-        if models_dir_rel:
-            fallback_path = os.path.normpath(os.path.join(PROJECT_ROOT, models_dir_rel, model_entry["filename"]))
+        model_type = model_entry.get("model_type", "sd15")
+        
+        # 4a. 尝试在索引记录的 model_dirs 中查找（支持多类型）
+        model_dirs = MODEL_INDEX.get("model_dirs", {})
+        if model_type in model_dirs:
+            fallback_path = os.path.join(model_dirs[model_type], model_entry["filename"])
             if os.path.exists(fallback_path):
                 return fallback_path
         
-        # 尝试在 models_dir 中查找
-        models_dir = MODEL_INDEX.get("models_dir", "")
-        if models_dir:
-            fallback_path = os.path.join(models_dir, model_entry["filename"])
+        # 4b. 尝试在索引记录的 model_dirs_relative 中查找
+        model_dirs_rel = MODEL_INDEX.get("model_dirs_relative", {})
+        if model_type in model_dirs_rel:
+            fallback_path = os.path.normpath(os.path.join(PROJECT_ROOT, model_dirs_rel[model_type], model_entry["filename"]))
             if os.path.exists(fallback_path):
                 return fallback_path
         
-        # 尝试在项目根目录的 models 目录查找
-        fallback_path = os.path.join(PROJECT_ROOT, "models", "sd-v1-5", model_entry["filename"])
+        # 4c. 尝试在项目根目录的 models/{model_type} 目录查找
+        fallback_path = os.path.join(PROJECT_ROOT, "models", model_type, model_entry["filename"])
+        if os.path.exists(fallback_path):
+            return fallback_path
+        
+        # 4d. 尝试在 SD_ROOT/models/{model_type} 目录查找
+        SD_ROOT = os.path.dirname(PROJECT_ROOT)
+        fallback_path = os.path.join(SD_ROOT, "models", model_type, model_entry["filename"])
         if os.path.exists(fallback_path):
             return fallback_path
     
@@ -171,7 +235,7 @@ def resolve_model_path_from_index(model_entry):
         return model_entry["absolute_path"]
     
     return None
-
+    
 SD_MODEL_PATH = resolve_model_path()
 
 # ==================== 🤖 LoRA 模型选择开关 ====================

@@ -41,6 +41,7 @@ from PIL import Image
 
 from datetime import datetime
 from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
+import re  # 🆕 添加 re 模块导入
 
 # 确保 tools 目录在路径中
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -249,19 +250,72 @@ def remove_watermark(image_path):
 # tools/generate.py
 # 在 setup_pipeline() 函数中，替换普通模型分支
 
+# tools/generate.py
+# 替换原有的 setup_pipeline 函数
+
 def setup_pipeline():
     print(f"\n[系统] 正在加载 AI 模型...")
-
-    # ========== 🆕 统一使用 config.py 的 SD_MODEL_PATH ==========
-    if USE_OPENVINO_MODEL:
-        # 【开】OpenVINO 分支
+    
+    from tools.config import MODEL_TYPE, USE_OPENVINO_MODEL, SD_MODEL_PATH
+    
+    # ========== SDXL 分支 ==========
+    if MODEL_TYPE == "sdxl":
+        print(f"⚡ [配置] 使用 SDXL 模型")
+        model_path = SD_MODEL_PATH
+        
+        if os.path.isdir(model_path):
+            import glob
+            safetensors_files = glob.glob(os.path.join(model_path, "*.safetensors"))
+            if safetensors_files:
+                model_path = safetensors_files[0]
+                print(f"   🔍 自动定位到: {os.path.basename(model_path)}")
+            else:
+                print(f"❌ 在目录 {model_path} 中找不到 .safetensors 文件")
+                sys.exit(1)
+        
+        try:
+            from diffusers import StableDiffusionXLPipeline
+            
+            pipe = StableDiffusionXLPipeline.from_single_file(
+                model_path,
+                torch_dtype=torch.float32,
+                safety_checker=None,
+                requires_safety_checker=False,
+                use_safetensors=True,
+                variant="fp16"
+            )
+            pipe.to("cpu")
+            print("✅ SDXL 模型加载成功！")
+            
+            # SDXL LoRA 加载
+            try:
+                from tools.config import FINAL_LORA_LIST
+                if FINAL_LORA_LIST:
+                    print(f"   📦 准备加载 {len(FINAL_LORA_LIST)} 个 LoRA...")
+                    for i, lora_info in enumerate(FINAL_LORA_LIST):
+                        lora_path = lora_info['path']
+                        lora_weight = lora_info['weight']
+                        if os.path.exists(lora_path):
+                            pipe.load_lora_weights(lora_path, adapter_name=f"lora_{i}")
+                            pipe.set_adapters([f"lora_{i}"], adapter_weights=[lora_weight])
+                            print(f"      ✅ LoRA {i+1} 加载成功")
+            except Exception as e:
+                print(f"   ⚠️ LoRA 加载跳过: {e}")
+            
+        except Exception as e:
+            print(f"❌ SDXL 模型加载失败: {e}")
+            print("   💡 提示: 请确保已安装 diffusers 和 transformers")
+            sys.exit(1)
+    
+    # ========== OpenVINO 分支 ==========
+    elif USE_OPENVINO_MODEL:
         try:
             from tools.config import SD_OV_MODEL_PATH
             model_path = SD_OV_MODEL_PATH
         except ImportError:
             print("❌ 错误：试图使用 OpenVINO，但 config.py 中没有定义 SD_OV_MODEL_PATH。")
             sys.exit(1)
-
+        
         print(f"⚡ [配置] 使用 OpenVINO 加速模式")
         print(f"   📂 模型路径: {model_path}")
         
@@ -273,31 +327,25 @@ def setup_pipeline():
         except Exception as e:
             print(f"❌ OpenVINO 加载失败: {e}")
             sys.exit(1)
+    
+    # ========== SD1.5 分支 ==========
     else:
-        # 【关】普通模型分支 - 🆕 使用新的 SD_MODEL_PATH
-        print(f"⚡ [配置] 使用普通模型模式")
+        print(f"⚡ [配置] 使用 SD1.5 模型")
+        model_path = SD_MODEL_PATH
         
-        # 🆕 从 config.py 获取最终模型路径
-        try:
-            from tools.config import SD_MODEL_PATH
-            model_path = SD_MODEL_PATH
-            print(f"   📂 模型路径: {model_path}")
-        except ImportError:
-            print("❌ 错误：无法从 config.py 导入 SD_MODEL_PATH")
-            sys.exit(1)
-        
-        # 如果是目录，查找 .safetensors 文件
         if os.path.isdir(model_path):
             import glob
             safetensors_files = glob.glob(os.path.join(model_path, "*.safetensors"))
             if safetensors_files:
                 model_path = safetensors_files[0]
-                print(f"   🔍 自动定位到目录内的模型文件: {os.path.basename(model_path)}")
+                print(f"   🔍 自动定位到: {os.path.basename(model_path)}")
             else:
-                print(f"❌ 错误：在目录 {model_path} 中找不到任何 .safetensors 文件。")
+                print(f"❌ 在目录 {model_path} 中找不到 .safetensors 文件")
                 sys.exit(1)
-                
+        
         try:
+            from diffusers import StableDiffusionPipeline
+            
             pipe = StableDiffusionPipeline.from_single_file(
                 model_path,
                 torch_dtype=torch.float32,
@@ -306,59 +354,44 @@ def setup_pipeline():
                 use_safetensors=True
             )
             pipe.to("cpu")
-            print("✅ 普通模型加载成功！")
-
-            # ================= 🆕 加载 LoRA =================
+            print("✅ SD1.5 模型加载成功！")
+            
+            # SD1.5 LoRA 加载
             try:
                 from tools.config import FINAL_LORA_LIST
-                
                 if FINAL_LORA_LIST:
                     print(f"   📦 准备加载 {len(FINAL_LORA_LIST)} 个 LoRA...")
-                    
                     adapter_names = []
                     adapter_weights = []
-                    
                     for i, lora_info in enumerate(FINAL_LORA_LIST):
                         lora_path = lora_info['path']
                         lora_weight = lora_info['weight']
-                        
                         if os.path.exists(lora_path):
                             adapter_name = f"lora_{i}"
                             print(f"      🔗 加载 LoRA {i+1}: {os.path.basename(lora_path)} (权重: {lora_weight})")
-                            
                             pipe.load_lora_weights(lora_path, adapter_name=adapter_name)
-                            
                             adapter_names.append(adapter_name)
                             adapter_weights.append(lora_weight)
-                    
                     if adapter_names:
                         pipe.set_adapters(adapter_names, adapter_weights=adapter_weights)
                         print(f"      ✅ 全部 {len(adapter_names)} 个 LoRA 加载成功！")
-                    else:
-                        print("   ⚠️ 没有找到任何有效的 LoRA 文件。")
-                else:
-                    print("   ℹ️ 未配置 LoRA，将使用裸模型出图")
-                    
-            except ImportError:
-                print("   ℹ️ config.py 未定义 LoRA 配置，跳过 LoRA 加载")
-            # ========================================================
+            except Exception as e:
+                print(f"   ⚠️ LoRA 加载跳过: {e}")
             
         except Exception as e:
-            print(f"❌ 普通模型加载失败: {e}")
+            print(f"❌ SD1.5 模型加载失败: {e}")
             sys.exit(1)
-
-   
-    # ======================= 🚀 动态采样器加载 =======================
+    
+    # ======================= 采样器加载 =======================
     try:
         pipe.enable_vae_slicing()
         pipe.enable_attention_slicing()
-
-        # 从 config.py 导入我们刚才加的采样器变量
-        from tools.config import FINAL_SCHEDULER
         
+        from tools.config import FINAL_SCHEDULER
         print(f"   🎛️ 正在加载采样器: {FINAL_SCHEDULER}...")
         
         if FINAL_SCHEDULER == "Euler":
+            from diffusers import EulerDiscreteScheduler
             pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
         elif FINAL_SCHEDULER == "EulerAncestral":
             from diffusers import EulerAncestralDiscreteScheduler
@@ -370,7 +403,7 @@ def setup_pipeline():
             from diffusers import DPMSolverMultistepScheduler
             pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config, use_karras_sigmas=True)
         elif FINAL_SCHEDULER == "DPM++ SDE Karras":
-            from diffusers import DPMSolverSDEscheduler
+            from diffusers import DPMSolverSDEScheduler
             pipe.scheduler = DPMSolverSDEScheduler.from_config(pipe.scheduler.config, use_karras_sigmas=True)
         elif FINAL_SCHEDULER == "DDIM":
             from diffusers import DDIMScheduler
@@ -389,14 +422,14 @@ def setup_pipeline():
             pipe.scheduler = UniPCMultistepScheduler.from_config(pipe.scheduler.config)
         else:
             print(f"⚠️ 未知采样器 '{FINAL_SCHEDULER}'，回退到默认 Euler")
+            from diffusers import EulerDiscreteScheduler
             pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
-            
+        
         print(f"   ✅ 采样器加载完成！")
         
     except Exception as e:
-        print(f"⚠️ 注意：采样器加载失败，使用默认配置。错误: {e}")
-    # ================================================================
-        
+        print(f"⚠️ 采样器加载失败，使用默认配置。错误: {e}")
+    
     print("[系统] 模型管道已就绪！")
     return pipe
     
