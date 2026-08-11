@@ -288,6 +288,59 @@ def get_model_info():
 
 model_info = get_model_info()
 
+
+# ==================== 🎨 采样器与步数配置 (智能联动) ====================
+# 支持的采样器列表 (大小写不敏感):
+# - Euler (你当前默认)
+# - EulerAncestral / Euler a
+# - DPM++ 2M
+# - DPM++ 2M Karras (强烈推荐，用于人像/图生图)
+# - DPM++ SDE Karras
+# - DDIM
+# - PNDM
+# - LMS
+# - Heun
+# - UniPC
+
+# ✨ 在此处修改，控制全局采样器
+SCHEDULER_TYPE = "DPM++ 2M Karras"  # 建议改为 DPM++ 2M Karras
+
+# 📊 采样器自适应步数词典 (根据选择的采样器，智能推荐最佳步数)
+# 步数如果太小，有些采样器效果会差；步数太大，时间浪费。
+SCHEDULER_STEPS_MAP = {
+    "Euler": 25,              # 默认安全值
+    "EulerAncestral": 25,     # 类似 Euler
+    "DPM++ 2M": 20,           # 20 步足够
+    "DPM++ 2M Karras": 20,    # 20 步已经神级效果
+    "DPM++ SDE Karras": 25,
+    "DDIM": 40,               # DDIM 需要步数多一点
+    "PNDM": 40,
+    "LMS": 35,
+    "Heun": 30,
+    "UniPC": 20,
+}
+
+# 🎯 解析实际使用的采样器名称 (处理别名)
+def get_final_scheduler_name(input_name):
+    name = input_name.strip().lower()
+    if name in ["euler a", "euler_ancestral", "eulerancestral"]:
+        return "EulerAncestral"
+    if name in ["dpm++ 2m karras", "dpmpp_2m_karras"]:
+        return "DPM++ 2M Karras"
+    if name in ["dpm++ 2m", "dpmpp_2m"]:
+        return "DPM++ 2M"
+    if name in ["dpm++ sde karras", "dpmpp_sde_karras"]:
+        return "DPM++ SDE Karras"
+    # 其他原样返回（首字母大写，保持库的兼容）
+    return name.capitalize()
+
+# 计算出最终使用的采样器类型和步数
+FINAL_SCHEDULER = get_final_scheduler_name(SCHEDULER_TYPE)
+FINAL_STEPS = SCHEDULER_STEPS_MAP.get(FINAL_SCHEDULER, STEPS)  # 如果没配置，使用原 STEPS
+
+print(f"🎨 采样器类型: {FINAL_SCHEDULER}")
+print(f"🔄 推荐步数: {FINAL_STEPS}")
+
 print(f"""
 ╔═══════════════════════════════════════════════╗
 ║  📦 模型配置信息                              ║

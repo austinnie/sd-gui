@@ -80,6 +80,8 @@ from tools.config import (
     AI_APPRECIATION_ENGINE
 )
 
+from tools.config import SCHEDULER_TYPE
+
 print(f"📊 STEPS = {STEPS}")
 print(f"📷 AI_CAMERA = {AI_CAMERA}")
 
@@ -345,13 +347,54 @@ def setup_pipeline():
             print(f"❌ 普通模型加载失败: {e}")
             sys.exit(1)
     
-    # 公共配置
+    # ======================= 🚀 动态采样器加载 =======================
     try:
         pipe.enable_vae_slicing()
         pipe.enable_attention_slicing()
-        pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
+
+        # 从 config.py 导入我们刚才加的采样器变量
+        from tools.config import FINAL_SCHEDULER
+        
+        print(f"   🎛️ 正在加载采样器: {FINAL_SCHEDULER}...")
+        
+        if FINAL_SCHEDULER == "Euler":
+            pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
+        elif FINAL_SCHEDULER == "EulerAncestral":
+            from diffusers import EulerAncestralDiscreteScheduler
+            pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
+        elif FINAL_SCHEDULER == "DPM++ 2M":
+            from diffusers import DPMSolverMultistepScheduler
+            pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
+        elif FINAL_SCHEDULER == "DPM++ 2M Karras":
+            from diffusers import DPMSolverMultistepScheduler
+            pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config, use_karras_sigmas=True)
+        elif FINAL_SCHEDULER == "DPM++ SDE Karras":
+            from diffusers import DPMSolverSDEscheduler
+            pipe.scheduler = DPMSolverSDEScheduler.from_config(pipe.scheduler.config, use_karras_sigmas=True)
+        elif FINAL_SCHEDULER == "DDIM":
+            from diffusers import DDIMScheduler
+            pipe.scheduler = DDIMScheduler.from_config(pipe.scheduler.config)
+        elif FINAL_SCHEDULER == "PNDM":
+            from diffusers import PNDMScheduler
+            pipe.scheduler = PNDMScheduler.from_config(pipe.scheduler.config)
+        elif FINAL_SCHEDULER == "LMS":
+            from diffusers import LMSDiscreteScheduler
+            pipe.scheduler = LMSDiscreteScheduler.from_config(pipe.scheduler.config)
+        elif FINAL_SCHEDULER == "Heun":
+            from diffusers import HeunDiscreteScheduler
+            pipe.scheduler = HeunDiscreteScheduler.from_config(pipe.scheduler.config)
+        elif FINAL_SCHEDULER == "UniPC":
+            from diffusers import UniPCMultistepScheduler
+            pipe.scheduler = UniPCMultistepScheduler.from_config(pipe.scheduler.config)
+        else:
+            print(f"⚠️ 未知采样器 '{FINAL_SCHEDULER}'，回退到默认 Euler")
+            pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
+            
+        print(f"   ✅ 采样器加载完成！")
+        
     except Exception as e:
-        print(f"⚠️ 注意：模型后处理优化失败，但不影响主功能。错误: {e}")
+        print(f"⚠️ 注意：采样器加载失败，使用默认配置。错误: {e}")
+    # ================================================================
         
     print("[系统] 模型管道已就绪！")
     return pipe
@@ -1041,13 +1084,16 @@ def main():
     elif user_count:
         print(f"   └─ 💡 注: 从 {total_possible} 种组合中随机选 {total_count} 张")
 
-    # ========== 确定最终步数 ==========
+
+    # ========== 确定最终步数 (优先级：命令行 > Config > 采样器推荐) ==========
+    from tools.config import FINAL_STEPS
     if user_steps is not None:
         actual_steps = user_steps
         print(f"⚙️ 步数: 命令行指定为 {user_steps} 步")
     else:
-        actual_steps = STEPS
-        print(f"⚙️ 步数: 使用 config.py 中的默认 {STEPS} 步")
+        # ✅ 修复：使用采样器推荐的 FINAL_STEPS，而不是硬编码的 STEPS
+        actual_steps = FINAL_STEPS
+        print(f"⚙️ 步数: 使用采样器智能推荐的 {FINAL_STEPS} 步")
     # =================================
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
