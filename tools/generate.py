@@ -347,22 +347,7 @@ def setup_pipeline():
             print(f"❌ 普通模型加载失败: {e}")
             sys.exit(1)
 
-    # ======================= 🚀 动态加载 IP-Adapter =======================
-    # 注意：IP-Adapter 必须从 pipe 加载，并在调度器设置之前加载
-    # ================= 🆕 预加载 IP-Adapter (下载权重) =================
-    try:
-        print("   🧬 正在加载/检查 IP-Adapter 模型权重...")
-        pipe.load_ip_adapter(
-            "h94/IP-Adapter",
-            subfolder="models",
-            weight_name="ip-adapter_sd15.safetensors",
-        )
-        print(f"   ✅ IP-Adapter 权重加载/检查完成！")
-    except Exception as e:
-        print(f"   ⚠️ IP-Adapter 加载失败 (如果没有使用 --ip_adapter 可忽略此警告): {e}")
-    # ====================================================================
-    # ========================================================================
-    
+   
     # ======================= 🚀 动态采样器加载 =======================
     try:
         pipe.enable_vae_slicing()
@@ -441,7 +426,7 @@ def build_prompt(config):
         prompt = random.choice(config["subjects"])
         return prompt, "扁平"
         
-def generate_style(pipe, init_image, prompt, output_filename, strength, mode="img2img", steps=STEPS, target_style="unknown", enable_ip_adapter=False, ip_adapter_scale=1.0):
+def generate_style(pipe, init_image, prompt, output_filename, strength, mode="img2img", steps=STEPS, target_style="unknown"):
     """
     生成单张图片
     mode: "img2img" 或 "txt2img"
@@ -602,33 +587,30 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
     
     generator = torch.Generator("cpu").manual_seed(int(time.time_ns() % 1000000000))
     
-    # ========== 🚀 统一使用 inference_kwargs + IP-Adapter 支持 ==========
-    inference_kwargs = {
-        "prompt": full_prompt,
-        "negative_prompt": neg_prompt,
-        "num_inference_steps": steps,
-        "guidance_scale": 7.5,
-        "generator": generator,
-        "width": w,
-        "height": h,
-    }
-
+    # ========== ✅ 恢复为 0.26.0 老版本兼容写法 ==========
     if mode == "img2img":
-        inference_kwargs["image"] = image
-        inference_kwargs["strength"] = strength
-        
-        # 🆕 如果启用了 IP-Adapter 并且有参考图，则把图片作为参考传进去
-        if enable_ip_adapter and image is not None:
-            # ⚠️ 核心修复：显式设置适配器权重！
-            # 这一步是让 pipe 动态挂载刚才 load 进来的权重
-            pipe.set_ip_adapter_scale(ip_adapter_scale)
-            
-            # 注意：ip_adapter_image 需要传入 PIL Image 对象
-            inference_kwargs["ip_adapter_image"] = image
-            print(f"   🧬 [IP-Adapter] 已注入参考图并激活权重 (Scale: {ip_adapter_scale})")
-
-    # 执行统一的推理
-    result = pipe(**inference_kwargs)
+        result = pipe(
+            prompt=full_prompt,
+            negative_prompt=neg_prompt,
+            image=image,
+            strength=strength,
+            num_inference_steps=steps,
+            guidance_scale=7.5,
+            generator=generator,
+            width=w,
+            height=h
+        )
+    else:
+        result = pipe(
+            prompt=full_prompt,
+            negative_prompt=neg_prompt,
+            num_inference_steps=steps,
+            guidance_scale=7.5,
+            generator=generator,
+            width=w,
+            height=h
+        )
+    # =============================================================
     
     # 保存图片
     result.images[0].save(output_filename, quality=95)
@@ -1245,11 +1227,7 @@ def main():
             final_strength, # ✅ 这里必须传 final_strength！
             mode,
             actual_steps,
-            target_style,
-            # ======= 🆕 新增 IP-Adapter 参数传递 =======
-            enable_ip_adapter=enable_ip_adapter,
-            ip_adapter_scale=ip_adapter_scale
-            # ===========================================            
+            target_style         
         )
         saved_img_file = final_output_path
 
