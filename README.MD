@@ -35,8 +35,11 @@ python tools/generate.py <风格名称> [选项]
 
 命令行示例:
 python tools/generate.py gallery_elegant_safe --img2img --steps 20 -n 5
+
 python tools/generate.py pure_serene --txt2img -n 3
+
 python tools/generate.py mecha_blueprint --img2img --input my_photo.jpg -n 2
+
 python tools/generate.py babata_poses --use-old -n 3
 
 
