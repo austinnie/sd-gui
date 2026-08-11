@@ -142,6 +142,7 @@ def resolve_model_path():
                                 try:
                                     with open(CONFIG_FILE, "r", encoding="utf-8") as f:
                                         content = f.read()
+
                                     # ✅ 正确写法
                                     content = re.sub(r'MODEL_TYPE = ".*?"', f'MODEL_TYPE = "{model_type}"', content)
                                     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
@@ -241,10 +242,14 @@ SD_MODEL_PATH = resolve_model_path()
 # ==================== 🤖 LoRA 模型选择开关 ====================
 
 # ==================== 📚 加载 LoRA 索引 ====================
+# tools/config.py
+# 在 LoRA 配置部分添加
+
+# ==================== 📚 加载 LoRA 索引 ====================
 LORA_INDEX_FILE = os.path.join(SCRIPTS_DIR, "lora_index.json")
 
 def load_lora_index():
-    """加载 LoRA 索引文件"""
+    """加载 LoRA 索引文件（支持多类型）"""
     if not os.path.exists(LORA_INDEX_FILE):
         print("⚠️ LoRA 索引不存在，正在自动生成...")
         try:
@@ -274,30 +279,53 @@ def load_lora_index():
 LORA_INDEX = load_lora_index()
 AVAILABLE_LORAS = LORA_INDEX.get("loras", [])
 
+# ==================== 🆕 LoRA 类型配置 ====================
 
 # 多 LoRA 配置模式（完全保留原有配置）
 LORA_ACTIVE_INDICES = [1]  # 例如 [0] 启用第一个，[0, 1] 同时启用前两个
 
-# 来源链接（仅供备忘）
-LORA_PATHS = [
-    os.path.join(PROJECT_ROOT, "..", "models", "sd15-lora", "AMechaSSS.safetensors"),          # [0]
-    os.path.join(PROJECT_ROOT, "..", "models", "sd15-lora", "MechaGirlFigure_v1.safetensors"), # [1]
-    os.path.join(PROJECT_ROOT, "..", "models", "sd15-lora", "mecha_offset.safetensors"),       # [2]
-    os.path.join(PROJECT_ROOT, "..", "models", "sd15-lora", "Mechav2_1.0.safetensors"),        # [3]
-    os.path.join(PROJECT_ROOT, "..", "models", "sd15-lora", "MechaGirl_v1.safetensors"),       # [4]
-    os.path.join(PROJECT_ROOT, "..", "models", "sd15-lora", "mecha_girl.safetensors")          # [5]
-]
-
-LORA_WEIGHTS = [0.8, 0.7, 0.8, 0.7, 0.8, 0.7]
-
-FINAL_LORA_LIST = []
-if LORA_ACTIVE_INDICES:
+# ==================== 🔄 根据类型获取 LoRA 路径 ====================
+def get_lora_list():
+    """根据 MODEL_TYPE 从索引中获取对应的 LoRA 列表"""
+    lora_list = []
+    
+    if not LORA_ACTIVE_INDICES:
+        return lora_list
+    
+    # ✅ 直接用全局 MODEL_TYPE
+    model_type = MODEL_TYPE
+    
+    # 从索引中获取该类型的 LoRA
+    type_loras = [l for l in AVAILABLE_LORAS if l.get("lora_type") == model_type]
+    
+    if not type_loras:
+        print(f"⚠️ 没有找到 {model_type} 类型的 LoRA")
+        return lora_list
+    
     for idx in LORA_ACTIVE_INDICES:
-        if 0 <= idx < len(LORA_PATHS):
-            FINAL_LORA_LIST.append({
-                "path": LORA_PATHS[idx],
-                "weight": LORA_WEIGHTS[idx] if idx < len(LORA_WEIGHTS) else 0.8
-            })
+        if 0 <= idx < len(type_loras):
+            lora = type_loras[idx]
+            # 解析绝对路径
+            lora_path = lora.get("absolute_path")
+            if not lora_path or not os.path.exists(lora_path):
+                rel_path = lora.get("path")
+                if rel_path:
+                    lora_path = os.path.normpath(os.path.join(PROJECT_ROOT, rel_path))
+            
+            if lora_path and os.path.exists(lora_path):
+                lora_list.append({
+                    "path": lora_path,
+                    "weight": 0.8,
+                    "name": lora.get("name", f"lora_{idx}"),
+                })
+            else:
+                print(f"⚠️ LoRA 文件不存在: {lora.get('name', 'unknown')}")
+    
+    return lora_list
+    
+    
+# 向后兼容：保留 FINAL_LORA_LIST
+FINAL_LORA_LIST = get_lora_list()
 
 # ==================== 📝 自动图片鉴赏配置 ====================
 AI_APPRECIATION_ENGINE = "llm"  # tag / blip / combined / llm / prompt

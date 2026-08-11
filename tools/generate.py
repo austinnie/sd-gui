@@ -285,23 +285,31 @@ def setup_pipeline():
                 variant="fp16"
             )
             pipe.to("cpu")
-            print("✅ SDXL 模型加载成功！")
-            
-            # SDXL LoRA 加载
+            print("✅ SDXL 模型加载成功！")          
+
+
+            # ========== 🆕 SDXL LoRA 加载 ==========
             try:
-                from tools.config import FINAL_LORA_LIST
-                if FINAL_LORA_LIST:
-                    print(f"   📦 准备加载 {len(FINAL_LORA_LIST)} 个 LoRA...")
-                    for i, lora_info in enumerate(FINAL_LORA_LIST):
+                from tools.config import get_lora_list
+                
+                lora_list = get_lora_list()
+                
+                if lora_list:
+                    print(f"   📦 准备加载 {len(lora_list)} 个 LoRA...")
+                    for i, lora_info in enumerate(lora_list):
                         lora_path = lora_info['path']
                         lora_weight = lora_info['weight']
                         if os.path.exists(lora_path):
+                            print(f"      🔗 加载 LoRA {i+1}: {os.path.basename(lora_path)} (权重: {lora_weight})")
                             pipe.load_lora_weights(lora_path, adapter_name=f"lora_{i}")
                             pipe.set_adapters([f"lora_{i}"], adapter_weights=[lora_weight])
                             print(f"      ✅ LoRA {i+1} 加载成功")
+                        else:
+                            print(f"      ⚠️ LoRA 文件不存在: {lora_path}")
+                else:
+                    print("   ℹ️ 未配置 LoRA")
             except Exception as e:
-                print(f"   ⚠️ LoRA 加载跳过: {e}")
-            
+                print(f"   ⚠️ LoRA 加载跳过: {e}")            
         except Exception as e:
             print(f"❌ SDXL 模型加载失败: {e}")
             print("   💡 提示: 请确保已安装 diffusers 和 transformers")
@@ -358,12 +366,13 @@ def setup_pipeline():
             
             # SD1.5 LoRA 加载
             try:
-                from tools.config import FINAL_LORA_LIST
-                if FINAL_LORA_LIST:
-                    print(f"   📦 准备加载 {len(FINAL_LORA_LIST)} 个 LoRA...")
+                from tools.config import get_lora_list
+                lora_list = get_lora_list()
+                if lora_list:
+                    print(f"   📦 准备加载 {len(lora_list)} 个 SD1.5 LoRA...")
                     adapter_names = []
                     adapter_weights = []
-                    for i, lora_info in enumerate(FINAL_LORA_LIST):
+                    for i, lora_info in enumerate(lora_list):
                         lora_path = lora_info['path']
                         lora_weight = lora_info['weight']
                         if os.path.exists(lora_path):
@@ -375,6 +384,8 @@ def setup_pipeline():
                     if adapter_names:
                         pipe.set_adapters(adapter_names, adapter_weights=adapter_weights)
                         print(f"      ✅ 全部 {len(adapter_names)} 个 LoRA 加载成功！")
+                else:
+                    print("   ℹ️ 未配置 SD1.5 LoRA")
             except Exception as e:
                 print(f"   ⚠️ LoRA 加载跳过: {e}")
             
