@@ -619,13 +619,16 @@ def generate_style(pipe, init_image, prompt, output_filename, strength, mode="im
         
         # 🆕 如果启用了 IP-Adapter 并且有参考图，则把图片作为参考传进去
         if enable_ip_adapter and image is not None:
+            # ⚠️ 核心修复：显式设置适配器权重！
+            # 这一步是让 pipe 动态挂载刚才 load 进来的权重
+            pipe.set_ip_adapter_scale(ip_adapter_scale)
+            
             # 注意：ip_adapter_image 需要传入 PIL Image 对象
             inference_kwargs["ip_adapter_image"] = image
-            print(f"   🧬 [IP-Adapter] 已注入参考图 (Scale: {ip_adapter_scale})")
+            print(f"   🧬 [IP-Adapter] 已注入参考图并激活权重 (Scale: {ip_adapter_scale})")
 
     # 执行统一的推理
     result = pipe(**inference_kwargs)
-    # =====================================================================
     
     # 保存图片
     result.images[0].save(output_filename, quality=95)
