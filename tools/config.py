@@ -216,12 +216,12 @@ LORA_ACTIVE_INDICES = [1]  # 例如 [0] 启用第一个，[0, 1] 同时启用前
 
 # 来源链接（仅供备忘）
 LORA_PATHS = [
-    os.path.join(PROJECT_ROOT, "models", "sd15-lora", "AMechaSSS.safetensors"),          # [0]
-    os.path.join(PROJECT_ROOT, "models", "sd15-lora", "MechaGirlFigure_v1.safetensors"), # [1]
-    os.path.join(PROJECT_ROOT, "models", "sd15-lora", "mecha_offset.safetensors"),       # [2]
-    os.path.join(PROJECT_ROOT, "models", "sd15-lora", "Mechav2_1.0.safetensors"),        # [3]
-    os.path.join(PROJECT_ROOT, "models", "sd15-lora", "MechaGirl_v1.safetensors"),       # [4]
-    os.path.join(PROJECT_ROOT, "models", "sd15-lora", "mecha_girl.safetensors")          # [5]
+    os.path.join(PROJECT_ROOT, "..", "models", "sd15-lora", "AMechaSSS.safetensors"),          # [0]
+    os.path.join(PROJECT_ROOT, "..", "models", "sd15-lora", "MechaGirlFigure_v1.safetensors"), # [1]
+    os.path.join(PROJECT_ROOT, "..", "models", "sd15-lora", "mecha_offset.safetensors"),       # [2]
+    os.path.join(PROJECT_ROOT, "..", "models", "sd15-lora", "Mechav2_1.0.safetensors"),        # [3]
+    os.path.join(PROJECT_ROOT, "..", "models", "sd15-lora", "MechaGirl_v1.safetensors"),       # [4]
+    os.path.join(PROJECT_ROOT, "..", "models", "sd15-lora", "mecha_girl.safetensors")          # [5]
 ]
 
 LORA_WEIGHTS = [0.8, 0.7, 0.8, 0.7, 0.8, 0.7]
