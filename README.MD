@@ -45,58 +45,60 @@ python tools/generate.py babata_poses --use-old -n 3
 
 ## 目录结构
 
+```text
 v8_universal_generator/
-├── main.py                      # GUI 程序入口
-├── gui/                         # GUI 界面模块
-│   ├── app.py                   # 主应用程序
-│   ├── tabs/                    # 标签页（10+ 功能标签）
-│   ├── chat/                    # 智能会话模块
-│   └── components/              # UI 组件
-├── core/                        # 核心逻辑
-│   ├── pipeline/                # 流水线处理（50+ 风格）
-│   ├── janus/                   # Janus-Pro 模型
-│   ├── person_builder.py        # 人物构建器
-│   ├── prompt_engine.py         # 提示词引擎
-│   └── nsfw_filter.py           # NSFW 内容过滤
-├── config/                      # 配置模块
-│   ├── app_config.py            # 应用配置
-│   ├── config_manager.py        # 统一配置管理器
-│   ├── nsfw_config.py           # NSFW 配置
-│   └── janus_config.py          # Janus-Pro 配置
-├── utils/                       # 工具函数
-│   ├── controlnet/              # ControlNet 模块
-│   ├── watermark_remover.py     # 水印去除
-│   ├── imagemeta_cleaner.py     # 元数据清理
-│   ├── exif_injector.py         # EXIF 信息注入
-│   ├── photo_realistic.py       # 照片真实化
-│   └── pipeline_pool.py         # Pipeline 池（复用）
-├── services/                    # 服务模块
-│   ├── llm_service.py           # LLM 服务（Ollama）
-│   └── prompt_template_service.py # 提示词模板服务
-├── generators/                  # 生成器
-│   ├── single_generator.py      # 单人生成器
-│   ├── couple_generator.py      # 双人生成器
-│   └── group_generator.py       # 多人生成器
-├── tools/                       # 独立命令行工具
-│   ├── generate.py              # 通用生成器（核心）
-│   ├── config.py                # 全局配置
-│   ├── prompts_config.py        # 提示词配置加载器
-│   ├── prompts/                 # 旧版提示词库
-│   ├── prompts_new/             # 新版安全提示词库（56 个风格）
-│   ├── photo_to_sketch.py       # 图片转素描
-│   ├── pre_resize.py            # 图片缩小器
-│   └── output/                  # 生成输出目录
-├── scripts/                     # 工具脚本
-│   ├── code_collect.py          # 项目文件收集（诊断用）
-│   ├── code_package.py          # 项目打包
-│   ├── env_check.py             # 环境检测
-│   ├── model_index.py           # 模型索引生成
-│   ├── lora_index.py            # LoRA 索引生成
-│   └── switch_model.py          # 模型切换工具
-├── data/                        # 数据文件
-│   ├── configs/                 # 配置文件
-│   └── templates/               # 提示词模板
-└── output/                      # 图片输出目录
+├── main.py
+├── gui/
+│   ├── app.py
+│   ├── tabs/
+│   ├── chat/
+│   └── components/
+├── core/
+│   ├── pipeline/
+│   ├── janus/
+│   ├── person_builder.py
+│   ├── prompt_engine.py
+│   └── nsfw_filter.py
+├── config/
+│   ├── app_config.py
+│   ├── config_manager.py
+│   ├── nsfw_config.py
+│   └── janus_config.py
+├── utils/
+│   ├── controlnet/
+│   ├── watermark_remover.py
+│   ├── imagemeta_cleaner.py
+│   ├── exif_injector.py
+│   ├── photo_realistic.py
+│   └── pipeline_pool.py
+├── services/
+│   ├── llm_service.py
+│   └── prompt_template_service.py
+├── generators/
+│   ├── single_generator.py
+│   ├── couple_generator.py
+│   └── group_generator.py
+├── tools/
+│   ├── generate.py
+│   ├── config.py
+│   ├── prompts_config.py
+│   ├── prompts/
+│   ├── prompts_new/
+│   ├── photo_to_sketch.py
+│   ├── pre_resize.py
+│   └── output/
+├── scripts/
+│   ├── code_collect.py
+│   ├── code_package.py
+│   ├── env_check.py
+│   ├── model_index.py
+│   ├── lora_index.py
+│   └── switch_model.py
+├── data/
+│   ├── configs/
+│   └── templates/
+└── output/
+```
 
 
 ## GUI 模块
