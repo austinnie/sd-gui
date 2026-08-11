@@ -240,7 +240,7 @@ AI_APPRECIATION_ENGINE = "llm"  # tag / blip / combined / llm / prompt
 
 # ==================== ⚙️ 生成与图像处理参数 ====================
 STEPS = 25
-MAX_LIMIT = 576
+MAX_LIMIT = 768
 INPUT_IMAGE_NAME = "input"
 DEFAULT_STRENGTH = 0.35
 
