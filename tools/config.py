@@ -332,9 +332,11 @@ AI_APPRECIATION_ENGINE = "llm"  # tag / blip / combined / llm / prompt
 
 # ==================== ⚙️ 生成与图像处理参数 ====================
 STEPS = 25
-MAX_LIMIT = 768
+MAX_LIMIT = 576
 INPUT_IMAGE_NAME = "input"
 DEFAULT_STRENGTH = 0.35
+
+DEFAULT_MODE = "txt2img"  # 或 "img2img"
 
 # ==================== 📷 消除AI痕迹配置 ====================
 REMOVE_AI_TRACES = True

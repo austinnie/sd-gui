@@ -43,6 +43,16 @@ from datetime import datetime
 from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
 import re  # 🆕 添加 re 模块导入
 
+# ==================== 导入 tqdm ====================
+try:
+    from tqdm import tqdm
+except ImportError:
+    print("⚠️ tqdm 未安装，正在安装...")
+    import subprocess
+    subprocess.run([sys.executable, "-m", "pip", "install", "tqdm"])
+    from tqdm import tqdm
+
+
 # 确保 tools 目录在路径中
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 if CURRENT_DIR not in sys.path:
@@ -82,6 +92,8 @@ from tools.config import (
 )
 
 from tools.config import SCHEDULER_TYPE
+from tools.config import DEFAULT_MODE
+mode = DEFAULT_MODE  # 使用配置的默认值
 
 print(f"📊 STEPS = {STEPS}")
 print(f"📷 AI_CAMERA = {AI_CAMERA}")
@@ -286,7 +298,6 @@ def setup_pipeline():
             )
             pipe.to("cpu")
             print("✅ SDXL 模型加载成功！")          
-
 
             # ========== 🆕 SDXL LoRA 加载 ==========
             try:
@@ -939,9 +950,12 @@ def parse_arguments(args):
     解析命令行参数
     返回: (target_style, count, mode, search_keyword, steps, input_path)
     """
+    # ✅ 从 config 导入默认值
+    from tools.config import DEFAULT_MODE
+    
     target_style = None
     count = None
-    mode = "img2img"
+    mode = DEFAULT_MODE  # ✅ 使用配置的默认值，而不是硬编码
     search_keyword = None
     steps = None
     input_path = None
@@ -971,10 +985,10 @@ def parse_arguments(args):
                 print(f"❌ 参数 {arg} 需要指定数量")
                 sys.exit(1)
         elif arg in ["--txt2img", "--t2i"]:
-            mode = "txt2img"
+            mode = "txt2img" # ✅ 命令行显式指定时覆盖
             i += 1
         elif arg in ["--img2img", "--i2i"]:
-            mode = "img2img"
+            mode = "img2img" # ✅ 命令行显式指定时覆盖
             i += 1
         elif arg in ["--steps"]:
             if i + 1 < len(args):
@@ -1174,22 +1188,22 @@ def main():
     # 预计算需要创建多少个子文件夹
     total_batches = (total_count + BATCH_SIZE - 1) // BATCH_SIZE  # 向上取整
     
-    # 预创建所有子文件夹
+    # 🔧 修复：确保 subfolders 列表长度正确
     subfolders = []
     for batch_idx in range(total_batches):
-        subfolder_name = f"{batch_idx + 1:04d}"  # 从 0001 开始，四位数字
+        subfolder_name = f"{batch_idx + 1:04d}"
         subfolder_path = os.path.join(output_root, subfolder_name)
         os.makedirs(subfolder_path, exist_ok=True)
         subfolders.append(subfolder_path)
         print(f"📁 已创建子文件夹: {subfolder_name} (存放第 {batch_idx * BATCH_SIZE + 1} - {min((batch_idx + 1) * BATCH_SIZE, total_count)} 张)")
-    
-    print(f"\n📊 共 {total_count} 张图片，将分到 {total_batches} 个子文件夹中（每 {BATCH_SIZE} 张一组）\n")
-    # ===============================================
 
-    # ========== 生成循环 (终极稳定版) ==========
-    from tqdm import tqdm
-    # 🛡️ 核心修复：在循环开始前绝对初始化变量！
-    batch_reviews = []  # 缓存当前子文件夹的点评
+    print(f"\n📊 共 {total_count} 张图片，将分到 {len(subfolders)} 个子文件夹中（每 {BATCH_SIZE} 张一组）\n")
+
+    # ========== 生成循环 ==========
+    # 🔧 修复：在循环开始时检查 subfolders 是否为空
+    if not subfolders:
+        print("❌ 错误：没有创建任何子文件夹")
+        return
 
     # 提前检查 python-docx 是否安装，避免循环中报错导致程序崩溃
     DOCX_AVAILABLE = True
@@ -1200,13 +1214,21 @@ def main():
     except ImportError:
         print("⚠️ [系统] 未安装 python-docx，将跳过 Word 文档生成。请运行: pip install python-docx")
         DOCX_AVAILABLE = False
-    
+
+    # 🛡️ 核心修复：在循环开始前绝对初始化变量！
+    batch_reviews = []  # 缓存当前子文件夹的点评
+
     for i in tqdm(range(total_count), desc="生成进度"):
         prompt, prompt_mode = build_prompt(config)
-        
 
         # 🆕 计算当前图片属于哪个子文件夹（从 0 开始计数）
         batch_index = i // BATCH_SIZE
+        
+        # 🔧 修复：防止索引越界
+        if batch_index >= len(subfolders):
+            print(f"⚠️ 警告：batch_index {batch_index} 超出范围 {len(subfolders)}，使用最后一个")
+            batch_index = len(subfolders) - 1
+        
         current_subfolder = subfolders[batch_index]
 
         # 🛡️ 【终极绝对防御】：只要当前路径不在我们正常的 output 目录下，立刻重定向！
