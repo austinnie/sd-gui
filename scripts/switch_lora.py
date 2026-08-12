@@ -98,7 +98,7 @@ def switch_lora_type(lora_type):
         return False
     
     # ✅ 更新 MODEL_TYPE（不是 LORA_TYPE）
-    if set_config_value("MODEL_TYPE", f'"{lora_type}"'):
+    if set_config_value("MODEL_TYPE", f'"{lora_type}"'):  # ✅ 传入带引号的字符串
         type_name = LORA_TYPES.get(lora_type, {}).get("name", lora_type)
         print(f"✅ 已切换到 {type_name} 模型和 LoRA")
         print(f"   📊 可用 LoRA: {len(loras)} 个")

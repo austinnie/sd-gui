@@ -77,6 +77,8 @@ ACTIVE_MODEL = 0  # 仅在 legacy 模式下使用
 # tools/config.py
 # 替换原有的 resolve_model_path 函数
 
+# tools/config.py
+
 def resolve_model_path():
     """根据配置决定最终使用的模型路径（智能版）"""
     
@@ -138,17 +140,15 @@ def resolve_model_path():
                             abs_path = os.path.normpath(os.path.join(PROJECT_ROOT, m["path"]))
                             if os.path.exists(abs_path):
                                 print(f"⚠️ {current_type} 无可用模型，自动使用 {model_type}: {m['name']}")
-                                # 自动更新 config.py
-                                try:
-                                    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                                        content = f.read()
-
-                                    # ✅ 正确写法
-                                    content = re.sub(r'MODEL_TYPE = ".*?"', f'MODEL_TYPE = "{model_type}"', content)
-                                    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-                                        f.write(content)
-                                except:
-                                    pass
+                                # ❌ 删除以下自动修改 config.py 的代码！
+                                # try:
+                                #     with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                                #         content = f.read()
+                                #     content = re.sub(r'MODEL_TYPE = ".*?"', f'MODEL_TYPE = "{model_type}"', content)
+                                #     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+                                #         f.write(content)
+                                # except:
+                                #     pass
                                 return abs_path
     except Exception as e:
         print(f"⚠️ 智能加载失败: {e}")

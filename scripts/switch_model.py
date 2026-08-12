@@ -107,6 +107,8 @@ def resolve_model_path(data, model_entry):
     return None
 
 
+# scripts/switch_model.py
+
 def set_config_value(key, value):
     """修改 config.py 中的配置值"""
     if not os.path.exists(CONFIG_FILE):
@@ -120,15 +122,16 @@ def set_config_value(key, value):
         # 检查是否已存在该配置
         pattern = rf'{key} = .*?\n'
         if re.search(pattern, content):
-            content = re.sub(pattern, f'{key} = "{value}"\n', content)
+            # ✅ 直接替换整行，value 已经是字符串格式
+            content = re.sub(pattern, f'{key} = {value}\n', content)
         else:
             # 在文件开头的导入部分之后添加
             import_match = re.search(r'(import.*?\n)+', content)
             if import_match:
                 insert_pos = import_match.end()
-                content = content[:insert_pos] + f'\n{key} = "{value}"\n' + content[insert_pos:]
+                content = content[:insert_pos] + f'\n{key} = {value}\n' + content[insert_pos:]
             else:
-                content = f'{key} = "{value}"\n\n' + content
+                content = f'{key} = {value}\n\n' + content
         
         with open(CONFIG_FILE, "w", encoding="utf-8") as f:
             f.write(content)
@@ -136,7 +139,6 @@ def set_config_value(key, value):
     except Exception as e:
         print(f"❌ 写入 config.py 失败: {e}")
         return False
-
 
 def get_active_model_type():
     """从 config.py 读取当前激活的模型类型"""
@@ -203,7 +205,7 @@ def switch_model_type(model_type, auto_fallback=True):
         return False, None
     
     # 更新 config.py
-    if set_config_value("MODEL_TYPE", model_type):
+    if set_config_value("MODEL_TYPE", f'"{model_type}"'):  # ✅ 传入带引号的字符串
         type_name = MODEL_TYPES.get(model_type, {}).get("name", model_type)
         print(f"✅ 已切换到 {type_name}")
         print(f"   📁 模型: {selected_model['name']}")
