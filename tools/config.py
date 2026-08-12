@@ -56,7 +56,7 @@ AVAILABLE_MODELS = MODEL_INDEX.get("models", [])
 
 # ==================== 🔵 模型选择配置 ====================
 # 🆕 模型类型: "sd15" | "sdxl"（由 switch_model.py 自动管理）
-MODEL_TYPE = "sdxl"
+MODEL_TYPE = "sd15"
 
 
 # 模式: "legacy" | "smart" | "manual"

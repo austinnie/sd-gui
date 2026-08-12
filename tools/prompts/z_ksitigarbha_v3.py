@@ -1,76 +1,76 @@
 # tools/prompts/z_ksitigarbha_v3.py
-# 地藏王菩萨 - SDXL 增强版提示词库（男性修正版）
-# 针对 SDXL 模型优化：明确男性身份、更长提示词、更具体的视觉描述
+# 地藏王菩萨 - SDXL 增强版提示词库（神圣法相修正版）
+# 修正方向：回归传统佛教造像，强调菩萨璎珞、宝冠、天衣、神性，去除写实和尚形象
 
 STYLE = {
     "z_ksitigarbha_v3": {
         "folder": "3_AI画廊_地藏王菩萨_分层",
         "strength": 0.35,
         
-        # ==================== 主体 (16种 - 全部明确男性) ====================
+        # ==================== 主体 (16种 - 重塑菩萨相) ====================
         "subjects": [
-            # SDXL 提示词精简版（前 77 token 放最重要的描述）
-            "Ksitigarbha Bodhisattva, male bodhisattva, masculine Asian monk, standing on red lotus, golden-red monastic robes, holding golden staff, radiant pearl, compassionate expression, male facial features, strong jaw, shaved head, golden halo, sacred Buddhist thangka, 8k, cinematic, photorealistic, masterpiece",
+            # 提示词结构调整：顶级重写，去掉僧袍光头，加入宝冠天衣
+            "Ksitigarbha Bodhisattva, divine male bodhisattva, Asian divine figure, high golden topknot with jeweled crown, wearing flowing celestial silk robes and ornate golden jewelry, holding golden khakkhara staff, radiant glowing pearl in hand, compassionate and majestic expression, soft masculine features, golden luminous halo, sacred Buddhist thangka, 8k, cinematic, masterpiece",
             
-            "Ksitigarbha Bodhisattva, male bodhisattva, Asian monk, meditation pose, lotus position, holding glowing jewel, golden staff beside, peaceful expression, male features, strong face, night sky backdrop, stars, moonlit, sacred art, 8k, cinematic, masterpiece",
+            "Ksitigarbha Bodhisattva, male bodhisattva, sacred Asian deity, elaborate jeweled headdress, translucent silk garments, golden armbands and necklaces, sitting on red lotus throne, holding luminous jewel, golden staff beside, peaceful compassionate gaze, night sky, starlight, divine atmosphere, 8k, cinematic, masterpiece",
             
-            "Ksitigarbha Bodhisattva, male bodhisattva, masculine Asian monk, royal pose on stone throne, holding glowing pearl, golden staff, red saffron robes, compassionate regal expression, male features, strong masculine face, golden light, sacred altar, thangka style, 8k, masterpiece",
+            "Ksitigarbha Bodhisattva, male bodhisattva, majestic divine king, ornate golden crown, draped in flowing white and gold celestial robes, seated on stone throne, holding glowing pearl and khakkhara, compassionate regal expression, soft masculine face, sacred altar background, thangka style, 8k, masterpiece",
             
-            "Ksitigarbha Bodhisattva, male bodhisattva, masculine Asian monk, standing at underworld gates, golden staff striking ground, pearl held high, piercing darkness, breaking chains, golden robes, fierce compassionate expression, male features, dramatic hellscape, epic, 8k, cinematic, masterpiece",
+            "Ksitigarbha Bodhisattva, male bodhisattva, divine savior, high jeweled topknot, celestial armor-like robes, standing at gates of underworld, golden staff striking ground, pearl held high radiating holy light, piercing darkness, fierce yet compassionate expression, breaking chains, dramatic hellscape, epic, 8k, cinematic, masterpiece",
             
             # ----- 地狱救度 -----
-            "Ksitigarbha Bodhisattva, male bodhisattva, masculine Asian monk, descending through underworld, golden halo piercing darkness, glowing pearl illuminating souls, staff ringing, saffron robe, tears of compassion, reaching to save souls, male features, hellish landscape, dramatic, 8k, cinematic, masterpiece",
+            "Ksitigarbha Bodhisattva, male bodhisattva, divine figure, descending through hell, golden halo piercing darkness, glowing pearl illuminating suffering souls, staff ringing, flowing white and gold silk robes, tears of compassion, reaching to save souls, soft male features, hellish landscape, dramatic, 8k, cinematic, masterpiece",
             
-            "Ksitigarbha Bodhisattva, male bodhisattva, masculine Asian monk, standing in Avici Hell, island of golden light, pearl illuminating suffering faces, staff planted, monastic robes, compassionate gaze, male features, strong masculine face, dark contrast, epic religious art, 8k, cinematic, masterpiece",
+            "Ksitigarbha Bodhisattva, male bodhisattva, divine being, standing in Avici Hell as island of golden light, pearl illuminating faces of the damned, staff planted, ornate jeweled robes and crown, compassionate gaze, soft masculine divine face, dark high contrast, epic religious art, 8k, cinematic, masterpiece",
             
-            "Ksitigarbha Bodhisattva, male bodhisattva, masculine Asian monk, breaking chains of hell, golden shockwaves, souls rising, golden-armored robe, fierce compassionate expression, male features, strong masculine face, dark hellscape, epic battle, 8k, cinematic, masterpiece",
+            "Ksitigarbha Bodhisattva, male bodhisattva, divine warrior, breaking chains of hell, golden shockwaves, souls rising, golden jeweled armor robes, fierce compassionate expression, soft male features, golden halo, dark hellscape, epic battle, 8k, cinematic, masterpiece",
             
-            "Ksitigarbha Bodhisattva, male bodhisattva, masculine Asian monk, walking Bridge of Judgment, staff guiding, pearl lighting dark waters, souls following, grey monk robe, red sash, calm expression, male features, underworld river, lotus flowers, mystic, 8k, cinematic, masterpiece",
+            "Ksitigarbha Bodhisattva, male bodhisattva, divine guide, walking Bridge of Judgment, staff guiding, pearl lighting dark waters, souls following, flowing white celestial robes, red sash, calm expression, jeweled crown, underworld river, lotus flowers, mystic, 8k, cinematic, masterpiece",
             
             # ----- 幽冥世界 -----
-            "Ksitigarbha Bodhisattva, male bodhisattva, masculine Asian monk, presiding in Underworld court, golden throne, radiant pearl, staff beside, elaborate robes, majestic compassionate, male features, strong masculine face, Wheel of Life behind, souls saved, thangka style, 8k, masterpiece",
+            "Ksitigarbha Bodhisattva, male bodhisattva, divine king, presiding in Underworld court, golden throne, radiant pearl, staff beside, elaborate jeweled robes and crown, majestic compassionate, soft masculine face, Wheel of Life behind, souls saved, thangka style, 8k, masterpiece",
             
-            "Ksitigarbha Bodhisattva, male bodhisattva, masculine Asian monk, vision at dying bedside, golden light, radiant pearl, staff, flowing white gold robes, serene comforting, male face, gentle features, soul rising peacefully, soft light, emotional, 8k, cinematic, masterpiece",
+            "Ksitigarbha Bodhisattva, male bodhisattva, divine being, vision at dying bedside, golden light, radiant pearl, staff, flowing celestial white gold robes, serene comforting, soft male face, gentle features, soul rising peacefully, soft light, emotional, 8k, cinematic, masterpiece",
             
-            "Ksitigarbha Bodhisattva, male bodhisattva, masculine Asian monk, descending on golden cloud, heavenly beings, lotus petals, holding staff and pearl, celestial robes, radiant majestic, male features, strong masculine face, heaven scene, divine, 8k, cinematic, masterpiece",
+            "Ksitigarbha Bodhisattva, male bodhisattva, divine celestial being, descending on golden cloud, heavenly beings, lotus petals, holding staff and pearl, jeweled headdress, flowing translucent robes, radiant majestic, soft male features, heaven scene, divine, 8k, cinematic, masterpiece",
             
-            "Ksitigarbha Bodhisattva, male bodhisattva, masculine Asian monk, Hall of Ten Kings, compassionate figure, holding pearl and staff, monastic robes, calm merciful expression, male features, ancient Chinese underworld setting, Buddhist Taoist fusion, 8k, cinematic, masterpiece",
+            "Ksitigarbha Bodhisattva, male bodhisattva, divine figure, Hall of Ten Kings, compassionate figure, holding pearl and staff, jeweled crown and silk robes, calm merciful expression, soft masculine face, ancient Chinese underworld setting, Buddhist Taoist fusion, 8k, cinematic, masterpiece",
             
             # ----- 法相特写 -----
-            "Ksitigarbha Bodhisattva, male bodhisattva, masculine Asian monk, close-up portrait, compassionate wise eyes, gentle smile, male facial features, strong jaw, shaved head, crown, golden jewelry, monastic robe collar, golden halo, sacred expression, 8k, cinematic, photorealistic, masterpiece",
+            "Ksitigarbha Bodhisattva, male bodhisattva, divine portrait close-up, compassionate wise eyes, gentle smile, soft male facial features, high topknot with golden crown, ornate jewelry, celestial robe collar, golden halo, sacred expression, 8k, cinematic, photorealistic, masterpiece",
             
-            "Ksitigarbha Bodhisattva, male bodhisattva, masculine Asian monk, cintamani jewel close-up, glowing white-gold light, strong graceful hand, radiating rays, monastic robe sleeve, golden trim, dark background, sacred mystical, 8k, cinematic, macro, masterpiece",
+            "Ksitigarbha Bodhisattva, male bodhisattva, cintamani jewel close-up, glowing white-gold light, strong graceful hand, radiating rays, celestial robe sleeve, golden trim, jeweled bracelet, dark background, sacred mystical, 8k, cinematic, macro, masterpiece",
             
-            "Ksitigarbha Bodhisattva, male bodhisattva, masculine Asian monk, khakkhara staff detail, six rings, golden metalwork, staff striking ground, intricate design, strong hand holding staff, golden bronze colors, sacred object, 8k, cinematic, macro, masterpiece",
+            "Ksitigarbha Bodhisattva, male bodhisattva, khakkhara staff detail, six rings, golden metalwork, staff striking ground, intricate design, strong hand holding staff, golden bronze colors, sacred object, 8k, cinematic, macro, masterpiece",
             
-            "Ksitigarbha Bodhisattva, male bodhisattva, masculine Asian monk, surrounded by guardians, standing center, pearl glowing, staff in hand, Dharma protectors, divine generals, grand celestial assembly, majestic, thangka style, 8k, cinematic, masterpiece",
+            "Ksitigarbha Bodhisattva, male bodhisattva, divine figure, surrounded by guardians, standing center, pearl glowing, staff in hand, jeweled crown and celestial robes, Dharma protectors, divine generals, grand celestial assembly, majestic, thangka style, 8k, cinematic, masterpiece",
         ],
         
-        # ==================== 风格 (8种 - SDXL 优化) ====================
+        # ==================== 风格 (8种 - 强化神性与慈悲) ====================
         "styles": [
-            "divine Buddhist art masterpiece, golden and warm lighting, sacred atmosphere, intricate details, volumetric lighting, 8k, cinematic, photorealistic, highly detailed textures, rich gold and red colors, dramatic composition, awe-inspiring, worshipful, majestic, male divine figure",
-            "traditional thangka painting style, rich golden and red colors, ornate geometric patterns, traditional Buddhist iconography, divine presence, intricate mandalas, Himalayan art style, sacred geometry, masterpiece, 8k, highly detailed, vibrant colors, spiritual, male bodhisattva",
-            "sacred art, ethereal glow, deep shadows and bright highlights, dramatic divine lighting, photorealistic, emotional, masterpiece, 8k, cinematic, dramatic chiaroscuro, warm golden light piercing darkness, hope and mercy, salvation, male savior figure",
+            "divine Buddhist art masterpiece, golden and warm lighting, sacred atmosphere, intricate jewelry details, volumetric lighting, 8k, cinematic, photorealistic, highly detailed silk textures, rich gold and red colors, dramatic composition, awe-inspiring, worshipful, majestic, divine male figure",
+            "traditional thangka painting style, rich golden and red colors, ornate geometric patterns, traditional Buddhist iconography, divine presence, intricate mandalas, Himalayan and East Asian art style fusion, sacred geometry, masterpiece, 8k, highly detailed, vibrant colors, spiritual, male bodhisattva",
+            "sacred art, ethereal glow, deep shadows and bright highlights, dramatic divine lighting, photorealistic, emotional, masterpiece, 8k, cinematic, dramatic chiaroscuro, warm golden light piercing darkness, hope and mercy, salvation, divine savior figure",
             "dark mystical underworld atmosphere, dramatic chiaroscuro, golden divine light piercing the darkness, high contrast, epic composition, masterpiece, 8k, cinematic, emotional, powerful, haunting beauty, light in darkness, sacred, male divine warrior",
-            "classical Buddhist iconography, Himalayan and East Asian art style fusion, intricate halos and mandalas, serene and majestic, temple mural aesthetic, ancient sacred art, masterpiece, 8k, detailed, timeless, spiritual, male monastic figure",
+            "classical Buddhist iconography, temple mural aesthetic, ancient sacred art, intricate halos and mandalas, serene and majestic, masterpiece, 8k, detailed, timeless, spiritual, male divine figure, flowing robes and jewels",
             "heavenly vision, warm golden and white light, celestial atmosphere, soft ethereal glow, peaceful and uplifting, masterpiece, 8k, cinematic, beautiful, radiant, divine, sacred, glorious, ethereal beauty, male celestial being",
-            "dramatic epic cinematic style, wide-angle composition, divine light rays, golden hour lighting, emotional impact, masterpiece, 8k, cinematic, epic scale, grand, powerful, heroic, compassionate, awe-inspiring, male heroic figure",
-            "photorealistic sacred art, ultra detailed textures, luxurious fabrics and gold leaf, divine radiance, masterpiece, 8k, cinematic, photorealistic, stunning, beautiful, intricate, sacred, worshipful, magnificent, male divine presence"
+            "dramatic epic cinematic style, wide-angle composition, divine light rays, golden hour lighting, emotional impact, masterpiece, 8k, cinematic, epic scale, grand, powerful, heroic, compassionate, awe-inspiring, divine heroic figure",
+            "photorealistic sacred art, ultra detailed textures, luxurious silk and gold leaf, divine radiance, masterpiece, 8k, cinematic, photorealistic, stunning, beautiful, intricate, sacred, worshipful, magnificent, male divine presence"
         ],
         
-        # ==================== 情绪 (8种) ====================
+        # ==================== 情绪 (8种 - 调整偏向慈悲庄严) ====================
         "moods": [
-            "compassionate and merciful, saving all suffering beings, ultimate kindness, selfless love, fatherly compassion",
-            "majestic and divine, king of the underworld, all-powerful, awe-inspiring, regal majesty, masculine divine authority",
-            "peaceful and serene, ultimate enlightened being, eternal calm, deep wisdom, inner peace, masculine tranquility",
-            "powerful and heroic, destroyer of hell, savior of all, fearless determination, unshakable will, masculine strength",
-            "gentle and comforting, relieving all fears, bringing peace, healing presence, loving kindness, fatherly warmth",
-            "determined and unwavering, never giving up until all are saved, eternal vow, unbreakable promise, masculine resolve",
-            "mysterious and sacred, profound and unfathomable, transcendental beauty, infinite compassion, divine masculine mystery",
-            "victorious and triumphant, light over darkness, salvation achieved, ultimate liberation, masculine triumph"
+            "compassionate and merciful, saving all suffering beings, ultimate kindness, selfless love, divine compassion",
+            "majestic and divine, king of the underworld, all-powerful, awe-inspiring, regal majesty, divine authority",
+            "peaceful and serene, ultimate enlightened being, eternal calm, deep wisdom, inner peace, divine tranquility",
+            "powerful and heroic, destroyer of hell, savior of all, fearless determination, unshakable will, divine strength",
+            "gentle and comforting, relieving all fears, bringing peace, healing presence, loving kindness, divine warmth",
+            "determined and unwavering, never giving up until all are saved, eternal vow, unbreakable promise, divine resolve",
+            "mysterious and sacred, profound and unfathomable, transcendental beauty, infinite compassion, divine mystery",
+            "victorious and triumphant, light over darkness, salvation achieved, ultimate liberation, divine triumph"
         ],
         
-        # ==================== 地藏菩萨大愿 (25条) ====================
+        # ==================== 地藏菩萨大愿 (25条 - 保持不变) ====================
         "content_texts": [
             "地狱不空，誓不成佛。众生度尽，方证菩提。",
             "我不入地狱，谁入地狱。",
