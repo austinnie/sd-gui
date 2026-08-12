@@ -22,19 +22,27 @@ if sys.platform == "win32":
 # 确保 tools 目录在路径中
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 if CURRENT_DIR not in sys.path:
-    sys.path.insert(0, CURRENT_DIR)
+    sys.path.insert(0, CURRENT_DIR)   
+
+# ✅ 添加项目根目录到路径（让 utils 可以被导入）
+PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+# ✅ 验证路径
+print(f"📁 PROJECT_ROOT: {PROJECT_ROOT}")
     
-    
-from tools.config import (
-    DEFAULT_STRENGTH, STEPS, INPUT_IMAGE_NAME, REMOVE_AI_TRACES,
-    AI_APPRECIATION_ENGINE, FINAL_STEPS,
-)
+
 from tools.core import setup_pipeline, build_prompt, generate_style, Appraiser
 from tools.core.postprocessor import is_sketch_style
 from tools.utils.watermark import remove_watermark
 from tools.utils.doc_generator import generate_word_doc, generate_text_summary
 from prompts_config import STYLE_PROMPTS
 
+from tools.config import (
+    DEFAULT_STRENGTH, STEPS, INPUT_IMAGE_NAME, REMOVE_AI_TRACES,
+    AI_APPRECIATION_ENGINE, FINAL_STEPS,
+)
 
 def print_usage():
     """打印使用说明"""

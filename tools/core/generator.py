@@ -13,15 +13,28 @@ CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if CURRENT_DIR not in sys.path:
     sys.path.insert(0, CURRENT_DIR)
 
+
+SAFE_MODE = True  
+# 安全模式策略：
+#   "simple" = 简单模式：在提示词后加 "wearing clothes"
+#   "filter" = 过滤模式：移除露骨词汇 (nude, naked, explicit, pornographic, sex, hentai)
+SAFE_MODE_STRATEGY = "filter"  # 可选: "simple" 或 "filter"
+# 是否启用去水印
+REMOVE_WATERMARK = True
+# ==================== ⚙️ 内容文本开关 ====================
+# 是否启用 content_texts 字段（将文本内容添加到提示词中）
+USE_CONTENT_TEXTS = True  # 默认关闭，设为 True 开启
+# ========================================================
+
 from tools.config import (
     STEPS,
     MAX_LIMIT,
-    SAFE_MODE,
-    SAFE_MODE_STRATEGY,
+    #SAFE_MODE,
+    #SAFE_MODE_STRATEGY,
     REMOVE_AI_TRACES,
     SKETCH_KEYWORDS,
     AUTO_DETECT_STYLE,
-    USE_CONTENT_TEXTS,
+    #USE_CONTENT_TEXTS,
 )
 from tools.core.postprocessor import remove_ai_traces, is_sketch_style
 

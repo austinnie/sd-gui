@@ -11,8 +11,9 @@ CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if CURRENT_DIR not in sys.path:
     sys.path.insert(0, CURRENT_DIR)
 
-from tools.config import REMOVE_WATERMARK
-
+#from tools.config import REMOVE_WATERMARK
+# 是否启用去水印
+REMOVE_WATERMARK = True
 
 def remove_watermark(image_path: str) -> Image.Image:
     """
