@@ -19,8 +19,7 @@ SAFE_MODE = True
 #   "simple" = 简单模式：在提示词后加 "wearing clothes"
 #   "filter" = 过滤模式：移除露骨词汇 (nude, naked, explicit, pornographic, sex, hentai)
 SAFE_MODE_STRATEGY = "filter"  # 可选: "simple" 或 "filter"
-# 是否启用去水印
-REMOVE_WATERMARK = True
+
 # ==================== ⚙️ 内容文本开关 ====================
 # 是否启用 content_texts 字段（将文本内容添加到提示词中）
 USE_CONTENT_TEXTS = True  # 默认关闭，设为 True 开启
