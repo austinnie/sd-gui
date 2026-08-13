@@ -53,9 +53,10 @@ def build_prompt(config):
         
         if USE_CONTENT_TEXTS and "content_texts" in config and config["content_texts"]:
             text = random.choice(config["content_texts"])
+            # 将硬编码的卷轴描述改为“主题上写着/印着”，兼容性更强
             prompt = (
                 f"{subject}, {style}, {mood}, "
-                f"the scroll features the Chinese characters '{text}' written in flowing calligraphy"
+                f"the subject features the word '{text}' glowing on the surface"
             )
             print(f"   📜 已添加内容文本: {text[:20]}...")
         else:

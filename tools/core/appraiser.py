@@ -76,24 +76,8 @@ class Appraiser:
         except Exception as e:
             print(f"   ⚠️ BLIP 加载失败: {e}")
             self._blip_loaded = False
-    
-    def _get_blip_caption(self, image_path: str) -> str:
-        """获取 BLIP 描述"""
-        if not self._blip_loaded or self._blip_model is None:
-            return None
-        
-        try:
-            from PIL import Image
-            image = Image.open(image_path).convert('RGB')
-            inputs = self._blip_processor(image, return_tensors="pt")
-            out = self._blip_model.generate(**inputs, max_length=80, num_beams=3, repetition_penalty=1.1)
-            caption = self._blip_processor.decode(out[0], skip_special_tokens=True)
-            print(f"   📝 BLIP 基础描述: {caption[:60]}...")
-            return caption
-        except Exception as e:
-            print(f"   ⚠️ BLIP 推理失败: {e}")
-            return None
-    
+
+
     def _llm_available(self) -> bool:
         """检查 LLM 是否可用"""
         try:
@@ -101,33 +85,64 @@ class Appraiser:
             return response.status_code == 200
         except:
             return False
+            
+    def _get_blip_caption(self, image_path: str) -> str:
+        """获取 BLIP 描述 (强制中文输出)"""
+        if not self._blip_loaded or self._blip_model is None:
+            return None
+        
+        try:
+            from PIL import Image
+            image = Image.open(image_path).convert('RGB')
+            inputs = self._blip_processor(image, return_tensors="pt")
+            
+            # ✨ 修改点1：强制要求 BLIP 输出中文描述，减少大模型翻译造成的违和感
+            out = self._blip_model.generate(
+                **inputs, 
+                max_length=80, 
+                num_beams=3, 
+                repetition_penalty=1.1,
+                forced_bos_token_id=self._blip_processor.tokenizer.convert_tokens_to_ids("zh") # 尝试强制中文
+            )
+            caption = self._blip_processor.decode(out[0], skip_special_tokens=True)
+            
+            # 如果BLIP还是出了英文，这里做一个简单的强制前缀，告诉Ollama前文是什么
+            print(f"   📝 BLIP 原始描述: {caption[:60]}...")
+            return caption
+        except Exception as e:
+            print(f"   ⚠️ BLIP 推理失败: {e}")
+            return None
     
     def _enhance_with_llm(self, caption: str) -> str:
-        """使用 LLM 增强描述"""
+        """使用 LLM 增强描述 (定制化具体描写)"""
         try:
+            # ✨ 修改点2：给LLM一个“摄影博主/机娘手办收藏家”的人设
             llm_prompt = f"""
-请将以下图片描述转换为一段优美、带有艺术鉴赏性的中文赏析（约100字）：
-图片描述：{caption}
-
+你是一位资深的高端手办模型收藏家。请根据以下对这张图片的简短基础描述，写一段40字左右的摄影点评/文案。
 要求：
-1. 包含对人物服装、神态、材质质感的描写。
-2. 强调这是一件极具收藏价值的作品。
-3. 语言风格：优雅、专业、适合作为社交媒体发帖文案。
+1. 不要去复述图片里有什么（不要堆砌名词）。
+2. 重点描写“金属装甲的光泽度”、“机械关节的结构感”或者“整体的精密拼装感”。
+3. 语气要像一个懂行的人，不要太像AI。
+4. 直接给出点评内容，不要有“描述如下”之类的前缀。
+
+图片简述：{caption}
 """
-            print(f"   ⏳ 正在请求 Ollama 润色...")
+            print(f"   ⏳ 正在请求 Ollama (qwen2.5:1.5b) 深度分析...")
             response = requests.post(
                 "http://localhost:11434/api/generate",
-                json={"model": "qwen2.5:1.5b", "prompt": llm_prompt, "stream": False},
+                json={"model": "qwen2.5:1.5b", "prompt": llm_prompt, "stream": False, "temperature": 0.7},
                 timeout=45
             )
             if response.status_code == 200:
-                result = response.json().get("response", caption)
-                print(f"   ✅ LLM 润色完成！")
+                result = response.json().get("response", caption).strip()
+                print(f"   ✅ LLM 深度解析完成！")
+                # 如果返回为空，就回退
+                if len(result) < 5:
+                    return caption
                 return result
         except Exception as e:
             print(f"   ⚠️ Ollama 连接失败: {e}")
         return None
-
 
 # 全局实例
 appraiser = Appraiser()

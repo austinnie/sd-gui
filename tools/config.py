@@ -63,7 +63,7 @@ MODEL_TYPE = "sd15"
 #   legacy: 使用原有的 ACTIVE_MODEL 方式（完全兼容旧代码）
 #   smart:  使用索引推荐的模型（自动选择最佳）
 #   manual: 手动指定模型名称
-MODEL_SELECTION_MODE = "smart"  # 默认使用智能模式
+MODEL_SELECTION_MODE = "legacy"  # 默认使用智能模式
 
 # 手动指定模型名称（当 MODE="manual" 时生效）
 MANUAL_MODEL_NAME = None  # 例如 "DreamShaper_8"
@@ -71,7 +71,7 @@ MANUAL_MODEL_NAME = None  # 例如 "DreamShaper_8"
 # ==================== 保留原有配置（完全兼容） ====================
 # 核心开关：True=使用 OpenVINO 模型，False=使用普通模型
 USE_OPENVINO_MODEL = False  
-ACTIVE_MODEL = 0  # 仅在 legacy 模式下使用
+ACTIVE_MODEL = 1  # 仅在 legacy 模式下使用
 
 # ==================== 🔴 智能模型选择 ====================
 # tools/config.py
