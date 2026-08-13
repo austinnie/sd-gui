@@ -359,10 +359,10 @@ AI_CROP_PERCENT = 0.005
 AUTO_DETECT_STYLE = True
 
 SKETCH_KEYWORDS = [
-    "sketch", "pencil", "lineart", "baimiao", "ink", "wash",
-    "draft", "monochrome", "black and white", "drawing",
-    "charcoal", "graphite", "outline", "contour", "tiger_sketch",
-    "素描", "线稿", "白描", "水墨", "铅笔", "炭笔", "速写"
+    # ✅ 只在用户明确要求画“草稿”或“纯黑白”时才触发，绝不误伤写实手办
+    "pencil sketch", "line art", "black and white sketch", 
+    "graphite drawing", "ink outline", "charcoal portrait",
+    "baimiao", "素描", "线稿", "白描", "水墨", "铅笔", "炭笔", "速写"
 ]
 
 # ==================== 📊 启动信息 ====================
