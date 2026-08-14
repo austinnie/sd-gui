@@ -24,7 +24,7 @@ STYLE = {
             # ================= 【维度 4：性感/现代流行穿搭】 =================
             "highly detailed face, premium anime figure, pink hair, star hair clip, wearing a purple velvet corset top, white lace skirt, and black high heels, flirty pose, sitting elegantly on a velvet sofa base, dark studio background, luxury collectible",
             
-            # ✨ 修复版：强制锁死“两只手抱猫”的结构，解决多手畸形 ✨
+            # ✨ 已修复：强制锁死“两只手抱猫”的结构，解决多手畸形 ✨
             "highly detailed face, anime girl statue, pink hair, hairpin, wearing a white silk bathrobe, gently cradling a black cat with exactly two hands, one hand supporting the cat's back, the other under its belly, the cat's paws visible, standing on a simple circular base, soft grey background, realistic skin texture, high-end resin figure",
 
             # ================= 【维度 5：赛博朋克与机械融合（装甲与道具）】 =================
@@ -33,7 +33,9 @@ STYLE = {
 
             # ================= 【维度 6：极致场景底座（打破单一底座）】 =================
             "highly detailed face, anime girl statue, pink hair, star accessory, wearing a red floral dress, standing in a blooming rose garden base, holding a bouquet, dark green and moody lighting, garden aesthetic",
-            "highly detailed face, anime girl figure, pink hair, star hairpin, wearing a black gothic dress, standing on a ruined gothic cathedral pillar base, holding a candle, dark dramatic background, mystical atmosphere"
+
+            # ✨ 已修复：彻底解决“手与烛台融合”的畸形问题 ✨
+            "highly detailed face, anime girl figure, pink hair, star hairpin, wearing a black gothic dress with lace details, standing gracefully on a weathered stone cathedral pillar base, her wrist loosely resting on the top of a tall, thin black candlestick, her fingers open and gracefully splayed out, a single lit white candle on top, elegant and solemn pose, dark moody studio background, mystical gothic aesthetic, perfectly shaped hands, clearly defined fingers"
         ],
         "styles": [
             "photorealistic resin figure, glossy and matte paint finish, realistic fabric textures, macro studio photography",
